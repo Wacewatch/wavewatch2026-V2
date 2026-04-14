@@ -27,14 +27,25 @@ Rebuild the WaveWatch streaming platform completely from the GitHub repo (https:
 17. Actor/Director filmography pages
 18. Collections/Sagas pages
 19. Feedback/Guestbook in footer
+20. Calendar (upcoming releases)
+21. Changelogs page
+22. Sport page
+23. Documentaires page
+24. Spectacles page
+25. Popular Actors page
+26. VIP Game (daily spin wheel)
+27. Watch History
+28. Music player page
+29. Games page
+30. Protected routes (auth-gated pages)
 
-## What's Been Implemented (Jan 2026)
-- Full FastAPI backend with 50+ API endpoints
-- TMDB API proxy (trending, popular, search, details, credits, similar, collections, genres, discover)
+## What's Been Implemented (Jan-Apr 2026)
+- Full FastAPI backend with 55+ API endpoints
+- TMDB API proxy (trending, popular, search, details, credits, similar, collections, genres, discover, upcoming, popular persons)
 - JWT authentication (register, login, logout, me, refresh, brute force protection)
-- MongoDB models (users, favorites, watch_history, playlists, feedback, staff_messages, content_requests, site_settings)
-- Complete React frontend with 25+ pages
-- Navigation with Contenu/Medias dropdowns
+- MongoDB models (users, favorites, watch_history, playlists, feedback, staff_messages, content_requests, site_settings, vip_games)
+- Complete React frontend with 35+ pages
+- Navigation with Contenu/Medias dropdowns + Calendrier + VIP links
 - Hero section with auto-rotating trending movies
 - Movies/TV Shows/Anime listing with genre filters and pagination
 - Movie/TV Show detail pages with backdrop, poster, logo, cast, similar content, collection/saga
@@ -53,34 +64,51 @@ Rebuild the WaveWatch streaming platform completely from the GitHub repo (https:
 - Season and Episode detail pages
 - Actor/Director detail pages with filmography
 - Collections search page
-- Footer with community feedback/guestbook
+- Footer with community feedback/guestbook + Nouveautes link
 - 17 themes (all from original)
 - Full responsive design
+- **Calendar page** with TMDB upcoming movies and TV shows
+- **Changelogs page** with version history
+- **Sport page** with live/replay sports content
+- **Documentaires page** with documentary catalog
+- **Spectacles page** with theater/opera/comedy catalog
+- **Popular Actors page** with TMDB popular persons + pagination
+- **VIP Game page** with daily spin wheel (5% chance, 30-day VIP prize)
+- **Watch History page** (auth-gated, shows viewing history)
+- **Music page** with playlists, player bar, search
+- **Games page** with browser games catalog
+- **ProtectedRoute** component for auth-gated pages (Dashboard, Profile, Favorites, Playlists, Admin)
+- Complete mobile navigation with all sections
+
+## Testing Status
+- Backend: 21/21 tests passed (iteration_2.json)
+- Frontend: 28/28 UI tests passed (iteration_2.json)
+- All navigation flows verified
+- Auth flow (login/register/protected routes) verified
 
 ## Prioritized Backlog
-### P0 (Critical) - DONE
-- All core features implemented
+### P0 (Critical) - ALL DONE
+- All core features implemented and tested
 
-### P1 (High)
-- Interactive World (3D experience) - was using Three.js/React Three Fiber
-- Music player page
-- Games page  
-- VIP daily game (spin wheel)
-- Watch history tracking
-- Calendar widgets (movie releases, football)
+### P1 (High) - DONE
+- Calendar widgets (movie releases) - DONE
+- VIP daily game (spin wheel) - DONE
+- Watch history page - DONE
+- Music player page - DONE
+- Games page - DONE
+- Protected routes - DONE
 
-### P2 (Medium)
-- Changelogs page
-- Spectacles page
-- Sport page
-- Documentaires page
-- Ad gate modal
+### P2 (Medium) - DONE
+- Changelogs page - DONE
+- Spectacles page - DONE
+- Sport page - DONE
+- Documentaires page - DONE
+- Popular Actors page - DONE
+
+### P3 (Future/Backlog)
+- Interactive World (3D experience - excluded by user request)
+- Achievement/badge system
 - Top supporters/leaderboard
-- Achievement system
-
-## Next Tasks
-1. Add VIP game (daily spin to win VIP)
-2. Add watch history page in dashboard
-3. Implement Interactive World with 3D elements
-4. Add calendar widgets
-5. Implement music and games sections
+- Ad gate modal
+- Full music streaming with real audio
+- Real game implementations (2048, Snake, etc.)
