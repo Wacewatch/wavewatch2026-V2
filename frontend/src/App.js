@@ -36,6 +36,17 @@ import AdminPage from './pages/AdminPage';
 import SeasonDetailPage from './pages/SeasonDetailPage';
 import EpisodeDetailPage from './pages/EpisodeDetailPage';
 import ContentRequestsPage from './pages/ContentRequestsPage';
+import CalendarPage from './pages/CalendarPage';
+import ChangelogsPage from './pages/ChangelogsPage';
+import SpectaclesPage from './pages/SpectaclesPage';
+import SportPage from './pages/SportPage';
+import DocumentairesPage from './pages/DocumentairesPage';
+import ActorsPage from './pages/ActorsPage';
+import VIPGamePage from './pages/VIPGamePage';
+import WatchHistoryPage from './pages/WatchHistoryPage';
+import MusicPage from './pages/MusicPage';
+import GamesPage from './pages/GamesPage';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import './App.css';
 
 export default function App() {
@@ -62,9 +73,9 @@ export default function App() {
                   <Route path="/search" element={<SearchPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/favorites" element={<FavoritesPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                  <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
+                  <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                   <Route path="/collections" element={<CollectionsPage />} />
                   <Route path="/actors/:id" element={<ActorDetailPage />} />
                   <Route path="/directors/:id" element={<DirectorDetailPage />} />
@@ -73,14 +84,24 @@ export default function App() {
                   <Route path="/retrogaming" element={<RetrogamingPage />} />
                   <Route path="/ebooks" element={<EbooksPage />} />
                   <Route path="/logiciels" element={<SoftwarePage />} />
-                  <Route path="/playlists" element={<PlaylistsPage />} />
+                  <Route path="/playlists" element={<ProtectedRoute><PlaylistsPage /></ProtectedRoute>} />
                   <Route path="/discover/playlists" element={<DiscoverPlaylistsPage />} />
                   <Route path="/subscription" element={<SubscriptionPage />} />
                   <Route path="/faq" element={<FAQPage />} />
                   <Route path="/dns-vpn" element={<DNSVPNPage />} />
                   <Route path="/contact-staff" element={<ContactStaffPage />} />
-                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
                   <Route path="/requests" element={<ContentRequestsPage />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
+                  <Route path="/changelogs" element={<ChangelogsPage />} />
+                  <Route path="/spectacles" element={<SpectaclesPage />} />
+                  <Route path="/sport" element={<SportPage />} />
+                  <Route path="/documentaires" element={<DocumentairesPage />} />
+                  <Route path="/actors" element={<ActorsPage />} />
+                  <Route path="/vip-game" element={<VIPGamePage />} />
+                  <Route path="/history" element={<WatchHistoryPage />} />
+                  <Route path="/music" element={<MusicPage />} />
+                  <Route path="/games" element={<GamesPage />} />
                 </Routes>
               </main>
               <Footer />

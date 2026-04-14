@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
-import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette } from 'lucide-react';
+import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette, Calendar, Trophy, Gamepad2, Music } from 'lucide-react';
 
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -98,7 +98,11 @@ export default function Navigation() {
                   <DropdownItem to="/movies">Films</DropdownItem>
                   <DropdownItem to="/tv-shows">Series</DropdownItem>
                   <DropdownItem to="/anime">Animes</DropdownItem>
+                  <DropdownItem to="/sport">Sport</DropdownItem>
+                  <DropdownItem to="/documentaires">Documentaires</DropdownItem>
+                  <DropdownItem to="/spectacles">Spectacles</DropdownItem>
                   <DropdownItem to="/collections">Collections</DropdownItem>
+                  <DropdownItem to="/actors">Acteurs</DropdownItem>
                   <div className="border-t my-1" style={{ borderColor: 'hsl(var(--nav-border))' }} />
                   <DropdownItem to="/ebooks" badge="NEW">Ebooks</DropdownItem>
                   <DropdownItem to="/logiciels" badge="NEW">Logiciels</DropdownItem>
@@ -113,12 +117,20 @@ export default function Navigation() {
                 <div className="absolute top-full left-0 mt-2 w-56 rounded-lg border shadow-xl py-1 z-50" style={dropBg}>
                   <DropdownItem to="/tv-channels">Chaines TV</DropdownItem>
                   <DropdownItem to="/radio">Radio FM</DropdownItem>
+                  <DropdownItem to="/music">Musique</DropdownItem>
                   <DropdownItem to="/retrogaming">Retrogaming</DropdownItem>
+                  <DropdownItem to="/games">Jeux</DropdownItem>
                   <DropdownItem to="/discover/playlists">Decouvrir des Playlists</DropdownItem>
                   <DropdownItem to="/requests">Demandes de contenu</DropdownItem>
                 </div>
               )}
             </div>
+            <Link to="/calendar" className="flex items-center font-medium transition-all hover:opacity-80" style={textStyle} data-testid="calendar-link">
+              <Calendar className="w-4 h-4 mr-1" />Calendrier
+            </Link>
+            <Link to="/vip-game" className="flex items-center font-medium transition-all hover:opacity-80" style={textStyle} data-testid="vip-game-link">
+              <Crown className="w-4 h-4 mr-1 text-yellow-400" />VIP
+            </Link>
           </div>
 
           {/* Search */}
@@ -202,6 +214,7 @@ export default function Navigation() {
                     </div>
                     <DropdownItem to="/dashboard">Tableau de bord</DropdownItem>
                     <DropdownItem to="/favorites">Mes favoris</DropdownItem>
+                    <DropdownItem to="/history">Historique</DropdownItem>
                     <DropdownItem to="/playlists">Mes playlists</DropdownItem>
                     <DropdownItem to="/profile">Profil</DropdownItem>
                     {!user.is_vip && <DropdownItem to="/subscription"><span className="text-yellow-400 flex items-center"><Crown className="w-4 h-4 mr-2" />Devenir VIP</span></DropdownItem>}
@@ -255,7 +268,7 @@ export default function Navigation() {
                   <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--nav-hover))' }}><User className="w-5 h-5" style={textStyle} /></div>
                   <div><p className="font-medium" style={textStyle}>{user.username}</p><p className="text-xs" style={textSecStyle}>{user.is_admin ? 'Admin' : 'Membre'}</p></div>
                 </div>
-                {[{to:'/dashboard',label:'Tableau de bord'},{to:'/favorites',label:'Mes favoris'},{to:'/playlists',label:'Mes playlists'},{to:'/profile',label:'Profil'}].map(l => (
+                {[{to:'/dashboard',label:'Tableau de bord'},{to:'/favorites',label:'Mes favoris'},{to:'/history',label:'Historique'},{to:'/playlists',label:'Mes playlists'},{to:'/profile',label:'Profil'}].map(l => (
                   <Link key={l.to} to={l.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{l.label}</Link>
                 ))}
                 {(user.is_admin || user.is_uploader) && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg text-red-400">Administration</Link>}
@@ -264,13 +277,19 @@ export default function Navigation() {
             )}
             <div className="border-t pt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Contenu</p>
-              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/collections',l:'Collections'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
+              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/sport',l:'Sport'},{to:'/documentaires',l:'Documentaires'},{to:'/spectacles',l:'Spectacles'},{to:'/collections',l:'Collections'},{to:'/actors',l:'Acteurs'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
             </div>
             <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Medias</p>
-              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/retrogaming',l:'Retrogaming'},{to:'/discover/playlists',l:'Playlists publiques'},{to:'/requests',l:'Demandes'}].map(i => (
+              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/music',l:'Musique'},{to:'/retrogaming',l:'Retrogaming'},{to:'/games',l:'Jeux'},{to:'/discover/playlists',l:'Playlists publiques'},{to:'/requests',l:'Demandes'}].map(i => (
+                <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
+              ))}
+            </div>
+            <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
+              <p className="text-sm font-semibold mb-2" style={textStyle}>Autres</p>
+              {[{to:'/calendar',l:'Calendrier'},{to:'/vip-game',l:'Jeu VIP'},{to:'/changelogs',l:'Nouveautes'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
             </div>

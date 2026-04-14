@@ -71,7 +71,7 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div><h3 className="font-bold text-lg" style={textStyle}>WaveWatch</h3><p className="text-sm" style={textSecStyle}>Votre plateforme de streaming premium</p></div>
           <div className="flex items-center gap-6">
-            {[{to:'/contact-staff',label:'Ecrire au staff',icon:<Mail className="w-4 h-4 mr-1" />},{to:'/dns-vpn',label:'DNS & VPN'},{to:'/faq',label:'FAQ'},{to:'/requests',label:'Demandes'}].map(l => (
+            {[{to:'/contact-staff',label:'Ecrire au staff',icon:<Mail className="w-4 h-4 mr-1" />},{to:'/dns-vpn',label:'DNS & VPN'},{to:'/faq',label:'FAQ'},{to:'/requests',label:'Demandes'},{to:'/changelogs',label:'Nouveautes'}].map(l => (
               <Link key={l.to} to={l.to} className="text-sm hover:text-blue-400 transition-colors flex items-center" style={textSecStyle}>{l.icon}{l.label}</Link>
             ))}
           </div>
