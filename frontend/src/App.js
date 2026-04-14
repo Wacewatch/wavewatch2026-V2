@@ -1,0 +1,93 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
+import Navigation from './components/Navigation';
+import Footer from './components/Footer';
+import HomePage from './pages/HomePage';
+import MoviesPage from './pages/MoviesPage';
+import MovieDetailPage from './pages/MovieDetailPage';
+import TVShowsPage from './pages/TVShowsPage';
+import TVShowDetailPage from './pages/TVShowDetailPage';
+import AnimePage from './pages/AnimePage';
+import AnimeDetailPage from './pages/AnimeDetailPage';
+import SearchPage from './pages/SearchPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/DashboardPage';
+import FavoritesPage from './pages/FavoritesPage';
+import ProfilePage from './pages/ProfilePage';
+import CollectionsPage from './pages/CollectionsPage';
+import ActorDetailPage from './pages/ActorDetailPage';
+import DirectorDetailPage from './pages/DirectorDetailPage';
+import TVChannelsPage from './pages/TVChannelsPage';
+import RadioPage from './pages/RadioPage';
+import RetrogamingPage from './pages/RetrogamingPage';
+import EbooksPage from './pages/EbooksPage';
+import SoftwarePage from './pages/SoftwarePage';
+import PlaylistsPage from './pages/PlaylistsPage';
+import DiscoverPlaylistsPage from './pages/DiscoverPlaylistsPage';
+import SubscriptionPage from './pages/SubscriptionPage';
+import FAQPage from './pages/FAQPage';
+import DNSVPNPage from './pages/DNSVPNPage';
+import ContactStaffPage from './pages/ContactStaffPage';
+import AdminPage from './pages/AdminPage';
+import SeasonDetailPage from './pages/SeasonDetailPage';
+import EpisodeDetailPage from './pages/EpisodeDetailPage';
+import ContentRequestsPage from './pages/ContentRequestsPage';
+import './App.css';
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <div className="min-h-screen bg-background text-foreground flex flex-col">
+              <Navigation />
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/movies" element={<MoviesPage />} />
+                  <Route path="/movies/:id" element={<MovieDetailPage />} />
+                  <Route path="/tv-shows" element={<TVShowsPage />} />
+                  <Route path="/tv-shows/:id" element={<TVShowDetailPage />} />
+                  <Route path="/tv-shows/:id/season/:seasonNumber" element={<SeasonDetailPage />} />
+                  <Route path="/tv-shows/:id/season/:seasonNumber/episode/:episodeNumber" element={<EpisodeDetailPage />} />
+                  <Route path="/anime" element={<AnimePage />} />
+                  <Route path="/anime/:id" element={<AnimeDetailPage />} />
+                  <Route path="/anime/:id/season/:seasonNumber" element={<SeasonDetailPage isAnime />} />
+                  <Route path="/anime/:id/season/:seasonNumber/episode/:episodeNumber" element={<EpisodeDetailPage isAnime />} />
+                  <Route path="/search" element={<SearchPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/favorites" element={<FavoritesPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/collections" element={<CollectionsPage />} />
+                  <Route path="/actors/:id" element={<ActorDetailPage />} />
+                  <Route path="/directors/:id" element={<DirectorDetailPage />} />
+                  <Route path="/tv-channels" element={<TVChannelsPage />} />
+                  <Route path="/radio" element={<RadioPage />} />
+                  <Route path="/retrogaming" element={<RetrogamingPage />} />
+                  <Route path="/ebooks" element={<EbooksPage />} />
+                  <Route path="/logiciels" element={<SoftwarePage />} />
+                  <Route path="/playlists" element={<PlaylistsPage />} />
+                  <Route path="/discover/playlists" element={<DiscoverPlaylistsPage />} />
+                  <Route path="/subscription" element={<SubscriptionPage />} />
+                  <Route path="/faq" element={<FAQPage />} />
+                  <Route path="/dns-vpn" element={<DNSVPNPage />} />
+                  <Route path="/contact-staff" element={<ContactStaffPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/requests" element={<ContentRequestsPage />} />
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+          </BrowserRouter>
+        </ToastProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
