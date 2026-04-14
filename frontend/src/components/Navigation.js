@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,6 +16,18 @@ export default function Navigation() {
   const { theme, setTheme, THEMES, LIMITED_THEMES, PREMIUM_THEMES } = useTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const navRef = useRef(null);
+
+  // Close all dropdowns on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (navRef.current && !navRef.current.contains(e.target)) {
+        setContentOpen(false); setMediaOpen(false); setThemeOpen(false); setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -53,20 +65,20 @@ export default function Navigation() {
   const DropdownItem = ({ to, children, onClick, external, badge }) => {
     const cls = "block w-full text-left px-4 py-2 text-sm hover:opacity-80 transition-opacity flex items-center justify-between";
     if (external) return (
-      <a href={to} target="_blank" rel="noopener noreferrer" className={cls} style={textStyle} onClick={() => { setContentOpen(false); setMediaOpen(false); }}>
+      <a href={to} target="_blank" rel="noopener noreferrer" className={cls} style={textStyle} onClick={() => { setContentOpen(false); setMediaOpen(false); setUserMenuOpen(false); }}>
         {children}{badge && <span className="ml-2 px-2 py-0.5 text-xs font-bold text-white rounded bg-gradient-to-r from-yellow-500 to-orange-500">{badge}</span>}
       </a>
     );
-    if (onClick) return <button className={cls} style={textStyle} onClick={onClick}>{children}</button>;
+    if (onClick) return <button className={cls} style={textStyle} onClick={() => { onClick(); setUserMenuOpen(false); }}>{children}</button>;
     return (
-      <Link to={to} className={cls} style={textStyle} onClick={() => { setContentOpen(false); setMediaOpen(false); }}>
+      <Link to={to} className={cls} style={textStyle} onClick={() => { setContentOpen(false); setMediaOpen(false); setUserMenuOpen(false); }}>
         {children}{badge && <span className="ml-2 px-2 py-0.5 text-xs font-bold text-white rounded bg-gradient-to-r from-yellow-500 to-orange-500">{badge}</span>}
       </Link>
     );
   };
 
   return (
-    <nav className="sticky top-0 z-50 border-b" style={navStyle} data-testid="main-navigation">
+    <nav ref={navRef} className="sticky top-0 z-50 border-b" style={navStyle} data-testid="main-navigation">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           <Link to="/" className="flex items-center flex-shrink-0 group" data-testid="logo-link">

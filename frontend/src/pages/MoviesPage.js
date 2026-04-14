@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import API from '../lib/api';
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
@@ -35,10 +35,10 @@ export default function MoviesPage() {
     <div className="container mx-auto px-4 py-8" data-testid="movies-page">
       <h1 className="text-3xl font-bold mb-6">Films {activeGenre ? `- ${activeGenre.name}` : ''}</h1>
       <div className="flex flex-wrap gap-2 mb-6">
-        <a href="/movies" className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${!genreFilter ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}>Tous</a>
+        <Link to="/movies" className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${!genreFilter ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`} data-testid="genre-filter-all">Tous</Link>
         {genres.map(g => (
-          <a key={g.id} href={`/movies?genre=${g.id}`}
-            className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${String(g.id) === genreFilter ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}>{g.name}</a>
+          <Link key={g.id} to={`/movies?genre=${g.id}`}
+            className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${String(g.id) === genreFilter ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`} data-testid={`genre-filter-${g.id}`}>{g.name}</Link>
         ))}
       </div>
       {loading ? <LoadingGrid count={12} /> : (
