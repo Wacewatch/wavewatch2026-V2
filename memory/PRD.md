@@ -8,59 +8,27 @@
 - All modules as sliders (Acteurs, TV, Collections, Prochaines Sorties), Badges S/E, Notifications avancees
 
 ### Session 6
-- **Sync Admin Modules** : Le module "Recommandations" ajoute a l'admin (etait le seul non controle)
-- Tous les 16 modules homepage sont maintenant dans l'admin Modules avec activation/desactivation/reordonnement
+- **Sync Admin Modules** : Tous les 16 modules homepage dans l'admin avec activation/desactivation/reordonnement
 
 ### Session 7 (Jan 2026)
-- **Watch Party (Soiree Cine)** : Nouvelle fonctionnalite permettant aux utilisateurs de regarder des films/series ensemble
-  - Backend: 10+ endpoints API (CRUD, join/leave, chat en temps reel, controles hote)
-  - Frontend: Page listing/creation (WatchPartyPage.js) + Salle de visionnage avec chat (WatchPartyRoomPage.js)
-  - Codes de salle (room codes) pour inviter des amis
-  - Controles hote (play/pause/end)
-  - Chat temps reel (polling 3s)
-  - Validation ObjectId robuste (supporte codes de salle et ObjectId)
-  - Navigation: Lien "Soiree Cine" dans les menus desktop et mobile
-  - Tests: 92% pass rate (backend 90%, frontend 95%)
+- **Watch Party (Soiree Cine)** : Create/join rooms, room codes, real-time chat, host controls
+- **Footer Avis** : Seeded 6 default platform reviews so "Avis de la communaute" section displays
+
+### Session 8 (Jan 2026)
+- **Grid Layout Fix** : Replaced single-row horizontal slider (ContentGrid) with multi-row CSS grid on Movies, TV Shows, and Anime pages (grid-cols-2 sm:3 md:4 lg:5 xl:6)
+- **Advanced Filters** : Added to all 3 listing pages:
+  - Plateforme: Netflix, Disney+, Amazon Prime, Apple TV+, Canal+, OCS, Max, Paramount+, Crunchyroll, YouTube Premium (with TMDB logos)
+  - Trier par: Popularite, Note, Date, Recettes (asc/desc)
+  - Annee: Dropdown des 30 dernieres annees
+  - Bouton "Effacer" pour reset
+  - URL params sync for shareable filter links
+- **Backend Discover Enhancement** : Added provider, year, vote_avg params to /api/tmdb/discover/{media_type}
+- **Watch Providers Endpoint** : GET /api/tmdb/providers/{media_type}
 
 ## Tech Stack
-- Frontend: React 18 + Tailwind CSS (CRA), Backend: FastAPI + Python, Database: MongoDB, API: TMDB
-
-## Architecture
-- `/app/frontend/` - React CRA (port 3000)
-- `/app/backend/` - FastAPI (port 8001)
-- `/app/` root - Next.js legacy files (not actively running)
-- MongoDB local (localhost:27017, DB: wavewatch)
-
-## Core Features
-- Films, Series TV, Anime browsing via TMDB API
-- Authentication (JWT cookies + Bearer token, brute force protection)
-- User profiles, favorites, watch history, playlists
-- Admin panel (user management, content CRUD, modules, broadcasting)
-- TV Channels, Radio, Retrogaming, Ebooks, Software
-- VIP system, Achievements, Leaderboard
-- Notification system (episode releases, messages)
-- Multi-theme support (10 free + 2 limited + 5 premium)
-- **Watch Party (Soiree Cine)** - NEW
-
-## User Personas
-- Casual viewer: Browse, search, watch content
-- VIP member: Premium themes, custom playlists, priority features
-- Admin: Full platform management
-- Social user: Watch parties, playlists sharing, community
+- Frontend: React 18 + Tailwind CSS (CRA at /app/frontend), Backend: FastAPI, Database: MongoDB, API: TMDB
 
 ## Backlog
-- [ ] WebSocket real-time for Watch Party (currently polling)
+- [ ] WebSocket real-time for Watch Party
 - [ ] Video player integration in Watch Party rooms
 - [ ] Watch Party invite notifications
-- [ ] Watch Party history/replay
-
-## P0 (Done)
-- Watch Party creation, joining, chat, host controls
-
-## P1 (Next)
-- WebSocket upgrade for real-time sync
-- Invite system via notifications
-
-## P2 (Future)
-- Watch Party scheduling
-- Watch Party reactions/emojis
