@@ -32,11 +32,18 @@ Plateforme de streaming WaveWatch - Corrections et ameliorations demandees pour 
 11. Compte admin cree (admin@wavewatch.com)
 
 ### 2026-04-15 - Session 2
-1. **Fix TV Channel Image Bug** - Mecanisme de fallback ameliore pour les images qui ne chargent pas
-2. **TMDB Totals dans Admin** - Dashboard affiche Films (1.1M+), Series (219K+), Episodes estimes
-3. **Search Filters Fix** - Tous les types de contenu (TV, Radio, Musique, Jeux, Logiciels, Ebooks) sont maintenant recherchables
-4. **Seed Default Content** - Chaines TV et radios par defaut inseres en base pour la recherche
-5. **Backend Search Fix** - Filtre is_active change de `True` a `{$ne: False}` pour inclure items sans ce champ
+1. Fix TV Channel Image Bug - fallback ameliore
+2. TMDB Totals dans Admin Dashboard
+3. Search Filters Fix - tous les types de contenu recherchables
+4. Seed Default Content en base de donnees
+
+### 2026-04-15 - Session 3
+1. **Collections Page** - Vue detail avec tous les films d'une collection, chaque film cliquable vers sa page de detail
+2. **Collections Module Homepage** - Taille jaquettes identique aux autres sliders (ContentGrid horizontal)
+3. **Prochaines Sorties Widget** - Affiche films ET series (mix equilibre avec badges Film/Serie)
+4. **Calendar Page Fix** - Ajout endpoint /api/tmdb/on-the-air, correction Promise.all avec .catch() individuels, 27+ evenements affiches
+5. **New Backend Endpoints** - /api/tmdb/on-the-air, /api/tmdb/upcoming/tv
+6. **Route ajoutee** - /collections/:id pour vue detail collection
 
 ## Prioritized Backlog
 
@@ -47,6 +54,9 @@ Plateforme de streaming WaveWatch - Corrections et ameliorations demandees pour 
 - [x] Fix TV channel image upload/display
 - [x] TMDB totals dans admin dashboard
 - [x] Search filters pour tous les contenus
+- [x] Collections page avec vue detail
+- [x] Calendar page fonctionnel
+- [x] Prochaines Sorties films + series
 
 ### P1 (Complete)
 - [x] Nouveaux themes avec badges
@@ -65,8 +75,3 @@ Plateforme de streaming WaveWatch - Corrections et ameliorations demandees pour 
 - Backend: FastAPI (Python)
 - Database: MongoDB
 - API: TMDB pour contenu films/series
-
-## Next Tasks
-1. Ameliorations UI/UX supplementaires si demandees
-2. Watch Party implementation
-3. Notifications push

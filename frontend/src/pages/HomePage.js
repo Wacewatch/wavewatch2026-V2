@@ -404,8 +404,15 @@ function CalendarWidgetHome() {
     ]).then(([moviesRes, tvRes]) => {
       const today = new Date().toISOString().split('T')[0];
       const movies = (moviesRes.data.results || []).filter(m => m.release_date >= today).map(m => ({ ...m, _type: 'movie' }));
-      const tvShows = (tvRes.data.results || []).filter(s => s.first_air_date >= today).map(s => ({ ...s, title: s.name, release_date: s.first_air_date, _type: 'tv' }));
-      const combined = [...movies, ...tvShows].sort((a, b) => (a.release_date || '').localeCompare(b.release_date || '')).slice(0, 12);
+      // Les series "on the air" sont deja en cours - pas besoin de filtrer par date
+      const tvShows = (tvRes.data.results || []).slice(0, 8).map(s => ({ ...s, title: s.name, release_date: s.first_air_date || today, _type: 'tv' }));
+      // Alterner films et series pour un mix equilibre
+      const combined = [];
+      let mi = 0, ti = 0;
+      while (combined.length < 12 && (mi < movies.length || ti < tvShows.length)) {
+        if (mi < movies.length) combined.push(movies[mi++]);
+        if (ti < tvShows.length && combined.length < 12) combined.push(tvShows[ti++]);
+      }
       setUpcoming(combined);
     }).catch(() => {});
   }, []);
