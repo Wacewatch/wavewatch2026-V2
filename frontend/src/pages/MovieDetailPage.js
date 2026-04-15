@@ -3,8 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Clock, Play, Download, Youtube, ThumbsUp, ThumbsDown, Heart, Eye, User } from 'lucide-react';
+import { Star, Calendar, Clock, Play, Download, Youtube, ThumbsUp, ThumbsDown, Heart, Eye, User, Plus } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
+import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import { LoadingSpinner } from '../components/Loading';
 
 export default function MovieDetailPage() {
@@ -111,6 +112,7 @@ export default function MovieDetailPage() {
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 transition-colors ${isFavorite ? 'bg-yellow-900/20' : ''}`} data-testid="favorite-btn">
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />Favoris
               </button>
+              <AddToPlaylistButton contentId={parseInt(id)} contentType="movie" title={movie.title} posterPath={movie.poster_path} />
             </div>
             {/* Cast */}
             {movie.credits?.cast?.length > 0 && (

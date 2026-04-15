@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Star, Calendar, Play, Download, Youtube, Heart, Shuffle } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
+import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import { LoadingSpinner } from '../components/Loading';
 
 export default function TVShowDetailPage() {
@@ -77,6 +78,7 @@ export default function TVShowDetailPage() {
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 ${isFavorite ? 'bg-yellow-900/20' : ''}`}>
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />Favoris
               </button>
+              <AddToPlaylistButton contentId={parseInt(id)} contentType="tv" title={show.name} posterPath={show.poster_path} />
             </div>
             {/* Seasons */}
             <div className="space-y-4">

@@ -27,6 +27,7 @@ import RetrogamingPage from './pages/RetrogamingPage';
 import EbooksPage from './pages/EbooksPage';
 import SoftwarePage from './pages/SoftwarePage';
 import PlaylistsPage from './pages/PlaylistsPage';
+import PlaylistDetailPage from './pages/PlaylistDetailPage';
 import DiscoverPlaylistsPage from './pages/DiscoverPlaylistsPage';
 import SubscriptionPage from './pages/SubscriptionPage';
 import FAQPage from './pages/FAQPage';
@@ -87,6 +88,7 @@ export default function App() {
                   <Route path="/ebooks" element={<EbooksPage />} />
                   <Route path="/logiciels" element={<SoftwarePage />} />
                   <Route path="/playlists" element={<ProtectedRoute><PlaylistsPage /></ProtectedRoute>} />
+                  <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
                   <Route path="/discover/playlists" element={<DiscoverPlaylistsPage />} />
                   <Route path="/subscription" element={<SubscriptionPage />} />
                   <Route path="/faq" element={<FAQPage />} />
