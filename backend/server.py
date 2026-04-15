@@ -138,6 +138,32 @@ async def seed_admin():
     with open("/app/memory/test_credentials.md", "w") as f:
         f.write(f"# Test Credentials\n\n## Admin\n- Email: {ADMIN_EMAIL}\n- Password: {ADMIN_PASSWORD}\n- Role: admin\n\n## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n")
 
+# Seed default content
+async def seed_default_content():
+    # Seed TV channels if empty
+    if await db.tv_channels.count_documents({}) == 0:
+        default_channels = [
+            {"name": "TF1", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/TF1_logo_2013.png/200px-TF1_logo_2013.png", "stream_url": "", "category": "Generaliste", "country": "FR", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "France 2", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/France_2_logo.png/200px-France_2_logo.png", "stream_url": "", "category": "Generaliste", "country": "FR", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "France 3", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/France_3_logo.png/200px-France_3_logo.png", "stream_url": "", "category": "Generaliste", "country": "FR", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "Canal+", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Canal%2B_logo.png/200px-Canal%2B_logo.png", "stream_url": "", "category": "Premium", "country": "FR", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "M6", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/M6_logo_2020.png/200px-M6_logo_2020.png", "stream_url": "", "category": "Generaliste", "country": "FR", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "Arte", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Arte_logo.png/200px-Arte_logo.png", "stream_url": "", "category": "Culture", "country": "FR", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "BFM TV", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/BFMTV_logo.png/200px-BFMTV_logo.png", "stream_url": "", "category": "Info", "country": "FR", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "TMC", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/TMC_logo_2016.png/200px-TMC_logo_2016.png", "stream_url": "", "category": "Generaliste", "country": "FR", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        ]
+        await db.tv_channels.insert_many(default_channels)
+    # Seed radio stations if empty
+    if await db.radio_stations.count_documents({}) == 0:
+        default_radios = [
+            {"name": "NRJ", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/NRJ_logo.png/200px-NRJ_logo.png", "stream_url": "https://scdn.nrjaudio.fm/fr/30001/mp3_128.mp3", "genre": "Pop/Dance", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "Skyrock", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Skyrock_logo.png/200px-Skyrock_logo.png", "stream_url": "https://icecast.skyrock.net/s/natio_mp3_128k", "genre": "Rap/Hip-Hop", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "Fun Radio", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Fun_Radio_logo.png/200px-Fun_Radio_logo.png", "stream_url": "https://streaming.radio.funradio.fr/fun-1-44-128", "genre": "Dance/Electro", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "RTL", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/RTL_logo.png/200px-RTL_logo.png", "stream_url": "", "genre": "Generaliste", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"name": "France Inter", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/France_Inter_logo.png/200px-France_Inter_logo.png", "stream_url": "https://icecast.radiofrance.fr/franceinter-hifi.aac", "genre": "Generaliste", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
+        ]
+        await db.radio_stations.insert_many(default_radios)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.users.create_index("email", unique=True)
@@ -149,6 +175,7 @@ async def lifespan(app: FastAPI):
     await db.staff_messages.create_index("user_id")
     await db.content_requests.create_index("user_id")
     await seed_admin()
+    await seed_default_content()
     yield
 
 app = FastAPI(title="WaveWatch API", lifespan=lifespan)
@@ -531,7 +558,53 @@ async def get_playlist(playlist_id: str):
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist non trouvee")
     playlist["_id"] = str(playlist["_id"])
+    
+    # Récupérer les infos de l'utilisateur créateur pour afficher les badges
+    if playlist.get("user_id"):
+        owner = await db.users.find_one({"_id": ObjectId(playlist["user_id"]) if isinstance(playlist["user_id"], str) else playlist["user_id"]})
+        if owner:
+            playlist["user_info"] = {
+                "username": owner.get("username"),
+                "is_admin": owner.get("is_admin", False),
+                "is_vip": owner.get("is_vip", False),
+                "is_vip_plus": owner.get("is_vip_plus", False),
+                "is_uploader": owner.get("is_uploader", False)
+            }
+            playlist["username"] = owner.get("username")
+    
     return {"playlist": playlist}
+
+@app.put("/api/playlists/{playlist_id}/customize")
+async def customize_playlist(playlist_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Personnaliser une playlist (couleurs, animations, couverture)"""
+    playlist = await db.playlists.find_one({"_id": ObjectId(playlist_id), "user_id": user["_id"]})
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist non trouvee ou non autorisee")
+    
+    data = await request.json()
+    updates = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    # Couleur et gradient
+    if "color" in data:
+        updates["color"] = data["color"]
+    if "gradient" in data:
+        updates["gradient"] = data["gradient"]
+    if "animation" in data:
+        updates["animation"] = data["animation"]
+    
+    # Image de couverture (VIP uniquement)
+    if "cover_url" in data:
+        if not user.get("is_vip") and not user.get("is_vip_plus") and not user.get("is_admin"):
+            raise HTTPException(status_code=403, detail="Fonctionnalite reservee aux VIP")
+        updates["cover_url"] = data["cover_url"]
+    
+    await db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$set": updates})
+    return {"success": True, "message": "Playlist personnalisee"}
+
+# Compatibilité avec l'ancien endpoint
+@app.put("/api/playlists/{playlist_id}/colors")
+async def update_playlist_colors(playlist_id: str, request: Request, user: dict = Depends(get_current_user)):
+    return await customize_playlist(playlist_id, request, user)
 
 @app.post("/api/playlists/{playlist_id}/items")
 async def add_playlist_item(playlist_id: str, req: PlaylistItemAdd, user: dict = Depends(get_current_user)):
@@ -845,17 +918,6 @@ async def get_tv_channels():
     channels = await db.tv_channels.find().to_list(500)
     for c in channels:
         c["_id"] = str(c["_id"])
-    if not channels:
-        channels = [
-            {"id": 1, "name": "TF1", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/TF1_logo_2013.png/200px-TF1_logo_2013.png", "stream_url": "", "category": "Generaliste", "country": "FR"},
-            {"id": 2, "name": "France 2", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/France_2_logo.png/200px-France_2_logo.png", "stream_url": "", "category": "Generaliste", "country": "FR"},
-            {"id": 3, "name": "France 3", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/France_3_logo.png/200px-France_3_logo.png", "stream_url": "", "category": "Generaliste", "country": "FR"},
-            {"id": 4, "name": "Canal+", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7f/Canal%2B_logo.png/200px-Canal%2B_logo.png", "stream_url": "", "category": "Premium", "country": "FR"},
-            {"id": 5, "name": "M6", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/M6_logo_2020.png/200px-M6_logo_2020.png", "stream_url": "", "category": "Generaliste", "country": "FR"},
-            {"id": 6, "name": "Arte", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Arte_logo.png/200px-Arte_logo.png", "stream_url": "", "category": "Culture", "country": "FR"},
-            {"id": 7, "name": "BFM TV", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/BFMTV_logo.png/200px-BFMTV_logo.png", "stream_url": "", "category": "Info", "country": "FR"},
-            {"id": 8, "name": "TMC", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/TMC_logo_2016.png/200px-TMC_logo_2016.png", "stream_url": "", "category": "Generaliste", "country": "FR"},
-        ]
     return {"channels": channels}
 
 @app.get("/api/radio-stations")
@@ -863,17 +925,6 @@ async def get_radio_stations():
     stations = await db.radio_stations.find().to_list(500)
     for s in stations:
         s["_id"] = str(s["_id"])
-    if not stations:
-        stations = [
-            {"id": 1, "name": "NRJ", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/NRJ_logo.png/200px-NRJ_logo.png", "stream_url": "https://scdn.nrjaudio.fm/fr/30001/mp3_128.mp3", "genre": "Pop/Dance"},
-            {"id": 2, "name": "Skyrock", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Skyrock_logo.png/200px-Skyrock_logo.png", "stream_url": "https://icecast.skyrock.net/s/natio_mp3_128k", "genre": "Rap/Hip-Hop"},
-            {"id": 3, "name": "Fun Radio", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Fun_Radio_logo.png/200px-Fun_Radio_logo.png", "stream_url": "https://streaming.radio.funradio.fr/fun-1-44-128", "genre": "Dance/Electro"},
-            {"id": 4, "name": "RTL", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/RTL_logo.png/200px-RTL_logo.png", "stream_url": "", "genre": "Generaliste"},
-            {"id": 5, "name": "France Inter", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/France_Inter_logo.png/200px-France_Inter_logo.png", "stream_url": "https://icecast.radiofrance.fr/franceinter-hifi.aac", "genre": "Generaliste"},
-            {"id": 6, "name": "Europe 1", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Europe_1_logo.png/200px-Europe_1_logo.png", "stream_url": "", "genre": "Generaliste"},
-            {"id": 7, "name": "RFM", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/RFM_logo.png/200px-RFM_logo.png", "stream_url": "", "genre": "Pop/Rock"},
-            {"id": 8, "name": "Nostalgie", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Nostalgie_logo.png/200px-Nostalgie_logo.png", "stream_url": "", "genre": "Oldies"},
-        ]
     return {"stations": stations}
 
 # ==================== EBOOKS / SOFTWARE ====================
@@ -988,7 +1039,7 @@ async def universal_search(q: str = ""):
         })
     
     # Search music
-    music = await db.music_content.find({"$or": [{"title": regex}, {"artist": regex}, {"genre": regex}], "is_active": True}).to_list(20)
+    music = await db.music_content.find({"$or": [{"title": regex}, {"artist": regex}, {"genre": regex}], "is_active": {"$ne": False}}).to_list(20)
     for m in music:
         results.append({
             "type": "music", 
@@ -1000,7 +1051,7 @@ async def universal_search(q: str = ""):
         })
     
     # Search games
-    games = await db.games.find({"$or": [{"title": regex}, {"genre": regex}, {"developer": regex}], "is_active": True}).to_list(20)
+    games = await db.games.find({"$or": [{"title": regex}, {"genre": regex}, {"developer": regex}], "is_active": {"$ne": False}}).to_list(20)
     for g in games:
         results.append({
             "type": "game", 
@@ -1012,7 +1063,7 @@ async def universal_search(q: str = ""):
         })
     
     # Search software
-    software = await db.software.find({"$or": [{"name": regex}, {"category": regex}, {"developer": regex}], "is_active": True}).to_list(20)
+    software = await db.software.find({"$or": [{"name": regex}, {"category": regex}, {"developer": regex}], "is_active": {"$ne": False}}).to_list(20)
     for s in software:
         results.append({
             "type": "software", 
@@ -1024,7 +1075,7 @@ async def universal_search(q: str = ""):
         })
     
     # Search ebooks
-    ebooks = await db.ebooks.find({"$or": [{"title": regex}, {"author": regex}, {"category": regex}], "is_active": True}).to_list(20)
+    ebooks = await db.ebooks.find({"$or": [{"title": regex}, {"author": regex}, {"category": regex}], "is_active": {"$ne": False}}).to_list(20)
     for e in ebooks:
         results.append({
             "type": "ebook", 
@@ -1459,13 +1510,34 @@ async def get_admin_enhanced_stats(user: dict = Depends(require_admin)):
     feedback_count = await db.feedback.count_documents({})
     requests_count = await db.content_requests.count_documents({})
     playlists_count = await db.playlists.count_documents({})
+    # Fetch TMDB global stats
+    tmdb_stats = {"tmdb_movies": 0, "tmdb_series": 0, "tmdb_episodes": 0}
+    try:
+        tmdb_key = os.environ.get("TMDB_API_KEY")
+        if tmdb_key:
+            async with httpx.AsyncClient(timeout=8) as hc:
+                # Get total movies count from TMDB discover
+                mv_resp = await hc.get(f"{TMDB_BASE}/discover/movie", params={"api_key": tmdb_key, "language": "fr-FR", "page": "1"})
+                if mv_resp.status_code == 200:
+                    tmdb_stats["tmdb_movies"] = mv_resp.json().get("total_results", 0)
+                # Get total TV series count
+                tv_resp = await hc.get(f"{TMDB_BASE}/discover/tv", params={"api_key": tmdb_key, "language": "fr-FR", "page": "1"})
+                if tv_resp.status_code == 200:
+                    tv_data = tv_resp.json()
+                    tmdb_stats["tmdb_series"] = tv_data.get("total_results", 0)
+                # Estimate episodes (average ~20 eps per show * total shows)
+                tmdb_stats["tmdb_episodes"] = tmdb_stats["tmdb_series"] * 20
+    except:
+        pass
+
     return {
         "total_users": total_users, "vip_users": vip_users, "vip_plus_users": vip_plus,
         "admin_users": admin_count, "tv_channels": tv_count, "radio_stations": radio_count,
         "retrogaming": retro_count, "music": music_count, "software": soft_count,
         "games": game_count, "ebooks": ebook_count, "total_feedback": feedback_count,
         "total_requests": requests_count, "total_playlists": playlists_count,
-        "total_content": tv_count + radio_count + retro_count + music_count + soft_count + game_count + ebook_count
+        "total_content": tv_count + radio_count + retro_count + music_count + soft_count + game_count + ebook_count,
+        **tmdb_stats
     }
 
 # --- User Detailed Stats (for dashboard) ---
@@ -1989,3 +2061,113 @@ async def reset_tv_progress(show_id: str, user: dict = Depends(get_current_user)
     """Reset all progress for a TV show"""
     await db.tv_progress.delete_one({"user_id": user["_id"], "show_id": show_id})
     return {"message": "Progression reintialisee"}
+
+# =================== RELEASE NOTIFICATIONS ===================
+
+@app.get("/api/user/release-notifications")
+async def get_release_notifications(user: dict = Depends(get_current_user)):
+    """Get user's release notification preferences"""
+    notifs = await db.release_notifications.find({"user_id": user["_id"], "enabled": True}).to_list(500)
+    notifications = {}
+    for n in notifs:
+        key = f"{n['content_type']}-{n['content_id']}"
+        notifications[key] = True
+    return {"notifications": notifications}
+
+@app.post("/api/user/release-notifications")
+async def set_release_notification(request: Request, user: dict = Depends(get_current_user)):
+    """Enable/disable release notification for a content"""
+    data = await request.json()
+    content_id = data.get("content_id")
+    content_type = data.get("content_type")
+    title = data.get("title", "")
+    enabled = data.get("enabled", True)
+    
+    if enabled:
+        await db.release_notifications.update_one(
+            {"user_id": user["_id"], "content_id": content_id, "content_type": content_type},
+            {"$set": {
+                "user_id": user["_id"],
+                "content_id": content_id,
+                "content_type": content_type,
+                "title": title,
+                "enabled": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+    else:
+        await db.release_notifications.delete_one({
+            "user_id": user["_id"],
+            "content_id": content_id,
+            "content_type": content_type
+        })
+    
+    return {"success": True, "enabled": enabled}
+
+# Check for new episodes of favorited shows and create notifications
+@app.get("/api/user/check-new-episodes")
+async def check_new_episodes(user: dict = Depends(get_current_user)):
+    """Check if any favorited TV shows have new episodes"""
+    favorites = await db.favorites.find({"user_id": user["_id"], "content_type": "tv"}).to_list(100)
+    new_content = []
+    
+    for fav in favorites:
+        # Get notif settings
+        notif = await db.release_notifications.find_one({
+            "user_id": user["_id"],
+            "content_id": fav["content_id"],
+            "content_type": "tv",
+            "enabled": True
+        })
+        
+        if notif:
+            # Check TMDB for latest episode
+            try:
+                tmdb_key = os.environ.get("TMDB_API_KEY", "d4b8332681051181b69c8a6c9ba1a70a")
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(f"https://api.themoviedb.org/3/tv/{fav['content_id']}?api_key={tmdb_key}&language=fr-FR")
+                    show_data = resp.json()
+                    
+                    # Check if there's a new episode since last check
+                    last_ep = show_data.get("last_episode_to_air")
+                    if last_ep:
+                        # Check if we already notified about this
+                        existing = await db.episode_notifications_sent.find_one({
+                            "user_id": user["_id"],
+                            "show_id": fav["content_id"],
+                            "season": last_ep.get("season_number"),
+                            "episode": last_ep.get("episode_number")
+                        })
+                        
+                        if not existing:
+                            new_content.append({
+                                "show_id": fav["content_id"],
+                                "show_name": show_data.get("name"),
+                                "season": last_ep.get("season_number"),
+                                "episode": last_ep.get("episode_number"),
+                                "episode_name": last_ep.get("name"),
+                                "air_date": last_ep.get("air_date")
+                            })
+                            
+                            # Create notification
+                            await create_notification(
+                                user["_id"],
+                                f"Nouvel episode de {show_data.get('name')}",
+                                f"S{last_ep.get('season_number')} E{last_ep.get('episode_number')} - {last_ep.get('name', '')}",
+                                "release",
+                                f"/tv-shows/{fav['content_id']}"
+                            )
+                            
+                            # Mark as sent
+                            await db.episode_notifications_sent.insert_one({
+                                "user_id": user["_id"],
+                                "show_id": fav["content_id"],
+                                "season": last_ep.get("season_number"),
+                                "episode": last_ep.get("episode_number"),
+                                "sent_at": datetime.now(timezone.utc).isoformat()
+                            })
+            except:
+                pass
+    
+    return {"new_content": new_content, "count": len(new_content)}

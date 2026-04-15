@@ -431,6 +431,27 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+
+          {/* TMDB Global Stats */}
+          {(stats.tmdb_movies > 0 || stats.tmdb_series > 0) && (
+            <div data-testid="tmdb-totals">
+              <h3 className="text-lg font-bold mb-3 flex items-center gap-2"><Film className="w-5 h-5 text-blue-400" />Catalogue TMDB</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-blue-400" data-testid="tmdb-movies-count">{(stats.tmdb_movies || 0).toLocaleString('fr-FR')}</p>
+                  <p className="text-sm text-blue-400/70">Films TMDB</p>
+                </div>
+                <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-purple-400" data-testid="tmdb-series-count">{(stats.tmdb_series || 0).toLocaleString('fr-FR')}</p>
+                  <p className="text-sm text-purple-400/70">Series TMDB</p>
+                </div>
+                <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-green-400" data-testid="tmdb-episodes-count">~{(stats.tmdb_episodes || 0).toLocaleString('fr-FR')}</p>
+                  <p className="text-sm text-green-400/70">Episodes (est.)</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

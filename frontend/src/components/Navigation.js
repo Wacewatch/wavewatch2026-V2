@@ -145,9 +145,11 @@ export default function Navigation() {
                   <DropdownItem to="/tv-channels">Chaines TV</DropdownItem>
                   <DropdownItem to="/radio">Radio FM</DropdownItem>
                   <DropdownItem to="/retrogaming">Retrogaming</DropdownItem>
+                  <DropdownItem to="/calendar" badge="NEW">Calendrier Sorties</DropdownItem>
                   <DropdownItem to="/discover/playlists">Decouvrir des Playlists</DropdownItem>
                   <div className="border-t my-1" style={{ borderColor: 'hsl(var(--nav-border))' }} />
                   <DropdownItem to="https://livewatch.sbs/" external>LiveWatch</DropdownItem>
+                  <DropdownItem to="https://v2.livewatch.sbs/" external>LiveWatch (Secours)</DropdownItem>
                   <DropdownItem to="https://sports-stream.sbs/" external>Sports-Stream</DropdownItem>
                 </div>
               )}
@@ -338,9 +340,11 @@ export default function Navigation() {
             </div>
             <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Medias</p>
-              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/retrogaming',l:'Retrogaming'},{to:'/discover/playlists',l:'Playlists publiques'}].map(i => (
+              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/retrogaming',l:'Retrogaming'},{to:'/calendar',l:'Calendrier Sorties'},{to:'/discover/playlists',l:'Playlists publiques'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
+              <a href="https://livewatch.sbs/" target="_blank" rel="noopener noreferrer" className="block py-2 px-3 rounded-lg hover:opacity-80 text-cyan-400">LiveWatch</a>
+              <a href="https://sports-stream.sbs/" target="_blank" rel="noopener noreferrer" className="block py-2 px-3 rounded-lg hover:opacity-80 text-red-400">Sports-Stream</a>
             </div>
             <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Autres</p>

@@ -39,9 +39,9 @@ export default function TVChannelsPage() {
             className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer group" data-testid={`channel-${ch.name}`}>
             <div className="aspect-video bg-gradient-to-br from-blue-900/30 to-purple-900/30 flex items-center justify-center relative overflow-hidden">
               {(ch.logo || ch.logo_url) ? (
-                <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-contain p-3" onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-contain p-3" onError={e => { e.target.style.display = 'none'; const fb = e.target.parentElement.querySelector('[data-fallback]'); if(fb) fb.style.display = 'flex'; }} />
               ) : null}
-              <div className={`${(ch.logo || ch.logo_url) ? 'hidden' : 'flex'} w-full h-full items-center justify-center`}>
+              <div data-fallback className={`${(ch.logo || ch.logo_url) ? 'hidden' : 'flex'} w-full h-full items-center justify-center absolute inset-0`}>
                 <Tv className="w-10 h-10 text-muted-foreground" />
               </div>
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">

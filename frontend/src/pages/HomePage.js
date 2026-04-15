@@ -147,8 +147,9 @@ function TrendingTVChannelsRow() {
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
         {channels.slice(0, 8).map(ch => (
           <div key={ch.id || ch._id || ch.name} onClick={() => setSelectedChannel(ch)} className="bg-card border border-border rounded-xl p-3 text-center hover:border-primary/30 transition-colors group cursor-pointer">
-            <div className="w-12 h-12 mx-auto mb-2 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center">
-              {(ch.logo || ch.logo_url) ? <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-contain p-1" onError={e => { e.target.style.display = 'none'; }} /> : <Tv className="w-6 h-6 text-muted-foreground" />}
+            <div className="w-12 h-12 mx-auto mb-2 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center relative">
+              {(ch.logo || ch.logo_url) ? <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-contain p-1" onError={e => { e.target.style.display = 'none'; const fb = e.target.parentElement.querySelector('[data-fallback]'); if(fb) fb.style.display = 'flex'; }} /> : null}
+              <div data-fallback className={`${(ch.logo || ch.logo_url) ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center`}><Tv className="w-6 h-6 text-muted-foreground" /></div>
             </div>
             <p className="text-xs font-medium truncate group-hover:text-green-400">{ch.name}</p>
             <p className="text-[10px] text-muted-foreground">{ch.category}</p>
