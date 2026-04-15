@@ -141,6 +141,12 @@ export default function AdminPage() {
   // Broadcast
   const [broadcastForm, setBroadcastForm] = useState({ subject: '', content: '' });
 
+  // Activity feed
+  const [activities, setActivities] = useState([]);
+
+  // TMDB update
+  const [tmdbUpdating, setTmdbUpdating] = useState(false);
+
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
 
   const loadData = useCallback((currentTab) => {
@@ -160,6 +166,7 @@ export default function AdminPage() {
       retrogaming: () => API.get('/api/retrogaming').then(({ data }) => setRetrogaming(data.sources || [])),
       changelogs: () => API.get('/api/changelogs').then(({ data }) => setChangelogs(data || [])),
       requests: () => API.get('/api/content-requests').then(({ data }) => setRequests(data.requests || [])),
+      activities: () => API.get('/api/admin/activities').then(({ data }) => setActivities(data.activities || [])),
     };
     if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
   }, [user]);
@@ -327,6 +334,8 @@ export default function AdminPage() {
     { id: 'changelogs', label: 'Logs', icon: <FileText className="w-4 h-4" />, count: changelogs.length },
     { id: 'modules', label: 'Modules', icon: <Settings className="w-4 h-4" /> },
     { id: 'cinema', label: 'Cinema', icon: <Film className="w-4 h-4" /> },
+    { id: 'activities', label: 'Feed', icon: <Users className="w-4 h-4" /> },
+    { id: 'tmdb', label: 'TMDB', icon: <Film className="w-4 h-4" /> },
   ];
 
   const moduleLabels = {
@@ -688,6 +697,49 @@ export default function AdminPage() {
                 ))}
               </div>
             }
+          </div>
+        </div>
+      )}
+
+      {/* Activity Feed */}
+      {tab === 'activities' && (
+        <div className="space-y-4" data-testid="admin-activities">
+          <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5" />Activites recentes</h2>
+          {activities.length === 0 ? <p className="text-center py-8 text-muted-foreground">Aucune activite recente</p> :
+            <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border">
+              {activities.map(a => (
+                <div key={a._id} className="p-4 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-primary" /></div>
+                  <div className="flex-1">
+                    <p className="text-sm"><span className="font-bold">{a.admin_username}</span> - {a.action}</p>
+                    {a.target && <p className="text-xs text-muted-foreground">{a.target}</p>}
+                    <p className="text-xs text-muted-foreground mt-1">{a.created_at ? new Date(a.created_at).toLocaleString('fr-FR') : ''}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          }
+        </div>
+      )}
+
+      {/* TMDB Update */}
+      {tab === 'tmdb' && (
+        <div className="space-y-4" data-testid="admin-tmdb">
+          <h2 className="text-xl font-bold flex items-center gap-2"><Film className="w-5 h-5" />Mise a jour TMDB</h2>
+          <p className="text-sm text-muted-foreground">Rafraichir les donnees depuis l'API TMDB</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {['trending', 'popular', 'upcoming'].map(type => (
+              <button key={type} onClick={async () => {
+                setTmdbUpdating(true);
+                try { const { data } = await API.post('/api/admin/tmdb-update', { type }); toast({ title: data.message }); } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+                finally { setTmdbUpdating(false); }
+              }} disabled={tmdbUpdating}
+                className="p-6 bg-card border border-border rounded-xl text-center hover:border-primary/50 transition-colors" data-testid={`tmdb-update-${type}`}>
+                <Film className="w-8 h-8 mx-auto mb-2 text-blue-400" />
+                <p className="font-bold capitalize">{type === 'trending' ? 'Tendances' : type === 'popular' ? 'Populaires' : 'Prochaines Sorties'}</p>
+                <p className="text-xs text-muted-foreground mt-1">Mettre a jour</p>
+              </button>
+            ))}
           </div>
         </div>
       )}

@@ -105,6 +105,8 @@ function QuickPlaylistAdd({ contentId, contentType, title, posterPath }) {
 }
 
 export default function ContentCard({ item, type = 'movie', isAnime = false }) {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const { favorites, watched } = useContentStatus();
   const title = item.title || item.name;
   const date = item.release_date || item.first_air_date;
@@ -118,13 +120,20 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
   const isFav = favorites.has(key);
   const isWatched = watched.has(key);
 
+  const quickMarkWatched = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
+    API.post('/api/user/history', { content_id: item.id, content_type: contentType, title, poster_path: item.poster_path })
+      .then(() => toast({ title: 'Marque comme vu !' })).catch(() => {});
+  };
+
   return (
     <div className="relative group" data-testid={`content-card-${item.id}`}>
       <Link to={`${basePath}/${item.id}`} className="block">
         <div className="overflow-hidden rounded-lg border border-border bg-card transition-transform duration-200 group-hover:scale-105">
           <div className="relative aspect-[2/3]">
             <img src={poster} alt={title} className="w-full h-full object-cover" loading="lazy" />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
             <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
               <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />{rating}
             </div>
@@ -140,6 +149,12 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
                   <Eye className="w-3.5 h-3.5 text-white" />
                 </span>
               )}
+            </div>
+            {/* Hover action buttons (bottom) */}
+            <div className="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/80 to-transparent">
+              <button onClick={quickMarkWatched} className="w-8 h-8 rounded-full bg-green-600/90 hover:bg-green-500 text-white flex items-center justify-center transition-colors shadow-lg" title="Marquer comme vu" data-testid={`quick-watched-${item.id}`}>
+                <Eye className="w-4 h-4" />
+              </button>
             </div>
           </div>
           <div className="p-3">

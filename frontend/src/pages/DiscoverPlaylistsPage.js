@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
-import { Globe, ListMusic, Film, Play, Users, Eye } from 'lucide-react';
+import { Globe, ListMusic, Film, Play, Users, Eye, ThumbsUp, ThumbsDown, Crown, Shield } from 'lucide-react';
 import { LoadingSpinner } from '../components/Loading';
+
+function UserBadge({ info }) {
+  if (!info) return null;
+  if (info.is_admin) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Admin</span>;
+  if (info.is_uploader) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Uploader</span>;
+  if (info.is_vip_plus) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">VIP+</span>;
+  if (info.is_vip) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">VIP</span>;
+  return null;
+}
 
 export default function DiscoverPlaylistsPage() {
   const [playlists, setPlaylists] = useState([]);
@@ -12,10 +21,16 @@ export default function DiscoverPlaylistsPage() {
 
   useEffect(() => {
     setLoading(true);
-    API.get(`/api/playlists/public/discover?page=${page}`).then(({ data }) => {
+    API.get(`/api/playlists/public/enhanced?page=${page}`).then(({ data }) => {
       setPlaylists(data.playlists || []);
       setTotal(data.total || 0);
-    }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => {
+      // Fallback to original endpoint
+      API.get(`/api/playlists/public/discover?page=${page}`).then(({ data }) => {
+        setPlaylists(data.playlists || []);
+        setTotal(data.total || 0);
+      }).catch(() => {});
+    }).finally(() => setLoading(false));
   }, [page]);
 
   const colors = ['from-blue-600 to-purple-600', 'from-pink-600 to-red-600', 'from-green-600 to-teal-600', 'from-orange-600 to-yellow-600', 'from-indigo-600 to-blue-600', 'from-purple-600 to-pink-600'];
@@ -41,7 +56,7 @@ export default function DiscoverPlaylistsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {playlists.map((p, i) => (
               <Link key={p._id} to={`/playlists/${p._id}`} className="group" data-testid={`discover-playlist-${p._id}`}>
-                <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all hover:shadow-lg">
+                <div className={`bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all hover:shadow-lg ${p.gradient ? '' : ''}`}>
                   <div className="relative h-40 overflow-hidden">
                     {p.items?.length > 0 ? (
                       <div className="grid grid-cols-2 h-full">
@@ -56,21 +71,24 @@ export default function DiscoverPlaylistsPage() {
                             )}
                           </div>
                         ))}
-                        {p.items.length < 4 && Array.from({ length: 4 - Math.min(p.items.length, 4) }).map((_, idx) => (
+                        {(p.items?.length || 0) < 4 && Array.from({ length: 4 - Math.min(p.items?.length || 0, 4) }).map((_, idx) => (
                           <div key={`empty-${idx}`} className="bg-gradient-to-br from-gray-800 to-gray-900" />
                         ))}
                       </div>
                     ) : (
-                      <div className={`h-full bg-gradient-to-br ${colors[i % colors.length]} flex items-center justify-center`}>
+                      <div className={`h-full bg-gradient-to-br ${p.color && p.color !== 'default' ? '' : colors[i % colors.length]} flex items-center justify-center`} style={p.gradient ? { background: p.gradient } : {}}>
                         <ListMusic className="w-12 h-12 text-white/30" />
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     <div className="absolute bottom-3 left-3 right-3">
                       <h3 className="font-bold text-white text-lg drop-shadow-lg">{p.name}</h3>
-                      <div className="flex items-center gap-3 text-xs text-white/70 mt-1">
-                        <span className="flex items-center gap-1"><Users className="w-3 h-3" />{p.username || 'Anonyme'}</span>
-                        <span className="flex items-center gap-1"><Play className="w-3 h-3" />{p.items?.length || 0} elements</span>
+                      <div className="flex items-center gap-2 text-xs text-white/80 mt-1 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />{p.user_info?.username || p.username || 'Anonyme'}
+                        </span>
+                        {p.user_info && <UserBadge info={p.user_info} />}
+                        <span className="flex items-center gap-1"><Play className="w-3 h-3" />{p.items_count || p.items?.length || 0} elem.</span>
                       </div>
                     </div>
                   </div>
@@ -81,10 +99,16 @@ export default function DiscoverPlaylistsPage() {
                         {p.items.slice(0, 4).map((item, idx) => (
                           <span key={idx} className="px-2 py-0.5 text-xs rounded-full bg-secondary text-muted-foreground truncate max-w-[100px]">{item.title}</span>
                         ))}
-                        {p.items.length > 4 && <span className="px-2 py-0.5 text-xs rounded-full bg-secondary text-muted-foreground">+{p.items.length - 4}</span>}
+                        {(p.items?.length || 0) > 4 && <span className="px-2 py-0.5 text-xs rounded-full bg-secondary text-muted-foreground">+{p.items.length - 4}</span>}
                       </div>
                     )}
-                    <span className="text-xs text-blue-400 flex items-center gap-1"><Eye className="w-3 h-3" />Voir la playlist</span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-xs text-green-400"><ThumbsUp className="w-3 h-3" />{p.likes_count || 0}</span>
+                        <span className="flex items-center gap-1 text-xs text-red-400"><ThumbsDown className="w-3 h-3" />{p.dislikes_count || 0}</span>
+                      </div>
+                      <span className="text-xs text-blue-400 flex items-center gap-1"><Eye className="w-3 h-3" />Voir</span>
+                    </div>
                   </div>
                 </div>
               </Link>

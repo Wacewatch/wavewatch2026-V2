@@ -320,6 +320,99 @@ class WaveWatchAPITester:
         rating_data["rating"] = "dislike"
         self.run_test("Rate Content (Dislike)", "POST", "/api/user/ratings", 200, data=rating_data)
 
+    def test_platform_reviews_endpoints(self):
+        """Test platform reviews functionality for dashboard"""
+        if not self.token:
+            self.log_test("Platform Reviews Test", False, "No auth token available")
+            return
+
+        # Test getting platform reviews
+        self.run_test("Get Platform Reviews", "GET", "/api/platform-reviews", 200)
+        
+        # Test getting my platform review
+        self.run_test("Get My Platform Review", "GET", "/api/platform-reviews/mine", 200)
+        
+        # Test submitting platform review
+        review_data = {
+            "contenu_score": 8,
+            "fonctionnalites_score": 9,
+            "design_score": 7,
+            "message": "Great platform! Love the new features."
+        }
+        self.run_test("Submit Platform Review", "POST", "/api/platform-reviews", 200, data=review_data)
+
+    def test_enhanced_playlists_endpoints(self):
+        """Test enhanced playlists with user info and likes"""
+        # Test enhanced public playlists endpoint
+        self.run_test("Get Enhanced Public Playlists", "GET", "/api/playlists/public/enhanced", 200)
+        
+        # Test playlist color customization if user is logged in
+        if self.token:
+            # First get playlists to find one to test with
+            playlists_response = self.run_test("Get User Playlists for Color Test", "GET", "/api/playlists", 200)
+            if playlists_response and 'playlists' in playlists_response and playlists_response['playlists']:
+                playlist_id = playlists_response['playlists'][0]['_id']
+                color_data = {
+                    "color": "blue",
+                    "gradient": "linear-gradient(135deg, #1e3a5f, #2563eb)"
+                }
+                self.run_test("Update Playlist Color", "PUT", f"/api/playlists/{playlist_id}/colors", 200, data=color_data)
+
+    def test_admin_activities_endpoints(self):
+        """Test admin activities feed"""
+        if not self.admin_token:
+            self.log_test("Admin Activities Test", False, "No admin token available")
+            return
+
+        # Use admin token for these tests
+        old_token = self.token
+        self.token = self.admin_token
+        
+        # Test admin activities endpoint
+        self.run_test("Admin - Get Activities", "GET", "/api/admin/activities", 200)
+        
+        # Restore original token
+        self.token = old_token
+
+    def test_tmdb_update_endpoints(self):
+        """Test TMDB update functionality"""
+        if not self.admin_token:
+            self.log_test("TMDB Update Test", False, "No admin token available")
+            return
+
+        # Use admin token for these tests
+        old_token = self.token
+        self.token = self.admin_token
+        
+        # Test TMDB update endpoints
+        for update_type in ['trending', 'popular', 'upcoming']:
+            update_data = {"type": update_type}
+            self.run_test(f"TMDB Update - {update_type.title()}", "POST", "/api/admin/tmdb-update", 200, data=update_data)
+        
+        # Restore original token
+        self.token = old_token
+
+    def test_user_messaging_endpoints(self):
+        """Test user messaging system"""
+        if not self.token:
+            self.log_test("User Messaging Test", False, "No auth token available")
+            return
+
+        # Test getting messages
+        self.run_test("Get User Messages", "GET", "/api/messages", 200)
+        
+        # Test sending a message (if endpoint exists)
+        message_data = {
+            "recipient_id": "test_recipient",
+            "subject": "Test Message",
+            "content": "This is a test message"
+        }
+        # This might return 404 if recipient doesn't exist, but endpoint should be available
+        response = self.run_test("Send User Message", "POST", "/api/messages", 400, data=message_data)
+        if not response:
+            # Try alternative endpoint structure
+            self.run_test("Send User Message Alt", "POST", "/api/user/messages", 400, data=message_data)
+
     def run_all_tests(self):
         """Run all tests"""
         print("🚀 Starting WaveWatch API Tests...")
@@ -356,6 +449,13 @@ class WaveWatchAPITester:
         self.test_new_endpoints()
         self.test_admin_new_endpoints()
         self.test_ratings_endpoints()
+        
+        # Test new iteration 8 features
+        self.test_platform_reviews_endpoints()
+        self.test_enhanced_playlists_endpoints()
+        self.test_admin_activities_endpoints()
+        self.test_tmdb_update_endpoints()
+        self.test_user_messaging_endpoints()
 
         # Print summary
         print("=" * 60)

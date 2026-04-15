@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import API, { TMDB_IMG } from '../lib/api';
+import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
 import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
@@ -9,10 +9,22 @@ import { LoadingGrid } from '../components/Loading';
 function Hero() {
   const [movies, setMovies] = useState([]);
   const [idx, setIdx] = useState(0);
+  const [logos, setLogos] = useState({});
 
   useEffect(() => {
     API.get('/api/tmdb/trending/movies').then(({ data }) => {
-      if (data.results?.length) setMovies(data.results.slice(0, 5));
+      if (data.results?.length) {
+        const top5 = data.results.slice(0, 5);
+        setMovies(top5);
+        // Fetch logos for each movie
+        top5.forEach(m => {
+          fetch(`https://api.themoviedb.org/3/movie/${m.id}/images?api_key=${TMDB_API_KEY}&include_image_language=fr,en,null`)
+            .then(r => r.json()).then(d => {
+              const logo = d.logos?.find(l => l.iso_639_1 === 'fr') || d.logos?.find(l => l.iso_639_1 === 'en') || d.logos?.[0];
+              if (logo?.file_path) setLogos(prev => ({ ...prev, [m.id]: `${TMDB_IMG}/w500${logo.file_path}` }));
+            }).catch(() => {});
+        });
+      }
     }).catch(() => {});
   }, []);
 
@@ -25,6 +37,7 @@ function Hero() {
 
   const m = movies[idx];
   if (!m) return null;
+  const logoUrl = logos[m.id];
 
   return (
     <Link to={`/movies/${m.id}`} className="block" data-testid="hero-section">
@@ -37,7 +50,11 @@ function Hero() {
         <div className="relative z-10 container mx-auto px-4 h-full flex items-center">
           <div className="w-full">
             <div className="space-y-4 md:space-y-6 max-w-4xl mx-auto text-center">
-              <h1 className="text-2xl md:text-6xl lg:text-7xl font-bold text-white leading-tight" style={{ textShadow: '0 0 20px rgba(0,0,0,0.9)' }}>{m.title}</h1>
+              {logoUrl ? (
+                <img src={logoUrl} alt={m.title} className="h-20 md:h-36 lg:h-44 w-auto object-contain mx-auto drop-shadow-2xl" style={{ filter: 'drop-shadow(0 0 20px rgba(0,0,0,0.8))' }} />
+              ) : (
+                <h1 className="text-2xl md:text-6xl lg:text-7xl font-bold text-white leading-tight" style={{ textShadow: '0 0 20px rgba(0,0,0,0.9)' }}>{m.title}</h1>
+              )}
               <div className="flex items-center justify-center gap-3">
                 <div className="flex items-center gap-1.5 bg-yellow-500/20 backdrop-blur-sm rounded-full px-3 py-1.5 border border-yellow-500/30">
                   <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />

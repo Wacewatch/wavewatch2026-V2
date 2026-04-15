@@ -1347,3 +1347,166 @@ async def update_content_request(request_id: str, request: Request, user: dict =
 async def delete_content_request(request_id: str, user: dict = Depends(require_admin)):
     await db.content_requests.delete_one({"_id": ObjectId(request_id)})
     return {"message": "Supprime"}
+
+
+# =================== PLATFORM REVIEWS / GUESTBOOK ===================
+
+@app.post("/api/platform-reviews")
+async def submit_platform_review(request: Request, user: dict = Depends(get_current_user)):
+    data = await request.json()
+    review = {
+        "user_id": user["_id"],
+        "username": user.get("username"),
+        "is_admin": user.get("is_admin", False),
+        "is_vip": user.get("is_vip", False),
+        "is_vip_plus": user.get("is_vip_plus", False),
+        "is_uploader": user.get("is_uploader", False),
+        "contenu_score": max(1, min(10, int(data.get("contenu_score", 5)))),
+        "fonctionnalites_score": max(1, min(10, int(data.get("fonctionnalites_score", 5)))),
+        "design_score": max(1, min(10, int(data.get("design_score", 5)))),
+        "message": data.get("message", "").strip()[:500],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    # Upsert - one review per user
+    await db.platform_reviews.update_one({"user_id": user["_id"]}, {"$set": review}, upsert=True)
+    return {"message": "Avis enregistre"}
+
+@app.get("/api/platform-reviews")
+async def get_platform_reviews():
+    reviews = await db.platform_reviews.find().sort("created_at", -1).to_list(500)
+    for r in reviews:
+        r["_id"] = str(r["_id"])
+    total = len(reviews)
+    avg_contenu = sum(r.get("contenu_score", 5) for r in reviews) / total if total else 0
+    avg_fonc = sum(r.get("fonctionnalites_score", 5) for r in reviews) / total if total else 0
+    avg_design = sum(r.get("design_score", 5) for r in reviews) / total if total else 0
+    return {
+        "reviews": reviews,
+        "total_votes": total,
+        "averages": {
+            "contenu": round(avg_contenu, 1),
+            "fonctionnalites": round(avg_fonc, 1),
+            "design": round(avg_design, 1)
+        }
+    }
+
+@app.get("/api/platform-reviews/mine")
+async def get_my_platform_review(user: dict = Depends(get_current_user)):
+    review = await db.platform_reviews.find_one({"user_id": user["_id"]})
+    if review:
+        review["_id"] = str(review["_id"])
+    return {"review": review}
+
+# =================== USER MESSAGING ===================
+
+@app.post("/api/messages")
+async def send_user_message(request: Request, user: dict = Depends(get_current_user)):
+    data = await request.json()
+    recipient_id = data.get("recipient_id")
+    content = data.get("content", "").strip()
+    if not recipient_id or not content:
+        raise HTTPException(status_code=400, detail="Destinataire et contenu requis")
+    recipient = await db.users.find_one({"_id": ObjectId(recipient_id)})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Destinataire introuvable")
+    msg = {
+        "sender_id": user["_id"],
+        "sender_username": user.get("username"),
+        "recipient_id": recipient_id,
+        "content": content[:1000],
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.user_messages.insert_one(msg)
+    return {"message": "Message envoye"}
+
+@app.get("/api/messages")
+async def get_user_messages(user: dict = Depends(get_current_user)):
+    uid = user["_id"]
+    received = await db.user_messages.find({"recipient_id": uid}).sort("created_at", -1).to_list(100)
+    sent = await db.user_messages.find({"sender_id": uid}).sort("created_at", -1).to_list(100)
+    for m in received + sent:
+        m["_id"] = str(m["_id"])
+    return {"received": received, "sent": sent}
+
+@app.put("/api/messages/{msg_id}/read")
+async def mark_message_read(msg_id: str, user: dict = Depends(get_current_user)):
+    await db.user_messages.update_one({"_id": ObjectId(msg_id), "recipient_id": user["_id"]}, {"$set": {"is_read": True}})
+    return {"ok": True}
+
+# =================== ADMIN ACTIVITY FEED ===================
+
+async def log_admin_activity(admin_username: str, action: str, target: str = ""):
+    await db.admin_activities.insert_one({
+        "admin_username": admin_username,
+        "action": action,
+        "target": target,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+
+@app.get("/api/admin/activities")
+async def get_admin_activities(user: dict = Depends(require_admin)):
+    activities = await db.admin_activities.find().sort("created_at", -1).to_list(50)
+    for a in activities:
+        a["_id"] = str(a["_id"])
+    return {"activities": activities}
+
+# =================== ADMIN TMDB UPDATE ===================
+
+@app.post("/api/admin/tmdb-update")
+async def admin_tmdb_update(request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    update_type = data.get("type", "trending")
+    tmdb_key = os.environ.get("TMDB_API_KEY")
+    if not tmdb_key:
+        raise HTTPException(status_code=500, detail="TMDB API key manquante")
+    import httpx
+    async with httpx.AsyncClient() as client:
+        urls = {
+            "trending": f"https://api.themoviedb.org/3/trending/movie/week?api_key={tmdb_key}&language=fr-FR",
+            "popular": f"https://api.themoviedb.org/3/movie/popular?api_key={tmdb_key}&language=fr-FR",
+            "upcoming": f"https://api.themoviedb.org/3/movie/upcoming?api_key={tmdb_key}&language=fr-FR",
+        }
+        url = urls.get(update_type)
+        if not url:
+            raise HTTPException(status_code=400, detail="Type invalide")
+        resp = await client.get(url, timeout=15.0)
+        results = resp.json().get("results", [])
+    await log_admin_activity(user.get("username", "admin"), f"Mise a jour TMDB ({update_type})", f"{len(results)} resultats")
+    return {"message": f"TMDB {update_type} mis a jour: {len(results)} resultats", "count": len(results)}
+
+# =================== PLAYLIST COLORS ===================
+
+@app.put("/api/playlists/{playlist_id}/colors")
+async def update_playlist_colors(playlist_id: str, request: Request, user: dict = Depends(get_current_user)):
+    data = await request.json()
+    color = data.get("color", "default")
+    gradient = data.get("gradient", "")
+    await db.playlists.update_one(
+        {"_id": ObjectId(playlist_id), "user_id": user["_id"]},
+        {"$set": {"color": color, "gradient": gradient}}
+    )
+    return {"message": "Couleurs mises a jour"}
+
+# =================== PUBLIC PLAYLISTS ENHANCED ===================
+
+@app.get("/api/playlists/public/enhanced")
+async def get_public_playlists_enhanced(page: int = 1, limit: int = 20):
+    skip = (page - 1) * limit
+    playlists = await db.playlists.find({"is_public": True}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    result = []
+    for p in playlists:
+        p["_id"] = str(p["_id"])
+        # Get user info
+        u = await db.users.find_one({"_id": ObjectId(p["user_id"])}, {"username": 1, "is_admin": 1, "is_vip": 1, "is_vip_plus": 1, "is_uploader": 1})
+        if u:
+            p["user_info"] = {"username": u.get("username"), "is_admin": u.get("is_admin", False), "is_vip": u.get("is_vip", False), "is_vip_plus": u.get("is_vip_plus", False), "is_uploader": u.get("is_uploader", False)}
+        # Count likes/dislikes
+        likes = await db.user_ratings.count_documents({"content_id": p["_id"], "content_type": "playlist", "rating": "like"})
+        dislikes = await db.user_ratings.count_documents({"content_id": p["_id"], "content_type": "playlist", "rating": "dislike"})
+        p["likes_count"] = likes
+        p["dislikes_count"] = dislikes
+        p["items_count"] = len(p.get("items", []))
+        result.append(p)
+    total = await db.playlists.count_documents({"is_public": True})
+    return {"playlists": result, "total": total, "page": page}

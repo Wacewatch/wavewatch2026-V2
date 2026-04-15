@@ -23,6 +23,22 @@ export default function PlaylistDetailPage() {
   const navigate = useNavigate();
   const [playlist, setPlaylist] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const PLAYLIST_COLORS = [
+    { id: 'default', label: 'Defaut', gradient: '' },
+    { id: 'blue', label: 'Bleu', gradient: 'linear-gradient(135deg, #1e3a5f, #2563eb)' },
+    { id: 'red', label: 'Rouge', gradient: 'linear-gradient(135deg, #5f1e1e, #dc2626)' },
+    { id: 'green', label: 'Vert', gradient: 'linear-gradient(135deg, #1e5f3a, #16a34a)' },
+    { id: 'purple', label: 'Violet', gradient: 'linear-gradient(135deg, #3a1e5f, #9333ea)' },
+    { id: 'orange', label: 'Orange', gradient: 'linear-gradient(135deg, #5f3a1e, #ea580c)' },
+    { id: 'pink', label: 'Rose', gradient: 'linear-gradient(135deg, #5f1e4a, #ec4899)' },
+    { id: 'gold', label: 'Or (VIP)', gradient: 'linear-gradient(135deg, #5f4e1e, #eab308)', vip: true },
+    { id: 'diamond', label: 'Diamant (VIP)', gradient: 'linear-gradient(135deg, #1e4a5f, #06b6d4)', vip: true },
+    { id: 'neon', label: 'Neon (VIP)', gradient: 'linear-gradient(135deg, #1e5f1e, #22d3ee)', vip: true },
+    { id: 'sunset', label: 'Sunset (VIP+)', gradient: 'linear-gradient(135deg, #ff6b35, #f7931e, #c62828)', vipplus: true },
+    { id: 'galaxy', label: 'Galaxy (VIP+)', gradient: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)', vipplus: true },
+  ];
 
   useEffect(() => {
     API.get(`/api/playlists/${id}`).then(({ data }) => setPlaylist(data.playlist)).catch(() => navigate('/playlists')).finally(() => setLoading(false));
@@ -33,6 +49,18 @@ export default function PlaylistDetailPage() {
       await API.delete(`/api/playlists/${id}/items/${contentId}`);
       setPlaylist(prev => ({ ...prev, items: prev.items.filter(i => i.content_id !== contentId) }));
       toast({ title: 'Element retire de la playlist' });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  const changeColor = async (color) => {
+    const c = PLAYLIST_COLORS.find(x => x.id === color);
+    if (!c) return;
+    if (c.vip && !user?.is_vip && !user?.is_admin) { toast({ title: 'Couleur VIP requise', variant: 'destructive' }); return; }
+    if (c.vipplus && !user?.is_vip_plus && !user?.is_admin) { toast({ title: 'Couleur VIP+ requise', variant: 'destructive' }); return; }
+    try {
+      await API.put(`/api/playlists/${id}/colors`, { color, gradient: c.gradient });
+      setPlaylist(prev => ({ ...prev, color, gradient: c.gradient }));
+      toast({ title: 'Couleur appliquee' });
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
@@ -47,7 +75,7 @@ export default function PlaylistDetailPage() {
         <ArrowLeft className="w-4 h-4" />Retour
       </button>
 
-      <div className="bg-card border border-border rounded-xl p-6 mb-8">
+      <div className="bg-card border border-border rounded-xl p-6 mb-8" style={playlist.gradient ? { background: playlist.gradient } : {}}>
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-3" data-testid="playlist-title">
@@ -60,8 +88,28 @@ export default function PlaylistDetailPage() {
               {playlist.username && <span>par {playlist.username}</span>}
             </div>
           </div>
+          {isOwner && (
+            <button onClick={() => setShowColorPicker(!showColorPicker)} className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-secondary" data-testid="color-picker-btn">
+              Couleur
+            </button>
+          )}
         </div>
-        <LikeDislike contentId={parseInt(id) || id.hashCode?.()} contentType="playlist" />
+        {showColorPicker && isOwner && (
+          <div className="mt-4 pt-4 border-t border-border/50">
+            <p className="text-sm font-medium mb-2">Personnaliser la couleur</p>
+            <div className="flex flex-wrap gap-2">
+              {PLAYLIST_COLORS.map(c => (
+                <button key={c.id} onClick={() => changeColor(c.id)}
+                  className={`w-8 h-8 rounded-full border-2 transition-all hover:scale-110 ${playlist.color === c.id ? 'border-white ring-2 ring-primary' : 'border-transparent'} ${c.vip || c.vipplus ? 'ring-1 ring-yellow-500/30' : ''}`}
+                  style={c.gradient ? { background: c.gradient } : { background: '#333' }}
+                  title={c.label} data-testid={`color-${c.id}`} />
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="mt-3">
+          <LikeDislike contentId={parseInt(id) || id.hashCode?.()} contentType="playlist" />
+        </div>
       </div>
 
       {(!playlist.items || playlist.items.length === 0) ? (
