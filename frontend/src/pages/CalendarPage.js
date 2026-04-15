@@ -23,14 +23,15 @@ export default function CalendarPage() {
 
   const fetchEvents = async () => {
     try {
-      const [moviesRes, tvRes, animeRes, upcomingTvRes] = await Promise.all([
-        API.get('/api/tmdb/upcoming/movies'),
-        API.get('/api/tmdb/discover/tv?sort_by=first_air_date.desc'),
-        API.get('/api/tmdb/trending/anime'),
-        API.get('/api/tmdb/on-the-air')
+      const [moviesRes, tvRes, animeRes, upcomingTvRes, upcomingMovies2] = await Promise.all([
+        API.get('/api/tmdb/upcoming/movies').catch(() => ({ data: { results: [] } })),
+        API.get('/api/tmdb/discover/tv?sort_by=first_air_date.desc').catch(() => ({ data: { results: [] } })),
+        API.get('/api/tmdb/trending/anime').catch(() => ({ data: { results: [] } })),
+        API.get('/api/tmdb/on-the-air').catch(() => ({ data: { results: [] } })),
+        API.get('/api/tmdb/upcoming/movies?page=2').catch(() => ({ data: { results: [] } }))
       ]);
       
-      const movieEvents = (moviesRes.data.results || []).filter(m => m.release_date).map(m => ({ 
+      const movieEvents = [...(moviesRes.data.results || []), ...(upcomingMovies2.data.results || [])].filter(m => m.release_date).map(m => ({ 
         id: m.id, 
         title: m.title, 
         date: m.release_date, 

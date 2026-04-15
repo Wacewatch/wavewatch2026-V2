@@ -87,6 +87,7 @@ export default function App() {
                   <Route path="/favorites" element={<ProtectedRoute><FavoritesPage /></ProtectedRoute>} />
                   <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                   <Route path="/collections" element={<CollectionsPage />} />
+                  <Route path="/collections/:id" element={<CollectionsPage />} />
                   <Route path="/actors/:id" element={<ActorDetailPage />} />
                   <Route path="/directors/:id" element={<DirectorDetailPage />} />
                   <Route path="/tv-channels" element={<TVChannelsPage />} />

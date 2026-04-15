@@ -191,23 +191,25 @@ function PopularCollectionsRow() {
   if (loading || !collections.length) return null;
 
   return (
-    <div data-testid="popular-collections-section">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">Collections Populaires</h2>
-        <Link to="/collections" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {collections.map(c => (
-          <Link key={c.id} to={`/collections`} className="group">
-            <div className="aspect-[2/3] rounded-xl overflow-hidden bg-muted relative">
-              {c.poster_path && <img src={`${TMDB_IMG}/w300${c.poster_path}`} alt={c.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
+    <ContentGrid title="Collections Populaires" link="/collections">
+      {collections.map(c => (
+        <Link key={c.id} to={`/collections/${c.id}`} className="group" data-testid={`collection-${c.id}`}>
+          <div className="overflow-hidden rounded-lg border border-border bg-card transition-transform duration-200 group-hover:scale-105">
+            <div className="relative aspect-[2/3]">
+              {c.poster_path ? (
+                <img src={`${TMDB_IMG}/w300${c.poster_path}`} alt={c.name} className="w-full h-full object-cover" />
+              ) : c.backdrop_path ? (
+                <img src={`${TMDB_IMG}/w300${c.backdrop_path}`} alt={c.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center"><Film className="w-8 h-8 text-muted-foreground" /></div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-              <p className="absolute bottom-2 left-2 right-2 text-xs font-bold text-white">{c.name}</p>
+              <p className="absolute bottom-2 left-2 right-2 text-xs font-bold text-white line-clamp-2">{c.name}</p>
             </div>
-          </Link>
-        ))}
-      </div>
-    </div>
+          </div>
+        </Link>
+      ))}
+    </ContentGrid>
   );
 }
 
@@ -396,9 +398,15 @@ function CalendarWidgetHome() {
   const [upcoming, setUpcoming] = useState([]);
 
   useEffect(() => {
-    API.get('/api/tmdb/upcoming/movies').then(({ data }) => {
+    Promise.all([
+      API.get('/api/tmdb/upcoming/movies').catch(() => ({ data: { results: [] } })),
+      API.get('/api/tmdb/on-the-air').catch(() => ({ data: { results: [] } }))
+    ]).then(([moviesRes, tvRes]) => {
       const today = new Date().toISOString().split('T')[0];
-      setUpcoming((data.results || []).filter(m => m.release_date >= today).sort((a, b) => a.release_date.localeCompare(b.release_date)).slice(0, 6));
+      const movies = (moviesRes.data.results || []).filter(m => m.release_date >= today).map(m => ({ ...m, _type: 'movie' }));
+      const tvShows = (tvRes.data.results || []).filter(s => s.first_air_date >= today).map(s => ({ ...s, title: s.name, release_date: s.first_air_date, _type: 'tv' }));
+      const combined = [...movies, ...tvShows].sort((a, b) => (a.release_date || '').localeCompare(b.release_date || '')).slice(0, 12);
+      setUpcoming(combined);
     }).catch(() => {});
   }, []);
 
@@ -412,9 +420,12 @@ function CalendarWidgetHome() {
       </div>
       <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {upcoming.map(m => (
-          <Link key={m.id} to={`/movies/${m.id}`} className="group">
-            <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted mb-2">
+          <Link key={`${m._type}-${m.id}`} to={`/${m._type === 'tv' ? 'tv-shows' : 'movies'}/${m.id}`} className="group">
+            <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted mb-2 relative">
               {m.poster_path && <img src={`${TMDB_IMG}/w200${m.poster_path}`} alt={m.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
+              <span className={`absolute top-1 left-1 text-[9px] px-1.5 py-0.5 rounded-full font-bold ${m._type === 'tv' ? 'bg-blue-500/80 text-white' : 'bg-red-500/80 text-white'}`}>
+                {m._type === 'tv' ? 'Serie' : 'Film'}
+              </span>
             </div>
             <p className="text-xs font-medium truncate group-hover:text-blue-400">{m.title}</p>
             <p className="text-[10px] text-muted-foreground">{new Date(m.release_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>

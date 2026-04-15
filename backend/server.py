@@ -456,6 +456,14 @@ async def tmdb_popular_persons(page: int = 1):
 async def tmdb_search_collections(q: str, page: int = 1):
     return await tmdb_fetch("/search/collection", {"query": q, "page": str(page)})
 
+@app.get("/api/tmdb/on-the-air")
+async def tmdb_on_the_air(page: int = 1):
+    return await tmdb_fetch("/tv/on_the_air", {"page": str(page)})
+
+@app.get("/api/tmdb/upcoming/tv")
+async def tmdb_upcoming_tv(page: int = 1):
+    return await tmdb_fetch("/tv/on_the_air", {"page": str(page)})
+
 # ==================== FAVORITES ====================
 @app.get("/api/user/favorites")
 async def get_favorites(user: dict = Depends(get_current_user)):
