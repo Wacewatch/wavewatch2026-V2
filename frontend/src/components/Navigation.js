@@ -112,9 +112,7 @@ export default function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           <Link to="/" className="flex items-center flex-shrink-0 group" data-testid="logo-link">
-            <span className="text-xl md:text-2xl font-black tracking-tight bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
-              WaveWatch
-            </span>
+            <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-8 md:h-10 w-auto object-contain" />
           </Link>
 
           {/* Desktop Nav */}
@@ -299,7 +297,7 @@ export default function Navigation() {
         <div className="fixed inset-0 z-50 lg:hidden overflow-y-auto" style={{ backgroundColor: 'hsl(var(--nav-bg) / 0.98)' }}>
           <div className="container mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-6">
-              <span className="text-xl font-black bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">WaveWatch</span>
+              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-8 w-auto object-contain" />
               <button onClick={() => setIsMenuOpen(false)}><X className="w-6 h-6" style={textStyle} /></button>
             </div>
             <form onSubmit={handleSearch} className="mb-6">

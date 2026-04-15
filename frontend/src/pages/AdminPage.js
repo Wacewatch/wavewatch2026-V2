@@ -1,9 +1,93 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import API from '../lib/api';
-import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Calendar, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X } from 'lucide-react';
+
+const USERS_PER_PAGE = 15;
+
+function ContentForm({ fields, data, setData, onSubmit, onCancel, title }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onCancel}>
+      <div className="bg-card border border-border rounded-xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold">{title}</h3>
+          <button onClick={onCancel} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          {fields.map(f => (
+            <div key={f.key}>
+              <label className="text-sm font-medium text-muted-foreground">{f.label}</label>
+              {f.type === 'textarea' ? (
+                <textarea value={data[f.key] || ''} onChange={e => setData(p => ({ ...p, [f.key]: e.target.value }))} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" rows={3} />
+              ) : f.type === 'checkbox' ? (
+                <div className="flex items-center gap-2 mt-1"><input type="checkbox" checked={data[f.key] || false} onChange={e => setData(p => ({ ...p, [f.key]: e.target.checked }))} className="w-4 h-4" /><span className="text-sm">{f.label}</span></div>
+              ) : (
+                <input type={f.type || 'text'} value={data[f.key] || ''} onChange={e => setData(p => ({ ...p, [f.key]: f.type === 'number' ? parseInt(e.target.value) || 0 : e.target.value }))} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" placeholder={f.placeholder || f.label} />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-5">
+          <button onClick={onSubmit} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm"><Save className="w-4 h-4 inline mr-1" />Sauvegarder</button>
+          <button onClick={onCancel} className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary">Annuler</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContentTable({ items, columns, onEdit, onDelete, onToggle, searchTerm, setSearchTerm, onAdd, addLabel, type }) {
+  const filtered = items.filter(item => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+    return columns.some(c => (item[c.key] || '').toString().toLowerCase().includes(s));
+  });
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="p-4 border-b border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <h2 className="font-bold">{addLabel} ({items.length})</h2>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input type="text" placeholder="Rechercher..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 pr-3 py-1.5 rounded-lg border border-input bg-background text-sm outline-none w-full sm:w-48" />
+          </div>
+          <button onClick={onAdd} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-1" data-testid={`add-${type}-btn`}><Plus className="w-4 h-4" />Ajouter</button>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-secondary/30">
+              {columns.map(c => <th key={c.key} className="px-4 py-2 text-left font-medium text-muted-foreground">{c.label}</th>)}
+              <th className="px-4 py-2 text-left font-medium text-muted-foreground">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={columns.length + 1} className="text-center py-8 text-muted-foreground">Aucun element</td></tr>
+            ) : filtered.map(item => (
+              <tr key={item._id} className="border-b border-border/50 hover:bg-secondary/20">
+                {columns.map(c => (
+                  <td key={c.key} className="px-4 py-2">{c.render ? c.render(item) : (item[c.key] || '-')}</td>
+                ))}
+                <td className="px-4 py-2">
+                  <div className="flex gap-1">
+                    {onToggle && <button onClick={() => onToggle(item._id)} className={`px-2 py-0.5 rounded text-xs ${item.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{item.is_active ? 'Actif' : 'Inactif'}</button>}
+                    <button onClick={() => onEdit(item)} className="p-1 text-muted-foreground hover:text-blue-400"><Edit className="w-4 h-4" /></button>
+                    <button onClick={() => onDelete(item._id)} className="p-1 text-muted-foreground hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -22,26 +106,109 @@ export default function AdminPage() {
   const [cinemaRooms, setCinemaRooms] = useState([]);
   const [newRoom, setNewRoom] = useState({ name: '', movie_title: '', date: '', time: '', capacity: 50 });
 
+  // Content states
+  const [tvChannels, setTvChannels] = useState([]);
+  const [radioStations, setRadioStations] = useState([]);
+  const [musicContent, setMusicContent] = useState([]);
+  const [softwareItems, setSoftwareItems] = useState([]);
+  const [gamesItems, setGamesItems] = useState([]);
+  const [ebooksItems, setEbooksItems] = useState([]);
+  const [retrogaming, setRetrogaming] = useState([]);
+  const [changelogs, setChangelogs] = useState([]);
+  const [requests, setRequests] = useState([]);
+
+  // Search terms
+  const [searchTerms, setSearchTerms] = useState({});
+
+  // Form/modal states
+  const [showForm, setShowForm] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [editingId, setEditingId] = useState(null);
+
+  // Users pagination
+  const [userSearch, setUserSearch] = useState('');
+  const [userPage, setUserPage] = useState(1);
+  const [userFilter, setUserFilter] = useState('all');
+
+  // Broadcast
+  const [broadcastForm, setBroadcastForm] = useState({ subject: '', content: '' });
+
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    if (user?.is_admin) {
-      if (tab === 'stats') API.get('/api/admin/stats').then(({ data }) => setStats(data)).catch(() => {});
-      if (tab === 'users') API.get('/api/admin/users').then(({ data }) => setUsers(data.users || [])).catch(() => {});
-      if (tab === 'messages') API.get('/api/staff-messages').then(({ data }) => setMessages(data.messages || [])).catch(() => {});
-      if (tab === 'modules') API.get('/api/admin/site-settings/home_modules').then(({ data }) => { if (data.setting_value && Object.keys(data.setting_value).length) setModules(prev => ({ ...prev, ...data.setting_value })); }).catch(() => {});
-      if (tab === 'cinema') API.get('/api/admin/cinema-rooms').then(({ data }) => setCinemaRooms(data.rooms || [])).catch(() => {});
-    }
-  }, [user, tab]);
+  const loadData = useCallback((currentTab) => {
+    if (!user?.is_admin) return;
+    const endpoints = {
+      stats: () => API.get('/api/admin/enhanced-stats').then(({ data }) => setStats(data)),
+      users: () => API.get('/api/admin/users').then(({ data }) => setUsers(data.users || [])),
+      messages: () => API.get('/api/staff-messages').then(({ data }) => setMessages(data.messages || [])),
+      modules: () => API.get('/api/admin/site-settings/home_modules').then(({ data }) => { if (data.setting_value) setModules(p => ({ ...p, ...data.setting_value })); }),
+      cinema: () => API.get('/api/admin/cinema-rooms').then(({ data }) => setCinemaRooms(data.rooms || [])),
+      tvchannels: () => API.get('/api/tv-channels').then(({ data }) => setTvChannels(data.channels || [])),
+      radio: () => API.get('/api/radio-stations').then(({ data }) => setRadioStations(data.stations || [])),
+      music: () => API.get('/api/music').then(({ data }) => setMusicContent(data || [])),
+      software: () => API.get('/api/software').then(({ data }) => setSoftwareItems(data.items || [])),
+      games: () => API.get('/api/games').then(({ data }) => setGamesItems(data || [])),
+      ebooks: () => API.get('/api/ebooks').then(({ data }) => setEbooksItems(data.items || [])),
+      retrogaming: () => API.get('/api/retrogaming').then(({ data }) => setRetrogaming(data.sources || [])),
+      changelogs: () => API.get('/api/changelogs').then(({ data }) => setChangelogs(data || [])),
+      requests: () => API.get('/api/content-requests').then(({ data }) => setRequests(data.requests || [])),
+    };
+    if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
+  }, [user]);
+
+  useEffect(() => { if (user?.is_admin) loadData(tab); }, [user, tab, loadData]);
 
   if (authLoading || !user?.is_admin) return null;
 
-  const updateUserRole = async (userId, field, value) => {
+  // ---- CRUD Helpers ----
+  const handleAdd = (type, fields) => {
+    setEditingId(null);
+    const defaults = {};
+    fields.forEach(f => { defaults[f.key] = f.default !== undefined ? f.default : ''; });
+    setFormData(defaults);
+    setShowForm(type);
+  };
+
+  const handleEdit = (type, item) => {
+    setEditingId(item._id);
+    setFormData({ ...item });
+    setShowForm(type);
+  };
+
+  const handleSubmit = async (type, apiBase) => {
     try {
-      await API.put(`/api/admin/users/${userId}`, { [field]: value });
-      toast({ title: 'Utilisateur mis a jour' });
-      API.get('/api/admin/users').then(({ data }) => setUsers(data.users || []));
+      if (editingId) {
+        await API.put(`${apiBase}/${editingId}`, formData);
+        toast({ title: 'Mis a jour avec succes' });
+      } else {
+        await API.post(apiBase, formData);
+        toast({ title: 'Ajoute avec succes' });
+      }
+      setShowForm(null);
+      loadData(tab);
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  const handleDelete = async (apiBase, id, label) => {
+    if (!window.confirm(`Supprimer ${label} ?`)) return;
+    try { await API.delete(`${apiBase}/${id}`); toast({ title: 'Supprime' }); loadData(tab); }
+    catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  const handleToggle = async (apiBase, id, items, setItems) => {
+    const item = items.find(i => i._id === id);
+    if (!item) return;
+    try {
+      await API.put(`${apiBase}/${id}`, { is_active: !item.is_active });
+      setItems(prev => prev.map(i => i._id === id ? { ...i, is_active: !i.is_active } : i));
+      toast({ title: 'Statut modifie' });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  // User management
+  const updateUserRole = async (userId, field, value) => {
+    try { await API.put(`/api/admin/users/${userId}`, { [field]: value }); toast({ title: 'Utilisateur mis a jour' }); loadData('users'); }
+    catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
   const deleteUser = async (userId) => {
@@ -53,43 +220,78 @@ export default function AdminPage() {
   const replyMessage = async (msgId) => {
     const reply = prompt('Votre reponse :');
     if (!reply) return;
-    try { await API.post('/api/staff-messages/reply', { message_id: msgId, reply }); toast({ title: 'Reponse envoyee' }); API.get('/api/staff-messages').then(({ data }) => setMessages(data.messages || [])); }
+    try { await API.post('/api/staff-messages/reply', { message_id: msgId, reply }); toast({ title: 'Reponse envoyee' }); loadData('messages'); }
     catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
   const toggleModule = async (key) => {
     const newModules = { ...modules, [key]: !modules[key] };
     setModules(newModules);
-    try {
-      await API.put('/api/admin/site-settings', { setting_key: 'home_modules', setting_value: newModules });
-      toast({ title: 'Module mis a jour' });
-    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+    try { await API.put('/api/admin/site-settings', { setting_key: 'home_modules', setting_value: newModules }); toast({ title: 'Module mis a jour' }); }
+    catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
   const createRoom = async () => {
     if (!newRoom.name || !newRoom.movie_title) return;
-    try {
-      await API.post('/api/admin/cinema-rooms', newRoom);
-      toast({ title: 'Salle creee' });
-      setNewRoom({ name: '', movie_title: '', date: '', time: '', capacity: 50 });
-      API.get('/api/admin/cinema-rooms').then(({ data }) => setCinemaRooms(data.rooms || []));
-    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+    try { await API.post('/api/admin/cinema-rooms', newRoom); toast({ title: 'Salle creee' }); setNewRoom({ name: '', movie_title: '', date: '', time: '', capacity: 50 }); loadData('cinema'); }
+    catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
   const deleteRoom = async (roomId) => {
-    try {
-      await API.delete(`/api/admin/cinema-rooms/${roomId}`);
-      toast({ title: 'Salle supprimee' });
-      setCinemaRooms(r => r.filter(x => x.room_id !== roomId));
-    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+    try { await API.delete(`/api/admin/cinema-rooms/${roomId}`); toast({ title: 'Salle supprimee' }); setCinemaRooms(r => r.filter(x => x.room_id !== roomId)); }
+    catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
+  const sendBroadcast = async () => {
+    if (!broadcastForm.subject || !broadcastForm.content) { toast({ title: 'Remplissez tous les champs', variant: 'destructive' }); return; }
+    try { const { data } = await API.post('/api/admin/broadcast', broadcastForm); toast({ title: data.message || 'Message envoye' }); setBroadcastForm({ subject: '', content: '' }); }
+    catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  const updateRequestStatus = async (id, status) => {
+    try { await API.put(`/api/admin/content-requests/${id}`, { status }); toast({ title: 'Statut mis a jour' }); loadData('requests'); }
+    catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  // Users filtering and pagination
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = !userSearch || u.username?.toLowerCase().includes(userSearch.toLowerCase()) || u.email?.toLowerCase().includes(userSearch.toLowerCase());
+    if (!matchesSearch) return false;
+    if (userFilter === 'admin') return u.is_admin;
+    if (userFilter === 'vip') return u.is_vip;
+    if (userFilter === 'vip_plus') return u.is_vip_plus;
+    if (userFilter === 'uploader') return u.is_uploader;
+    return true;
+  });
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+  const paginatedUsers = filteredUsers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
+
+  // Field definitions
+  const tvFields = [{ key: 'name', label: 'Nom' }, { key: 'category', label: 'Categorie' }, { key: 'country', label: 'Pays' }, { key: 'stream_url', label: 'URL du flux' }, { key: 'logo_url', label: 'URL du logo' }, { key: 'description', label: 'Description', type: 'textarea' }, { key: 'quality', label: 'Qualite' }];
+  const radioFields = [{ key: 'name', label: 'Nom' }, { key: 'genre', label: 'Genre' }, { key: 'country', label: 'Pays' }, { key: 'frequency', label: 'Frequence' }, { key: 'stream_url', label: 'URL du flux' }, { key: 'logo_url', label: 'URL du logo' }, { key: 'description', label: 'Description', type: 'textarea' }];
+  const musicFields = [{ key: 'title', label: 'Titre' }, { key: 'artist', label: 'Artiste' }, { key: 'genre', label: 'Genre' }, { key: 'streaming_url', label: 'URL streaming' }, { key: 'thumbnail_url', label: 'URL miniature' }, { key: 'description', label: 'Description', type: 'textarea' }];
+  const softFields = [{ key: 'name', label: 'Nom' }, { key: 'developer', label: 'Developpeur' }, { key: 'category', label: 'Categorie' }, { key: 'platform', label: 'Plateforme' }, { key: 'download_url', label: 'URL telechargement' }, { key: 'icon_url', label: 'URL icone' }, { key: 'description', label: 'Description', type: 'textarea' }];
+  const gameFields = [{ key: 'title', label: 'Titre' }, { key: 'developer', label: 'Developpeur' }, { key: 'genre', label: 'Genre' }, { key: 'platform', label: 'Plateforme' }, { key: 'download_url', label: 'URL telechargement' }, { key: 'cover_url', label: 'URL couverture' }, { key: 'description', label: 'Description', type: 'textarea' }];
+  const ebookFields = [{ key: 'title', label: 'Titre' }, { key: 'author', label: 'Auteur' }, { key: 'category', label: 'Categorie' }, { key: 'language', label: 'Langue' }, { key: 'download_url', label: 'URL telechargement' }, { key: 'reading_url', label: 'URL lecture' }, { key: 'cover_url', label: 'URL couverture' }, { key: 'description', label: 'Description', type: 'textarea' }];
+  const retroFields = [{ key: 'name', label: 'Nom' }, { key: 'url', label: 'URL' }, { key: 'category', label: 'Categorie' }, { key: 'description', label: 'Description', type: 'textarea' }];
+  const changelogFields = [{ key: 'version', label: 'Version' }, { key: 'title', label: 'Titre' }, { key: 'release_date', label: 'Date', type: 'date' }, { key: 'description', label: 'Description', type: 'textarea' }];
+
   const tabs = [
-    { id: 'stats', label: 'Stats', icon: <BarChart3 className="w-4 h-4" /> },
-    { id: 'users', label: 'Utilisateurs', icon: <Users className="w-4 h-4" /> },
-    { id: 'messages', label: 'Messages', icon: <MessageSquare className="w-4 h-4" /> },
-    { id: 'modules', label: 'Modules accueil', icon: <Settings className="w-4 h-4" /> },
-    { id: 'cinema', label: 'Salles cinema', icon: <Film className="w-4 h-4" /> },
+    { id: 'stats', label: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'broadcast', label: 'Message', icon: <Send className="w-4 h-4" /> },
+    { id: 'tvchannels', label: 'TV', icon: <Tv className="w-4 h-4" />, count: tvChannels.length },
+    { id: 'radio', label: 'Radio', icon: <Radio className="w-4 h-4" />, count: radioStations.length },
+    { id: 'music', label: 'Musique', icon: <Music className="w-4 h-4" />, count: musicContent.length },
+    { id: 'software', label: 'Logiciels', icon: <Monitor className="w-4 h-4" />, count: softwareItems.length },
+    { id: 'games', label: 'Jeux', icon: <Gamepad2 className="w-4 h-4" />, count: gamesItems.length },
+    { id: 'ebooks', label: 'Ebooks', icon: <BookOpen className="w-4 h-4" />, count: ebooksItems.length },
+    { id: 'retrogaming', label: 'Retro', icon: <Gamepad2 className="w-4 h-4" />, count: retrogaming.length },
+    { id: 'requests', label: 'Demandes', icon: <MessageSquare className="w-4 h-4" />, count: requests.length },
+    { id: 'users', label: 'Users', icon: <Users className="w-4 h-4" />, count: users.length },
+    { id: 'messages', label: 'Staff', icon: <MessageSquare className="w-4 h-4" /> },
+    { id: 'changelogs', label: 'Logs', icon: <FileText className="w-4 h-4" />, count: changelogs.length },
+    { id: 'modules', label: 'Modules', icon: <Settings className="w-4 h-4" /> },
+    { id: 'cinema', label: 'Cinema', icon: <Film className="w-4 h-4" /> },
   ];
 
   const moduleLabels = {
@@ -104,62 +306,229 @@ export default function AdminPage() {
 
   return (
     <div className="container mx-auto px-4 py-8" data-testid="admin-page">
-      <h1 className="text-3xl font-bold mb-6 flex items-center gap-3"><Shield className="w-8 h-8 text-red-400" />Administration</h1>
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+      <h1 className="text-3xl font-bold mb-6 flex items-center gap-3"><Shield className="w-8 h-8 text-red-400" />Administration WaveWatch</h1>
+
+      {/* Tabs */}
+      <div className="flex gap-1.5 mb-6 overflow-x-auto pb-2">
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} data-testid={`admin-tab-${t.id}`}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${tab === t.id ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'}`}>{t.icon}{t.label}</button>
+          <button key={t.id} onClick={() => { setTab(t.id); setUserPage(1); }} data-testid={`admin-tab-${t.id}`}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${tab === t.id ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'}`}>
+            {t.icon}<span className="hidden sm:inline">{t.label}</span>{t.count !== undefined && <span className="text-[10px] opacity-70">({t.count})</span>}
+          </button>
         ))}
       </div>
 
+      {/* Dashboard Stats */}
       {tab === 'stats' && stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4" data-testid="admin-stats">
-          {[{label:'Utilisateurs',val:stats.total_users,color:'text-blue-400'},{label:'VIP',val:stats.vip_users,color:'text-yellow-400'},{label:'Feedback',val:stats.total_feedback,color:'text-green-400'},{label:'Demandes',val:stats.total_requests,color:'text-purple-400'},{label:'Playlists',val:stats.total_playlists,color:'text-pink-400'}].map(s => (
-            <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
-              <p className={`text-3xl font-bold ${s.color}`}>{s.val}</p>
-              <p className="text-sm text-muted-foreground">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {tab === 'users' && (
-        <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="admin-users">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-border bg-secondary/30"><th className="px-4 py-3 text-left">Utilisateur</th><th className="px-4 py-3 text-left">Email</th><th className="px-4 py-3 text-left">Role</th><th className="px-4 py-3 text-left">VIP</th><th className="px-4 py-3 text-left">VIP+</th><th className="px-4 py-3 text-left">Actions</th></tr></thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u._id} className="border-b border-border/50 hover:bg-secondary/30">
-                    <td className="px-4 py-3 font-medium">{u.username}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${u.is_admin ? 'bg-red-500/20 text-red-400' : u.is_uploader ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                        {u.is_admin ? 'Admin' : u.is_uploader ? 'Uploader' : 'User'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => updateUserRole(u._id, 'is_vip', !u.is_vip)} className={`px-2 py-0.5 rounded-full text-xs transition-colors ${u.is_vip ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400 hover:bg-yellow-500/10'}`}>
-                        {u.is_vip ? 'VIP' : '-'}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => updateUserRole(u._id, 'is_vip_plus', !u.is_vip_plus)} className={`px-2 py-0.5 rounded-full text-xs transition-colors ${u.is_vip_plus ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400 hover:bg-purple-500/10'}`}>
-                        {u.is_vip_plus ? 'VIP+' : '-'}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 flex gap-2">
-                      <button onClick={() => updateUserRole(u._id, 'is_uploader', !u.is_uploader)} className="text-xs text-muted-foreground hover:text-blue-400" title="Toggle uploader">UP</button>
-                      <button onClick={() => deleteUser(u._id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="space-y-6" data-testid="admin-stats">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Utilisateurs', val: stats.total_users, color: 'text-blue-400' },
+              { label: 'VIP', val: stats.vip_users, color: 'text-yellow-400' },
+              { label: 'VIP+', val: stats.vip_plus_users, color: 'text-purple-400' },
+              { label: 'Contenu Total', val: stats.total_content, color: 'text-green-400' },
+            ].map(s => (
+              <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
+                <p className={`text-3xl font-bold ${s.color}`}>{s.val}</p>
+                <p className="text-sm text-muted-foreground">{s.label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            {[
+              { label: 'Chaines TV', val: stats.tv_channels, icon: <Tv className="w-4 h-4" /> },
+              { label: 'Radio', val: stats.radio_stations, icon: <Radio className="w-4 h-4" /> },
+              { label: 'Musique', val: stats.music, icon: <Music className="w-4 h-4" /> },
+              { label: 'Logiciels', val: stats.software, icon: <Monitor className="w-4 h-4" /> },
+              { label: 'Jeux', val: stats.games, icon: <Gamepad2 className="w-4 h-4" /> },
+              { label: 'Ebooks', val: stats.ebooks, icon: <BookOpen className="w-4 h-4" /> },
+              { label: 'Retrogaming', val: stats.retrogaming, icon: <Gamepad2 className="w-4 h-4" /> },
+              { label: 'Feedback', val: stats.total_feedback, icon: <MessageSquare className="w-4 h-4" /> },
+              { label: 'Demandes', val: stats.total_requests, icon: <MessageSquare className="w-4 h-4" /> },
+              { label: 'Playlists', val: stats.total_playlists, icon: <Film className="w-4 h-4" /> },
+            ].map(s => (
+              <div key={s.label} className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-secondary">{s.icon}</div>
+                <div><p className="text-lg font-bold">{s.val}</p><p className="text-xs text-muted-foreground">{s.label}</p></div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
+      {/* Broadcast */}
+      {tab === 'broadcast' && (
+        <div className="bg-card border border-border rounded-xl p-6 max-w-lg" data-testid="admin-broadcast">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Send className="w-5 h-5" />Envoyer un message a tous</h2>
+          <div className="space-y-4">
+            <div><label className="text-sm font-medium">Sujet</label><input type="text" value={broadcastForm.subject} onChange={e => setBroadcastForm(p => ({ ...p, subject: e.target.value }))} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background outline-none" placeholder="Sujet du message" /></div>
+            <div><label className="text-sm font-medium">Contenu</label><textarea value={broadcastForm.content} onChange={e => setBroadcastForm(p => ({ ...p, content: e.target.value }))} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background outline-none" rows={4} placeholder="Contenu du message" /></div>
+            <button onClick={sendBroadcast} className="px-6 py-2 rounded-lg bg-primary text-primary-foreground font-medium flex items-center gap-2"><Send className="w-4 h-4" />Envoyer a tous</button>
+          </div>
+        </div>
+      )}
+
+      {/* TV Channels */}
+      {tab === 'tvchannels' && (
+        <>
+          <ContentTable items={tvChannels} columns={[{ key: 'name', label: 'Nom' }, { key: 'category', label: 'Categorie' }, { key: 'country', label: 'Pays' }, { key: 'quality', label: 'Qualite' }]}
+            onEdit={(item) => handleEdit('tvchannels', item)} onDelete={(id) => handleDelete('/api/admin/tv-channels', id, 'cette chaine')}
+            onToggle={(id) => handleToggle('/api/admin/tv-channels', id, tvChannels, setTvChannels)}
+            searchTerm={searchTerms.tv || ''} setSearchTerm={v => setSearchTerms(p => ({ ...p, tv: v }))}
+            onAdd={() => handleAdd('tvchannels', tvFields)} addLabel="Chaines TV" type="tv" />
+          {showForm === 'tvchannels' && <ContentForm fields={tvFields} data={formData} setData={setFormData} onSubmit={() => handleSubmit('tvchannels', '/api/admin/tv-channels')} onCancel={() => setShowForm(null)} title={editingId ? 'Modifier la chaine' : 'Ajouter une chaine'} />}
+        </>
+      )}
+
+      {/* Radio */}
+      {tab === 'radio' && (
+        <>
+          <ContentTable items={radioStations} columns={[{ key: 'name', label: 'Nom' }, { key: 'genre', label: 'Genre' }, { key: 'country', label: 'Pays' }, { key: 'frequency', label: 'Frequence' }]}
+            onEdit={(item) => handleEdit('radio', item)} onDelete={(id) => handleDelete('/api/admin/radio-stations', id, 'cette station')}
+            onToggle={(id) => handleToggle('/api/admin/radio-stations', id, radioStations, setRadioStations)}
+            searchTerm={searchTerms.radio || ''} setSearchTerm={v => setSearchTerms(p => ({ ...p, radio: v }))}
+            onAdd={() => handleAdd('radio', radioFields)} addLabel="Stations Radio" type="radio" />
+          {showForm === 'radio' && <ContentForm fields={radioFields} data={formData} setData={setFormData} onSubmit={() => handleSubmit('radio', '/api/admin/radio-stations')} onCancel={() => setShowForm(null)} title={editingId ? 'Modifier la station' : 'Ajouter une station'} />}
+        </>
+      )}
+
+      {/* Music */}
+      {tab === 'music' && (
+        <>
+          <ContentTable items={musicContent} columns={[{ key: 'title', label: 'Titre' }, { key: 'artist', label: 'Artiste' }, { key: 'genre', label: 'Genre' }]}
+            onEdit={(item) => handleEdit('music', item)} onDelete={(id) => handleDelete('/api/admin/music', id, 'ce contenu')}
+            onToggle={(id) => handleToggle('/api/admin/music', id, musicContent, setMusicContent)}
+            searchTerm={searchTerms.music || ''} setSearchTerm={v => setSearchTerms(p => ({ ...p, music: v }))}
+            onAdd={() => handleAdd('music', musicFields)} addLabel="Contenu Musical" type="music" />
+          {showForm === 'music' && <ContentForm fields={musicFields} data={formData} setData={setFormData} onSubmit={() => handleSubmit('music', '/api/admin/music')} onCancel={() => setShowForm(null)} title={editingId ? 'Modifier' : 'Ajouter un contenu musical'} />}
+        </>
+      )}
+
+      {/* Software */}
+      {tab === 'software' && (
+        <>
+          <ContentTable items={softwareItems} columns={[{ key: 'name', label: 'Nom' }, { key: 'developer', label: 'Developpeur' }, { key: 'category', label: 'Categorie' }, { key: 'platform', label: 'Plateforme' }]}
+            onEdit={(item) => handleEdit('software', item)} onDelete={(id) => handleDelete('/api/admin/software', id, 'ce logiciel')}
+            onToggle={(id) => handleToggle('/api/admin/software', id, softwareItems, setSoftwareItems)}
+            searchTerm={searchTerms.soft || ''} setSearchTerm={v => setSearchTerms(p => ({ ...p, soft: v }))}
+            onAdd={() => handleAdd('software', softFields)} addLabel="Logiciels" type="software" />
+          {showForm === 'software' && <ContentForm fields={softFields} data={formData} setData={setFormData} onSubmit={() => handleSubmit('software', '/api/admin/software')} onCancel={() => setShowForm(null)} title={editingId ? 'Modifier le logiciel' : 'Ajouter un logiciel'} />}
+        </>
+      )}
+
+      {/* Games */}
+      {tab === 'games' && (
+        <>
+          <ContentTable items={gamesItems} columns={[{ key: 'title', label: 'Titre' }, { key: 'developer', label: 'Developpeur' }, { key: 'genre', label: 'Genre' }, { key: 'platform', label: 'Plateforme' }]}
+            onEdit={(item) => handleEdit('games', item)} onDelete={(id) => handleDelete('/api/admin/games', id, 'ce jeu')}
+            onToggle={(id) => handleToggle('/api/admin/games', id, gamesItems, setGamesItems)}
+            searchTerm={searchTerms.games || ''} setSearchTerm={v => setSearchTerms(p => ({ ...p, games: v }))}
+            onAdd={() => handleAdd('games', gameFields)} addLabel="Jeux" type="games" />
+          {showForm === 'games' && <ContentForm fields={gameFields} data={formData} setData={setFormData} onSubmit={() => handleSubmit('games', '/api/admin/games')} onCancel={() => setShowForm(null)} title={editingId ? 'Modifier le jeu' : 'Ajouter un jeu'} />}
+        </>
+      )}
+
+      {/* Ebooks */}
+      {tab === 'ebooks' && (
+        <>
+          <ContentTable items={ebooksItems} columns={[{ key: 'title', label: 'Titre' }, { key: 'author', label: 'Auteur' }, { key: 'category', label: 'Categorie' }, { key: 'language', label: 'Langue' }]}
+            onEdit={(item) => handleEdit('ebooks', item)} onDelete={(id) => handleDelete('/api/admin/ebooks', id, 'cet ebook')}
+            onToggle={(id) => handleToggle('/api/admin/ebooks', id, ebooksItems, setEbooksItems)}
+            searchTerm={searchTerms.ebooks || ''} setSearchTerm={v => setSearchTerms(p => ({ ...p, ebooks: v }))}
+            onAdd={() => handleAdd('ebooks', ebookFields)} addLabel="Ebooks" type="ebooks" />
+          {showForm === 'ebooks' && <ContentForm fields={ebookFields} data={formData} setData={setFormData} onSubmit={() => handleSubmit('ebooks', '/api/admin/ebooks')} onCancel={() => setShowForm(null)} title={editingId ? 'Modifier' : 'Ajouter un ebook'} />}
+        </>
+      )}
+
+      {/* Retrogaming */}
+      {tab === 'retrogaming' && (
+        <>
+          <ContentTable items={retrogaming} columns={[{ key: 'name', label: 'Nom' }, { key: 'category', label: 'Categorie' }, { key: 'url', label: 'URL' }]}
+            onEdit={(item) => handleEdit('retrogaming', item)} onDelete={(id) => handleDelete('/api/admin/retrogaming', id, 'cette source')}
+            onToggle={(id) => handleToggle('/api/admin/retrogaming', id, retrogaming, setRetrogaming)}
+            searchTerm={searchTerms.retro || ''} setSearchTerm={v => setSearchTerms(p => ({ ...p, retro: v }))}
+            onAdd={() => handleAdd('retrogaming', retroFields)} addLabel="Sources Retrogaming" type="retrogaming" />
+          {showForm === 'retrogaming' && <ContentForm fields={retroFields} data={formData} setData={setFormData} onSubmit={() => handleSubmit('retrogaming', '/api/admin/retrogaming')} onCancel={() => setShowForm(null)} title={editingId ? 'Modifier' : 'Ajouter une source'} />}
+        </>
+      )}
+
+      {/* Content Requests */}
+      {tab === 'requests' && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="admin-requests">
+          <div className="p-4 border-b border-border"><h2 className="font-bold">Demandes de contenu ({requests.length})</h2></div>
+          {requests.length === 0 ? <p className="text-center py-8 text-muted-foreground">Aucune demande</p> : (
+            <div className="divide-y divide-border">
+              {requests.map(r => (
+                <div key={r._id} className="p-4 hover:bg-secondary/20">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="font-medium">{r.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{r.description}</p>
+                      <p className="text-xs text-muted-foreground mt-2">Par {r.username || 'Anonyme'} - Type: {r.content_type}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${r.status === 'approved' ? 'bg-green-500/20 text-green-400' : r.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                        {r.status === 'approved' ? 'Approuve' : r.status === 'rejected' ? 'Rejete' : 'En attente'}
+                      </span>
+                      <button onClick={() => updateRequestStatus(r._id, 'approved')} className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400 hover:bg-green-500/30">Approuver</button>
+                      <button onClick={() => updateRequestStatus(r._id, 'rejected')} className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30">Rejeter</button>
+                      <button onClick={() => handleDelete('/api/admin/content-requests', r._id, 'cette demande')} className="p-1 text-muted-foreground hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Users */}
+      {tab === 'users' && (
+        <div className="space-y-4" data-testid="admin-users">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input type="text" placeholder="Rechercher un utilisateur..." value={userSearch} onChange={e => { setUserSearch(e.target.value); setUserPage(1); }} className="pl-9 pr-3 py-2 rounded-lg border border-input bg-background outline-none w-full" /></div>
+            <div className="flex gap-1.5 overflow-x-auto">
+              {[{ id: 'all', label: 'Tous' }, { id: 'admin', label: 'Admin' }, { id: 'vip', label: 'VIP' }, { id: 'vip_plus', label: 'VIP+' }, { id: 'uploader', label: 'Uploader' }].map(f => (
+                <button key={f.id} onClick={() => { setUserFilter(f.id); setUserPage(1); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${userFilter === f.id ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}>{f.label}</button>
+              ))}
+            </div>
+          </div>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-border bg-secondary/30"><th className="px-4 py-3 text-left">Utilisateur</th><th className="px-4 py-3 text-left">Email</th><th className="px-4 py-3 text-left">Role</th><th className="px-4 py-3 text-left">VIP</th><th className="px-4 py-3 text-left">VIP+</th><th className="px-4 py-3 text-left">Actions</th></tr></thead>
+                <tbody>
+                  {paginatedUsers.map(u => (
+                    <tr key={u._id} className="border-b border-border/50 hover:bg-secondary/20">
+                      <td className="px-4 py-3 font-medium">{u.username}</td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{u.email}</td>
+                      <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs ${u.is_admin ? 'bg-red-500/20 text-red-400' : u.is_uploader ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}`}>{u.is_admin ? 'Admin' : u.is_uploader ? 'Uploader' : 'User'}</span></td>
+                      <td className="px-4 py-3"><button onClick={() => updateUserRole(u._id, 'is_vip', !u.is_vip)} className={`px-2 py-0.5 rounded-full text-xs ${u.is_vip ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400 hover:bg-yellow-500/10'}`}>{u.is_vip ? 'VIP' : '-'}</button></td>
+                      <td className="px-4 py-3"><button onClick={() => updateUserRole(u._id, 'is_vip_plus', !u.is_vip_plus)} className={`px-2 py-0.5 rounded-full text-xs ${u.is_vip_plus ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400 hover:bg-purple-500/10'}`}>{u.is_vip_plus ? 'VIP+' : '-'}</button></td>
+                      <td className="px-4 py-3 flex gap-1">
+                        <button onClick={() => updateUserRole(u._id, 'is_uploader', !u.is_uploader)} className="text-xs text-muted-foreground hover:text-blue-400 px-1">UP</button>
+                        <button onClick={() => deleteUser(u._id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-3 border-t border-border">
+                <span className="text-xs text-muted-foreground">{filteredUsers.length} utilisateurs</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setUserPage(p => Math.max(1, p - 1))} disabled={userPage === 1} className="p-1 rounded hover:bg-secondary disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+                  <span className="text-sm">{userPage}/{totalPages}</span>
+                  <button onClick={() => setUserPage(p => Math.min(totalPages, p + 1))} disabled={userPage === totalPages} className="p-1 rounded hover:bg-secondary disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Staff Messages */}
       {tab === 'messages' && (
         <div className="space-y-4" data-testid="admin-messages">
           {messages.length === 0 ? <p className="text-center py-8 text-muted-foreground">Aucun message</p> :
@@ -179,6 +548,18 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Changelogs */}
+      {tab === 'changelogs' && (
+        <>
+          <ContentTable items={changelogs} columns={[{ key: 'version', label: 'Version' }, { key: 'title', label: 'Titre' }, { key: 'release_date', label: 'Date' }]}
+            onEdit={(item) => handleEdit('changelogs', item)} onDelete={(id) => handleDelete('/api/admin/changelogs', id, 'ce changelog')}
+            searchTerm={searchTerms.logs || ''} setSearchTerm={v => setSearchTerms(p => ({ ...p, logs: v }))}
+            onAdd={() => handleAdd('changelogs', changelogFields)} addLabel="Changelogs" type="changelogs" />
+          {showForm === 'changelogs' && <ContentForm fields={changelogFields} data={formData} setData={setFormData} onSubmit={() => handleSubmit('changelogs', '/api/admin/changelogs')} onCancel={() => setShowForm(null)} title={editingId ? 'Modifier le changelog' : 'Ajouter un changelog'} />}
+        </>
+      )}
+
+      {/* Modules */}
       {tab === 'modules' && (
         <div className="bg-card border border-border rounded-xl p-6" data-testid="admin-modules">
           <h2 className="text-xl font-bold mb-4">Modules de la page d'accueil</h2>
@@ -195,6 +576,7 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Cinema Rooms */}
       {tab === 'cinema' && (
         <div className="space-y-6" data-testid="admin-cinema">
           <div className="bg-card border border-border rounded-xl p-6">
@@ -214,10 +596,7 @@ export default function AdminPage() {
               <div className="divide-y divide-border">
                 {cinemaRooms.map(r => (
                   <div key={r.room_id} className="flex items-center justify-between p-4 hover:bg-secondary/30">
-                    <div>
-                      <p className="font-medium">{r.name}</p>
-                      <p className="text-sm text-muted-foreground">{r.movie_title} - {r.date} a {r.time}</p>
-                    </div>
+                    <div><p className="font-medium">{r.name}</p><p className="text-sm text-muted-foreground">{r.movie_title} - {r.date} a {r.time}</p></div>
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-muted-foreground">{r.capacity} places</span>
                       <button onClick={() => deleteRoom(r.room_id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>

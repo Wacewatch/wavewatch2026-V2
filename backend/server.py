@@ -938,3 +938,324 @@ async def get_achievements(user: dict = Depends(get_current_user)):
         {"id": "vip_member", "name": "Membre VIP", "description": "Obtenir le statut VIP", "icon": "crown", "unlocked": user.get("is_vip", False)},
     ]
     return {"achievements": achievements, "stats": {"favorites": fav_count, "watched": history_count, "playlists": playlist_count}}
+
+
+# =================== ADMIN CONTENT CRUD ===================
+
+async def require_admin(user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin requis")
+    return user
+
+async def require_admin_or_uploader(user: dict = Depends(get_current_user)):
+    if not user.get("is_admin") and not user.get("is_uploader"):
+        raise HTTPException(status_code=403, detail="Admin ou uploader requis")
+    return user
+
+# --- TV Channels CRUD ---
+@app.post("/api/admin/tv-channels")
+async def create_tv_channel(request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    data["is_active"] = data.get("is_active", True)
+    result = await db.tv_channels.insert_one(data)
+    data["_id"] = str(result.inserted_id)
+    return data
+
+@app.put("/api/admin/tv-channels/{channel_id}")
+async def update_tv_channel(channel_id: str, request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.tv_channels.update_one({"_id": ObjectId(channel_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/tv-channels/{channel_id}")
+async def delete_tv_channel(channel_id: str, user: dict = Depends(require_admin)):
+    await db.tv_channels.delete_one({"_id": ObjectId(channel_id)})
+    return {"message": "Supprime"}
+
+# --- Radio Stations CRUD ---
+@app.post("/api/admin/radio-stations")
+async def create_radio_station(request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    data["is_active"] = data.get("is_active", True)
+    result = await db.radio_stations.insert_one(data)
+    data["_id"] = str(result.inserted_id)
+    return data
+
+@app.put("/api/admin/radio-stations/{station_id}")
+async def update_radio_station(station_id: str, request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.radio_stations.update_one({"_id": ObjectId(station_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/radio-stations/{station_id}")
+async def delete_radio_station(station_id: str, user: dict = Depends(require_admin)):
+    await db.radio_stations.delete_one({"_id": ObjectId(station_id)})
+    return {"message": "Supprime"}
+
+# --- Music Content CRUD ---
+@app.post("/api/admin/music")
+async def create_music(request: Request, user: dict = Depends(require_admin_or_uploader)):
+    data = await request.json()
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    data["is_active"] = data.get("is_active", True)
+    result = await db.music_content.insert_one(data)
+    data["_id"] = str(result.inserted_id)
+    return data
+
+@app.get("/api/music")
+async def get_music():
+    items = await db.music_content.find({"is_active": True}).sort("created_at", -1).to_list(200)
+    for item in items:
+        item["_id"] = str(item["_id"])
+    return items
+
+@app.put("/api/admin/music/{music_id}")
+async def update_music(music_id: str, request: Request, user: dict = Depends(require_admin_or_uploader)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.music_content.update_one({"_id": ObjectId(music_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/music/{music_id}")
+async def delete_music(music_id: str, user: dict = Depends(require_admin)):
+    await db.music_content.delete_one({"_id": ObjectId(music_id)})
+    return {"message": "Supprime"}
+
+# --- Software CRUD ---
+@app.post("/api/admin/software")
+async def create_software(request: Request, user: dict = Depends(require_admin_or_uploader)):
+    data = await request.json()
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    data["is_active"] = data.get("is_active", True)
+    result = await db.software.insert_one(data)
+    data["_id"] = str(result.inserted_id)
+    return data
+
+@app.put("/api/admin/software/{soft_id}")
+async def update_software(soft_id: str, request: Request, user: dict = Depends(require_admin_or_uploader)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.software.update_one({"_id": ObjectId(soft_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/software/{soft_id}")
+async def delete_software_item(soft_id: str, user: dict = Depends(require_admin)):
+    await db.software.delete_one({"_id": ObjectId(soft_id)})
+    return {"message": "Supprime"}
+
+# --- Games CRUD ---
+@app.get("/api/games")
+async def get_games():
+    items = await db.games.find({"is_active": True}).sort("created_at", -1).to_list(200)
+    for item in items:
+        item["_id"] = str(item["_id"])
+    return items
+
+@app.post("/api/admin/games")
+async def create_game(request: Request, user: dict = Depends(require_admin_or_uploader)):
+    data = await request.json()
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    data["is_active"] = data.get("is_active", True)
+    result = await db.games.insert_one(data)
+    data["_id"] = str(result.inserted_id)
+    return data
+
+@app.put("/api/admin/games/{game_id}")
+async def update_game(game_id: str, request: Request, user: dict = Depends(require_admin_or_uploader)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.games.update_one({"_id": ObjectId(game_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/games/{game_id}")
+async def delete_game(game_id: str, user: dict = Depends(require_admin)):
+    await db.games.delete_one({"_id": ObjectId(game_id)})
+    return {"message": "Supprime"}
+
+# --- Ebooks CRUD ---
+@app.post("/api/admin/ebooks")
+async def create_ebook(request: Request, user: dict = Depends(require_admin_or_uploader)):
+    data = await request.json()
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    data["is_active"] = data.get("is_active", True)
+    result = await db.ebooks.insert_one(data)
+    data["_id"] = str(result.inserted_id)
+    return data
+
+@app.put("/api/admin/ebooks/{ebook_id}")
+async def update_ebook(ebook_id: str, request: Request, user: dict = Depends(require_admin_or_uploader)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.ebooks.update_one({"_id": ObjectId(ebook_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/ebooks/{ebook_id}")
+async def delete_ebook(ebook_id: str, user: dict = Depends(require_admin)):
+    await db.ebooks.delete_one({"_id": ObjectId(ebook_id)})
+    return {"message": "Supprime"}
+
+# --- Retrogaming CRUD ---
+@app.post("/api/admin/retrogaming")
+async def create_retrogaming(request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    data["is_active"] = data.get("is_active", True)
+    result = await db.retrogaming_sources.insert_one(data)
+    data["_id"] = str(result.inserted_id)
+    return data
+
+@app.put("/api/admin/retrogaming/{source_id}")
+async def update_retrogaming(source_id: str, request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.retrogaming_sources.update_one({"_id": ObjectId(source_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/retrogaming/{source_id}")
+async def delete_retrogaming(source_id: str, user: dict = Depends(require_admin)):
+    await db.retrogaming_sources.delete_one({"_id": ObjectId(source_id)})
+    return {"message": "Supprime"}
+
+# --- Changelogs CRUD ---
+@app.get("/api/changelogs")
+async def get_changelogs():
+    items = await db.changelogs.find().sort("release_date", -1).to_list(100)
+    for item in items:
+        item["_id"] = str(item["_id"])
+    return items
+
+@app.post("/api/admin/changelogs")
+async def create_changelog(request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data["created_at"] = datetime.now(timezone.utc).isoformat()
+    data["created_by"] = user["_id"]
+    result = await db.changelogs.insert_one(data)
+    data["_id"] = str(result.inserted_id)
+    return data
+
+@app.put("/api/admin/changelogs/{log_id}")
+async def update_changelog(log_id: str, request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.changelogs.update_one({"_id": ObjectId(log_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/changelogs/{log_id}")
+async def delete_changelog(log_id: str, user: dict = Depends(require_admin)):
+    await db.changelogs.delete_one({"_id": ObjectId(log_id)})
+    return {"message": "Supprime"}
+
+# --- Broadcast Message ---
+@app.post("/api/admin/broadcast")
+async def send_broadcast(request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    subject = data.get("subject", "")
+    content = data.get("content", "")
+    if not subject or not content:
+        raise HTTPException(status_code=400, detail="Sujet et contenu requis")
+    users_list = await db.users.find({}, {"_id": 1}).to_list(10000)
+    messages = [{
+        "sender_id": user["_id"],
+        "recipient_id": str(u["_id"]),
+        "subject": subject,
+        "content": content,
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    } for u in users_list]
+    if messages:
+        await db.user_messages.insert_many(messages)
+    return {"message": f"Message envoye a {len(messages)} utilisateurs"}
+
+# --- Admin Enhanced Stats ---
+@app.get("/api/admin/enhanced-stats")
+async def get_admin_enhanced_stats(user: dict = Depends(require_admin)):
+    total_users = await db.users.count_documents({})
+    vip_users = await db.users.count_documents({"is_vip": True})
+    vip_plus = await db.users.count_documents({"is_vip_plus": True})
+    admin_count = await db.users.count_documents({"is_admin": True})
+    tv_count = await db.tv_channels.count_documents({})
+    radio_count = await db.radio_stations.count_documents({})
+    retro_count = await db.retrogaming_sources.count_documents({})
+    music_count = await db.music_content.count_documents({})
+    soft_count = await db.software.count_documents({})
+    game_count = await db.games.count_documents({})
+    ebook_count = await db.ebooks.count_documents({})
+    feedback_count = await db.feedback.count_documents({})
+    requests_count = await db.content_requests.count_documents({})
+    playlists_count = await db.playlists.count_documents({})
+    return {
+        "total_users": total_users, "vip_users": vip_users, "vip_plus_users": vip_plus,
+        "admin_users": admin_count, "tv_channels": tv_count, "radio_stations": radio_count,
+        "retrogaming": retro_count, "music": music_count, "software": soft_count,
+        "games": game_count, "ebooks": ebook_count, "total_feedback": feedback_count,
+        "total_requests": requests_count, "total_playlists": playlists_count,
+        "total_content": tv_count + radio_count + retro_count + music_count + soft_count + game_count + ebook_count
+    }
+
+# --- User Detailed Stats (for dashboard) ---
+@app.get("/api/user/detailed-stats")
+async def get_user_detailed_stats(user: dict = Depends(get_current_user)):
+    uid = user["_id"]
+    fav_count = await db.favorites.count_documents({"user_id": uid})
+    history = await db.watch_history.find({"user_id": uid}).to_list(1000)
+    playlist_count = await db.playlists.count_documents({"user_id": uid})
+    movies_watched = sum(1 for h in history if h.get("content_type") == "movie")
+    shows_watched = sum(1 for h in history if h.get("content_type") == "tv")
+    episodes_watched = sum(1 for h in history if h.get("content_type") == "episode")
+    # Recent watch time (simulated based on count)
+    total_watch_time = movies_watched * 120 + shows_watched * 45 + episodes_watched * 45
+    # Likes/dislikes
+    likes = await db.user_ratings.count_documents({"user_id": uid, "rating": "like"})
+    dislikes = await db.user_ratings.count_documents({"user_id": uid, "rating": "dislike"})
+    return {
+        "favorites": fav_count, "watched": len(history), "playlists": playlist_count,
+        "movies_watched": movies_watched, "shows_watched": shows_watched,
+        "episodes_watched": episodes_watched, "total_watch_time": total_watch_time,
+        "total_likes": likes, "total_dislikes": dislikes,
+    }
+
+# --- User Ratings (Like/Dislike) ---
+@app.post("/api/user/ratings")
+async def rate_content(request: Request, user: dict = Depends(get_current_user)):
+    data = await request.json()
+    content_id = data.get("content_id")
+    content_type = data.get("content_type")
+    rating = data.get("rating")  # "like" or "dislike"
+    if not content_id or not content_type or rating not in ("like", "dislike"):
+        raise HTTPException(status_code=400, detail="Donnees invalides")
+    existing = await db.user_ratings.find_one({"user_id": user["_id"], "content_id": content_id, "content_type": content_type})
+    if existing:
+        if existing.get("rating") == rating:
+            await db.user_ratings.delete_one({"_id": existing["_id"]})
+            return {"rating": None, "message": "Vote retire"}
+        else:
+            await db.user_ratings.update_one({"_id": existing["_id"]}, {"$set": {"rating": rating}})
+            return {"rating": rating, "message": "Vote mis a jour"}
+    else:
+        await db.user_ratings.insert_one({
+            "user_id": user["_id"], "content_id": content_id, "content_type": content_type,
+            "rating": rating, "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        return {"rating": rating, "message": "Vote enregistre"}
+
+@app.get("/api/user/ratings/check")
+async def check_rating(content_id: int, content_type: str, user: dict = Depends(get_current_user)):
+    existing = await db.user_ratings.find_one({"user_id": user["_id"], "content_id": content_id, "content_type": content_type})
+    return {"rating": existing.get("rating") if existing else None}
+
+# --- Content Requests Admin Management ---
+@app.put("/api/admin/content-requests/{request_id}")
+async def update_content_request(request_id: str, request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    data.pop("_id", None)
+    await db.content_requests.update_one({"_id": ObjectId(request_id)}, {"$set": data})
+    return {"message": "Mis a jour"}
+
+@app.delete("/api/admin/content-requests/{request_id}")
+async def delete_content_request(request_id: str, user: dict = Depends(require_admin)):
+    await db.content_requests.delete_one({"_id": ObjectId(request_id)})
+    return {"message": "Supprime"}
