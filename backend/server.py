@@ -163,6 +163,18 @@ async def seed_default_content():
             {"name": "France Inter", "logo_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/France_Inter_logo.png/200px-France_Inter_logo.png", "stream_url": "https://icecast.radiofrance.fr/franceinter-hifi.aac", "genre": "Generaliste", "is_active": True, "created_at": datetime.now(timezone.utc).isoformat()},
         ]
         await db.radio_stations.insert_many(default_radios)
+    # Seed platform reviews if empty
+    if await db.platform_reviews.count_documents({}) == 0:
+        now = datetime.now(timezone.utc).isoformat()
+        default_reviews = [
+            {"user_id": "seed_user_1", "username": "CinePhile75", "is_admin": False, "is_vip": True, "is_vip_plus": False, "is_uploader": False, "contenu_score": 9, "fonctionnalites_score": 8, "design_score": 9, "message": "Super plateforme ! Le catalogue est immense et la qualite toujours au rendez-vous. J'adore les collections thematiques.", "created_at": now},
+            {"user_id": "seed_user_2", "username": "MovieLover92", "is_admin": False, "is_vip": False, "is_vip_plus": False, "is_uploader": False, "contenu_score": 8, "fonctionnalites_score": 9, "design_score": 8, "message": "Le design est magnifique et tres intuitif. Les themes personnalisables sont un vrai plus !", "created_at": now},
+            {"user_id": "seed_user_3", "username": "SeriesAddict", "is_admin": False, "is_vip": True, "is_vip_plus": True, "is_uploader": False, "contenu_score": 10, "fonctionnalites_score": 9, "design_score": 10, "message": "La meilleure plateforme de streaming que j'ai testee. Le suivi des series avec les notifications est genial.", "created_at": now},
+            {"user_id": "seed_user_4", "username": "AnimeFan_FR", "is_admin": False, "is_vip": False, "is_vip_plus": False, "is_uploader": False, "contenu_score": 9, "fonctionnalites_score": 8, "design_score": 9, "message": "Enfin une plateforme avec un vrai catalogue anime ! Les sous-titres francais sont toujours disponibles.", "created_at": now},
+            {"user_id": "seed_user_5", "username": "TechReviewer", "is_admin": False, "is_vip": True, "is_vip_plus": False, "is_uploader": True, "contenu_score": 8, "fonctionnalites_score": 10, "design_score": 8, "message": "Fonctionnalites impressionnantes : playlists, retrogaming, radio... C'est bien plus qu'un simple site de streaming.", "created_at": now},
+            {"user_id": "seed_user_6", "username": "NightOwl", "is_admin": False, "is_vip": False, "is_vip_plus": False, "is_uploader": False, "contenu_score": 9, "fonctionnalites_score": 8, "design_score": 9, "message": "Le mode sombre est parfait pour les sessions nocturnes. Bravo pour le travail sur l'interface !", "created_at": now},
+        ]
+        await db.platform_reviews.insert_many(default_reviews)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
