@@ -1,26 +1,92 @@
-# WaveWatch PRD - Updated Apr 15, 2026
+# WaveWatch PRD
 
-## Architecture: React 18 + FastAPI + MongoDB + TMDB API + Tailwind CSS 3
+## Original Problem Statement
+Plateforme de streaming WaveWatch - Corrections et améliorations demandées pour l'admin, la recherche, les thèmes et les fonctionnalités séries.
 
-## Implemented (Iterations 1-11)
+## User Personas
+- **Administrateur** : Gère le contenu, les utilisateurs, les modules de la page d'accueil
+- **Utilisateur Standard** : Regarde films/séries, crée des playlists, utilise la recherche
+- **Utilisateur VIP/VIP+** : Accès aux thèmes premium, fonctionnalités exclusives
 
-### Backend (130+ endpoints)
-- Auth, TMDB, Favorites, History (+delete toggle), Playlists (+colors)
-- Platform Reviews, User Messaging, WebSocket Notifications
-- Recommendations (TMDB similar), Admin content CRUD, VIP Code generation
-- Online users tracking, VIP Game, Achievements, Leaderboard
+## Core Requirements (Static)
+- Interface de streaming avec films, séries, anime
+- Gestion admin complète (CRUD pour tous les contenus)
+- Système de thèmes personnalisables
+- Recherche globale multi-contenus
+- Gestion des playlists et favoris
+- Intégration TMDB pour le contenu
 
-### Frontend (55+ pages)
-- **Homepage**: Horizontal slider sections, TMDB movie logos in hero, modules toggle from admin
-- **TV Channels**: Click opens stream modal with iframe (homepage + dedicated page)
-- **Music/Games/Ebooks/Software**: DB-driven with full detail pages (not modals)
-- **Dashboard**: Stats, Rating bars, Guestbook, Community, Recommendations, Achievements
-- **Admin**: 18 tabs + VIP Codes generation, content CRUD fixed
-- **Profile**: Cleaned (no themes/messages), admin-generated activation codes
-- **Notifications**: Real-time WebSocket bell with badge
-- **Slider**: All content sections use horizontal scroll with arrows
+## What's Been Implemented
 
-### Menus: Contenu (Films, Series, Anime, Acteurs, Musique, Jeux, Ebooks, Logiciels) | Medias (TV, Radio, Retrogaming, Playlists)
+### 2026-04-15 - Session Corrections
+1. **Admin - Modules avec drag & drop**
+   - Composant ModuleOrderManager.js créé
+   - Réordonnement par glisser-déposer
+   - Boutons flèches haut/bas
+   - Numéros de position
 
-## Testing: Iteration 11 - Backend 100%, Frontend 95%
-## Admin: admin@wavewatch.com / WaveWatch2026!
+2. **Fix Chaînes TV et Retrogaming**
+   - Backend corrigé pour éviter doublons
+   - Suppression fonctionne correctement
+   - IDs nettoyés avant insertion
+
+3. **Page Retrogaming**
+   - Affichage en grille comme chaînes TV
+   - Filtres par catégorie
+   - Modal de lecture intégré
+
+4. **Recherche globale améliorée**
+   - Endpoint /api/search/all créé
+   - Recherche dans : TV, musique, jeux, logiciels, ebooks, radio
+   - Filtres dynamiques selon résultats
+
+5. **Nouveaux thèmes**
+   - Gratuits : Cyberpunk, Monochrome, Sakura
+   - Limité : Estival (été)
+   - VIP : Inferno, Arctic
+   - Badges "NEW" ajoutés
+   - Animations VIP améliorées
+
+6. **Fonctionnalités Séries**
+   - Bouton "Reprendre" avec S{x} E{y}
+   - Marquer toute la série comme vue
+   - Progression par saison
+   - Endpoints /api/user/tv-progress créés
+
+7. **Barres de recherche retirées**
+   - Pages : Jeux, Logiciels, Musique, Ebooks
+   - Utilisation de la recherche principale
+
+8. **Promos LiveWatch/Sports-Stream**
+   - Logos corrects affichés
+   - Liens vers livewatch.sbs et sports-stream.sbs
+   - Serveur de secours pour LiveWatch
+
+## Prioritized Backlog
+
+### P0 (Critique)
+- [x] Admin modules drag & drop
+- [x] Fix doublons TV channels
+- [x] Recherche globale
+
+### P1 (Important)
+- [x] Nouveaux thèmes avec badges
+- [x] Reprendre lecture séries
+- [x] Marquer série entière comme vue
+- [ ] Compteurs TMDB dans admin
+
+### P2 (Nice to have)
+- [ ] Watch Party (regarder ensemble)
+- [ ] Personnalisation playlists avancée
+- [ ] Notifications push
+
+## Tech Stack
+- Frontend: React 18 + Tailwind CSS
+- Backend: FastAPI (Python)
+- Database: MongoDB
+- API: TMDB pour contenu films/séries
+
+## Next Tasks
+1. Ajouter du contenu test pour valider filtres de recherche
+2. Améliorer personnalisation playlists
+3. Implémenter Watch Party
