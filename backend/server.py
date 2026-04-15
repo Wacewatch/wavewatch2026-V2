@@ -557,7 +557,7 @@ async def get_feedback_stats():
     result = await db.feedback.aggregate(pipeline).to_list(1)
     stats = result[0] if result else {"content": 0, "functionality": 0, "design": 0, "totalFeedback": 0}
     stats.pop("_id", None)
-    guestbook = await db.feedback.find({"message": {"$ne": None, "$ne": ""}}, {"_id": 0, "message": 1, "username": 1, "created_at": 1}).sort("created_at", -1).limit(20).to_list(20)
+    guestbook = await db.feedback.find({"message": {"$nin": [None, ""]}}, {"_id": 0, "message": 1, "username": 1, "created_at": 1}).sort("created_at", -1).limit(20).to_list(20)
     return {"stats": stats, "guestbookMessages": guestbook}
 
 # ==================== STAFF MESSAGES ====================
@@ -853,3 +853,88 @@ async def get_retrogaming():
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "app": "WaveWatch", "version": "2026"}
+
+# ==================== CINEMA ROOMS ====================
+class CinemaRoomCreate(BaseModel):
+    name: str
+    movie_title: str
+    date: Optional[str] = ""
+    time: Optional[str] = ""
+    capacity: Optional[int] = 50
+
+@app.get("/api/admin/cinema-rooms")
+async def get_cinema_rooms(user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    rooms = await db.cinema_rooms.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"rooms": rooms}
+
+@app.post("/api/admin/cinema-rooms")
+async def create_cinema_room(req: CinemaRoomCreate, user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    room_id = secrets.token_hex(8)
+    doc = {
+        "room_id": room_id,
+        "name": req.name,
+        "movie_title": req.movie_title,
+        "date": req.date,
+        "time": req.time,
+        "capacity": req.capacity,
+        "attendees": [],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.cinema_rooms.insert_one(doc)
+    return {"room": {k: v for k, v in doc.items() if k != "_id"}}
+
+@app.delete("/api/admin/cinema-rooms/{room_id}")
+async def delete_cinema_room(room_id: str, user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    await db.cinema_rooms.delete_one({"room_id": room_id})
+    return {"success": True}
+
+@app.get("/api/cinema-rooms")
+async def get_public_cinema_rooms():
+    rooms = await db.cinema_rooms.find({}, {"_id": 0}).sort("date", 1).to_list(50)
+    return {"rooms": rooms}
+
+# ==================== TOP SUPPORTERS / LEADERBOARD ====================
+@app.get("/api/leaderboard")
+async def get_leaderboard():
+    pipeline = [
+        {"$project": {"_id": 0, "username": 1, "is_vip": 1, "is_vip_plus": 1, "is_admin": 1, "created_at": 1}},
+        {"$limit": 20}
+    ]
+    users_list = await db.users.aggregate(pipeline).to_list(20)
+    # Count activities per user
+    leaderboard = []
+    for u in users_list:
+        username = u.get("username", "Anonyme")
+        fav_count = await db.favorites.count_documents({"user_id": username}) if False else 0
+        leaderboard.append({
+            "username": username,
+            "is_vip": u.get("is_vip", False),
+            "is_vip_plus": u.get("is_vip_plus", False),
+            "score": fav_count
+        })
+    return {"leaderboard": sorted(leaderboard, key=lambda x: x["score"], reverse=True)}
+
+# ==================== ACHIEVEMENTS ====================
+@app.get("/api/user/achievements")
+async def get_achievements(user: dict = Depends(get_current_user)):
+    fav_count = await db.favorites.count_documents({"user_id": user["_id"]})
+    history_count = await db.watch_history.count_documents({"user_id": user["_id"]})
+    playlist_count = await db.playlists.count_documents({"user_id": user["_id"]})
+
+    achievements = [
+        {"id": "first_fav", "name": "Premier coup de coeur", "description": "Ajouter un premier favori", "icon": "heart", "unlocked": fav_count >= 1},
+        {"id": "cinephile", "name": "Cinephile", "description": "Ajouter 10 favoris", "icon": "film", "unlocked": fav_count >= 10},
+        {"id": "first_watch", "name": "Premier visionnage", "description": "Regarder un premier contenu", "icon": "play", "unlocked": history_count >= 1},
+        {"id": "binge_watcher", "name": "Binge Watcher", "description": "Regarder 25 contenus", "icon": "tv", "unlocked": history_count >= 25},
+        {"id": "marathon", "name": "Marathon", "description": "Regarder 100 contenus", "icon": "trophy", "unlocked": history_count >= 100},
+        {"id": "curator", "name": "Curateur", "description": "Creer une playlist", "icon": "list", "unlocked": playlist_count >= 1},
+        {"id": "collector", "name": "Collectionneur", "description": "Creer 5 playlists", "icon": "folder", "unlocked": playlist_count >= 5},
+        {"id": "vip_member", "name": "Membre VIP", "description": "Obtenir le statut VIP", "icon": "crown", "unlocked": user.get("is_vip", False)},
+    ]
+    return {"achievements": achievements, "stats": {"favorites": fav_count, "watched": history_count, "playlists": playlist_count}}

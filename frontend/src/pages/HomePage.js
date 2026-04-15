@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Star } from 'lucide-react';
 import API, { TMDB_IMG } from '../lib/api';
+import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
 import { LoadingGrid } from '../components/Loading';
@@ -60,7 +60,7 @@ function Hero() {
   );
 }
 
-function ContentRow({ title, endpoint, type = 'movie', isAnime = false }) {
+function ContentRow({ title, endpoint, type = 'movie', isAnime = false, link }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,9 +74,342 @@ function ContentRow({ title, endpoint, type = 'movie', isAnime = false }) {
   if (!items.length) return null;
 
   return (
-    <ContentGrid title={title}>
+    <ContentGrid title={title} link={link}>
       {items.map(item => <ContentCard key={item.id} item={item} type={type} isAnime={isAnime} />)}
     </ContentGrid>
+  );
+}
+
+function TrendingActorsRow() {
+  const [actors, setActors] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    API.get('/api/tmdb/popular/persons').then(({ data }) => setActors((data.results || []).slice(0, 12))).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="space-y-4"><h2 className="text-xl font-bold">Acteurs Tendance</h2><LoadingGrid count={6} /></div>;
+  if (!actors.length) return null;
+
+  return (
+    <div data-testid="trending-actors-section">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5 text-blue-400" />Acteurs Tendance</h2>
+        <Link to="/actors" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
+      </div>
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 gap-3">
+        {actors.map(a => (
+          <Link key={a.id} to={`/actors/${a.id}`} className="group text-center">
+            <div className="aspect-square rounded-full overflow-hidden bg-muted mb-2 mx-auto w-full max-w-[100px]">
+              <img src={a.profile_path ? `${TMDB_IMG}/w200${a.profile_path}` : 'https://placehold.co/200x200/333/ccc?text=?'} alt={a.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+            </div>
+            <p className="text-xs font-medium truncate group-hover:text-blue-400">{a.name}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrendingTVChannelsRow() {
+  const [channels, setChannels] = useState([]);
+  useEffect(() => {
+    API.get('/api/tv-channels').then(({ data }) => setChannels(data.channels || [])).catch(() => {});
+  }, []);
+
+  if (!channels.length) return null;
+
+  return (
+    <div data-testid="trending-tv-channels-section">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold flex items-center gap-2"><Tv className="w-5 h-5 text-green-400" />Chaines TV Populaires</h2>
+        <Link to="/tv-channels" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
+      </div>
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+        {channels.slice(0, 8).map(ch => (
+          <div key={ch.id} className="bg-card border border-border rounded-xl p-3 text-center hover:border-primary/30 transition-colors group cursor-pointer">
+            <div className="w-12 h-12 mx-auto mb-2 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center">
+              {ch.logo ? <img src={ch.logo} alt={ch.name} className="w-full h-full object-contain p-1" onError={e => { e.target.style.display = 'none'; }} /> : <Tv className="w-6 h-6 text-muted-foreground" />}
+            </div>
+            <p className="text-xs font-medium truncate group-hover:text-green-400">{ch.name}</p>
+            <p className="text-[10px] text-muted-foreground">{ch.category}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PopularCollectionsRow() {
+  const [collections, setCollections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const queries = ['Marvel', 'Star Wars', 'Harry Potter', 'Fast Furious', 'Jurassic', 'Batman'];
+
+  useEffect(() => {
+    Promise.all(queries.map(q => API.get(`/api/tmdb/collections/search?q=${q}`).then(({ data }) => data.results?.[0]).catch(() => null)))
+      .then(results => setCollections(results.filter(Boolean).slice(0, 6)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading || !collections.length) return null;
+
+  return (
+    <div data-testid="popular-collections-section">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Collections Populaires</h2>
+        <Link to="/collections" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        {collections.map(c => (
+          <Link key={c.id} to={`/collections`} className="group">
+            <div className="aspect-[2/3] rounded-xl overflow-hidden bg-muted relative">
+              {c.poster_path && <img src={`${TMDB_IMG}/w300${c.poster_path}`} alt={c.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+              <p className="absolute bottom-2 left-2 right-2 text-xs font-bold text-white">{c.name}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PublicPlaylistsRow() {
+  const [playlists, setPlaylists] = useState([]);
+  useEffect(() => {
+    API.get('/api/playlists/public/discover').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {});
+  }, []);
+
+  if (!playlists.length) return null;
+
+  const colors = ['from-blue-600 to-purple-600', 'from-pink-600 to-red-600', 'from-green-600 to-teal-600', 'from-orange-600 to-yellow-600', 'from-indigo-600 to-blue-600', 'from-purple-600 to-pink-600'];
+
+  return (
+    <div data-testid="public-playlists-section">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Playlists de la Communaute</h2>
+        <Link to="/discover/playlists" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        {playlists.slice(0, 6).map((p, i) => (
+          <Link key={p._id} to={`/discover/playlists`} className="group">
+            <div className={`aspect-square rounded-xl bg-gradient-to-br ${colors[i % colors.length]} p-4 flex flex-col justify-between group-hover:scale-105 transition-transform`}>
+              <div className="flex items-center gap-1"><Play className="w-4 h-4 text-white/70" /><span className="text-xs text-white/70">{p.items?.length || 0} titres</span></div>
+              <div><p className="text-sm font-bold text-white truncate">{p.name}</p><p className="text-xs text-white/60">par {p.username || 'Anonyme'}</p></div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SportsStreamPromo() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-900 via-red-800 to-orange-900 p-6 md:p-8" data-testid="sports-promo">
+      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23fff\' fill-opacity=\'0.3\'%3E%3Ccircle cx=\'20\' cy=\'20\' r=\'5\'/%3E%3C/g%3E%3C/svg%3E")' }} />
+      <div className="relative flex flex-col md:flex-row items-center gap-6">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-3"><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" /><span className="text-sm font-bold text-red-300">SPORTS EN DIRECT</span></div>
+          <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">Ne manquez aucun match !</h3>
+          <p className="text-white/70 mb-4">Football, Basketball, Tennis, F1 et plus - regardez en direct ou en replay</p>
+          <Link to="/sport" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-red-900 font-bold hover:bg-white/90 transition-colors">
+            <Play className="w-4 h-4" />Voir les sports
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {['Football', 'Basketball', 'Tennis', 'F1'].map(s => (
+            <div key={s} className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center border border-white/10">
+              <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
+              <p className="text-xs font-medium text-white">{s}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LiveWatchPromo() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 p-6 md:p-8" data-testid="livewatch-promo">
+      <div className="relative flex flex-col md:flex-row items-center gap-6">
+        <div className="flex-1">
+          <h3 className="text-2xl font-bold text-white mb-2">WaveWatch Live</h3>
+          <p className="text-white/70 mb-4">Regardez ensemble en temps reel avec vos amis. Chat integre, synchronisation parfaite.</p>
+          <div className="flex gap-3">
+            <Link to="/tv-channels" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"><Tv className="w-4 h-4" />TV en direct</Link>
+            <Link to="/radio" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"><Radio className="w-4 h-4" />Radio FM</Link>
+          </div>
+        </div>
+        <div className="flex gap-4">
+          <div className="bg-white/10 rounded-xl p-4 text-center"><Tv className="w-8 h-8 text-blue-400 mx-auto mb-2" /><p className="text-xs text-white font-medium">8+ chaines</p></div>
+          <div className="bg-white/10 rounded-xl p-4 text-center"><Radio className="w-8 h-8 text-purple-400 mx-auto mb-2" /><p className="text-xs text-white font-medium">8+ radios</p></div>
+          <div className="bg-white/10 rounded-xl p-4 text-center"><Gamepad2 className="w-8 h-8 text-green-400 mx-auto mb-2" /><p className="text-xs text-white font-medium">6+ jeux retro</p></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SubscriptionOffer() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-yellow-500/30 bg-gradient-to-r from-yellow-900/30 via-orange-900/30 to-red-900/30 p-6 md:p-8" data-testid="subscription-offer">
+      <div className="relative flex flex-col md:flex-row items-center gap-6">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-3"><Crown className="w-6 h-6 text-yellow-400" /><span className="text-sm font-bold text-yellow-300">OFFRE VIP</span></div>
+          <h3 className="text-2xl font-bold mb-2">Devenez VIP et debloquez tout !</h3>
+          <p className="text-muted-foreground mb-4">Themes premium, contenu exclusif, priorite sur les demandes, jeu VIP quotidien et bien plus.</p>
+          <div className="flex gap-3">
+            <Link to="/subscription" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold hover:from-yellow-400 hover:to-orange-400 transition-all"><Crown className="w-4 h-4" />Devenir VIP</Link>
+            <Link to="/vip-game" className="inline-flex items-center gap-2 px-5 py-3 rounded-lg border border-yellow-500/30 text-yellow-400 font-medium hover:bg-yellow-500/10 transition-colors">Jeu VIP gratuit</Link>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {['Themes exclusifs', 'Sans pub', 'Priorite demandes', 'Badge VIP'].map(f => (
+            <div key={f} className="bg-yellow-500/10 rounded-lg p-3 text-center border border-yellow-500/20">
+              <Star className="w-4 h-4 text-yellow-400 mx-auto mb-1" />
+              <p className="text-xs font-medium">{f}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RandomContent() {
+  const [content, setContent] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchRandom = () => {
+    setLoading(true);
+    const page = Math.floor(Math.random() * 5) + 1;
+    const isMovie = Math.random() > 0.5;
+    API.get(`/api/tmdb/${isMovie ? 'popular/movies' : 'popular/tv'}?page=${page}`).then(({ data }) => {
+      const results = data.results || [];
+      if (results.length) setContent({ ...results[Math.floor(Math.random() * results.length)], isMovie });
+    }).catch(() => {}).finally(() => setLoading(false));
+  };
+
+  useEffect(() => { fetchRandom(); }, []);
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden" data-testid="random-content">
+      <div className="p-4 flex items-center justify-between border-b border-border">
+        <h2 className="text-xl font-bold flex items-center gap-2"><Shuffle className="w-5 h-5 text-purple-400" />Contenu Aleatoire</h2>
+        <button onClick={fetchRandom} disabled={loading} className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium disabled:opacity-50 transition-colors flex items-center gap-2" data-testid="random-refresh">
+          <Shuffle className="w-4 h-4" />{loading ? 'Chargement...' : 'Nouveau'}
+        </button>
+      </div>
+      {content && (
+        <Link to={`/${content.isMovie ? 'movies' : 'tv-shows'}/${content.id}`} className="flex flex-col md:flex-row gap-4 p-4 group">
+          <div className="w-full md:w-48 aspect-[2/3] md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-muted flex-shrink-0">
+            {content.poster_path && <img src={`${TMDB_IMG}/w300${content.poster_path}`} alt={content.title || content.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              {content.isMovie ? <Film className="w-4 h-4 text-red-400" /> : <Tv className="w-4 h-4 text-blue-400" />}
+              <span className="text-xs text-muted-foreground">{content.isMovie ? 'Film' : 'Serie'}</span>
+              <div className="flex items-center gap-1 ml-auto"><Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /><span className="text-sm font-medium">{content.vote_average?.toFixed(1)}</span></div>
+            </div>
+            <h3 className="text-xl font-bold mb-2 group-hover:text-blue-400 transition-colors">{content.title || content.name}</h3>
+            <p className="text-muted-foreground text-sm line-clamp-4">{content.overview}</p>
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium">
+              <Play className="w-4 h-4" />Voir les details
+            </div>
+          </div>
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function CalendarWidgetHome() {
+  const [upcoming, setUpcoming] = useState([]);
+
+  useEffect(() => {
+    API.get('/api/tmdb/upcoming/movies').then(({ data }) => {
+      const today = new Date().toISOString().split('T')[0];
+      setUpcoming((data.results || []).filter(m => m.release_date >= today).sort((a, b) => a.release_date.localeCompare(b.release_date)).slice(0, 6));
+    }).catch(() => {});
+  }, []);
+
+  if (!upcoming.length) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden" data-testid="calendar-widget">
+      <div className="p-4 flex items-center justify-between border-b border-border">
+        <h2 className="text-xl font-bold flex items-center gap-2"><CalIcon className="w-5 h-5 text-blue-400" />Prochaines Sorties</h2>
+        <Link to="/calendar" className="text-sm text-blue-400 hover:underline">Voir le calendrier</Link>
+      </div>
+      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        {upcoming.map(m => (
+          <Link key={m.id} to={`/movies/${m.id}`} className="group">
+            <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted mb-2">
+              {m.poster_path && <img src={`${TMDB_IMG}/w200${m.poster_path}`} alt={m.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
+            </div>
+            <p className="text-xs font-medium truncate group-hover:text-blue-400">{m.title}</p>
+            <p className="text-[10px] text-muted-foreground">{new Date(m.release_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VIPGamePromo() {
+  return (
+    <Link to="/vip-game" className="block" data-testid="vip-game-promo">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-900 via-pink-900 to-orange-900 p-6 group hover:shadow-lg hover:shadow-purple-500/20 transition-all">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center border-2 border-yellow-500/50 group-hover:scale-110 transition-transform">
+            <Crown className="w-8 h-8 text-yellow-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-white mb-1">Jeu VIP Quotidien</h3>
+            <p className="text-white/70 text-sm">Tentez votre chance chaque jour pour gagner le statut VIP gratuitement !</p>
+          </div>
+          <Play className="w-8 h-8 text-white/50 group-hover:text-white transition-colors" />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function FootballCalendarWidget() {
+  const matches = [
+    { id: 1, home: 'PSG', away: 'OM', date: '2026-02-15', time: '21:00', league: 'Ligue 1', channel: 'Canal+' },
+    { id: 2, home: 'Real Madrid', away: 'Barcelona', date: '2026-02-18', time: '21:00', league: 'La Liga', channel: 'beIN Sports' },
+    { id: 3, home: 'Man City', away: 'Liverpool', date: '2026-02-20', time: '20:45', league: 'Premier League', channel: 'RMC Sport' },
+    { id: 4, home: 'Bayern', away: 'Dortmund', date: '2026-02-22', time: '18:30', league: 'Bundesliga', channel: 'beIN Sports' },
+    { id: 5, home: 'Lyon', away: 'Monaco', date: '2026-02-25', time: '21:00', league: 'Ligue 1', channel: 'DAZN' },
+  ];
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden" data-testid="football-calendar">
+      <div className="p-4 flex items-center justify-between border-b border-border bg-gradient-to-r from-green-900/30 to-blue-900/30">
+        <h2 className="text-xl font-bold flex items-center gap-2"><Trophy className="w-5 h-5 text-green-400" />Calendrier Football</h2>
+        <Link to="/sport" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
+      </div>
+      <div className="divide-y divide-border">
+        {matches.map(m => (
+          <div key={m.id} className="flex items-center gap-4 p-3 hover:bg-secondary/50 transition-colors">
+            <div className="text-center w-20 flex-shrink-0">
+              <p className="text-xs text-muted-foreground">{new Date(m.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>
+              <p className="text-sm font-bold">{m.time}</p>
+            </div>
+            <div className="flex-1 flex items-center gap-2">
+              <span className="font-medium text-sm">{m.home}</span>
+              <span className="text-xs text-muted-foreground">vs</span>
+              <span className="font-medium text-sm">{m.away}</span>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded bg-green-900/50 text-green-400 border border-green-800">{m.league}</span>
+            <span className="text-xs text-muted-foreground hidden md:block">{m.channel}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -85,11 +418,22 @@ export default function HomePage() {
     <div className="space-y-8" data-testid="home-page">
       <Hero />
       <div className="container mx-auto px-4 space-y-12">
-        <ContentRow title="Films Tendance" endpoint="/api/tmdb/trending/movies" type="movie" />
-        <ContentRow title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" />
-        <ContentRow title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime />
-        <ContentRow title="Films Populaires" endpoint="/api/tmdb/popular/movies" type="movie" />
-        <ContentRow title="Series Populaires" endpoint="/api/tmdb/popular/tv" type="tv" />
+        <ContentRow title="Films Tendance" endpoint="/api/tmdb/trending/movies" type="movie" link="/movies" />
+        <ContentRow title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" link="/tv-shows" />
+        <ContentRow title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime link="/anime" />
+        <PopularCollectionsRow />
+        <PublicPlaylistsRow />
+        <TrendingActorsRow />
+        <TrendingTVChannelsRow />
+        <SportsStreamPromo />
+        <LiveWatchPromo />
+        <VIPGamePromo />
+        <SubscriptionOffer />
+        <RandomContent />
+        <FootballCalendarWidget />
+        <CalendarWidgetHome />
+        <ContentRow title="Films Populaires" endpoint="/api/tmdb/popular/movies" type="movie" link="/movies" />
+        <ContentRow title="Series Populaires" endpoint="/api/tmdb/popular/tv" type="tv" link="/tv-shows" />
       </div>
     </div>
   );

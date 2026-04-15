@@ -46,6 +46,8 @@ import VIPGamePage from './pages/VIPGamePage';
 import WatchHistoryPage from './pages/WatchHistoryPage';
 import MusicPage from './pages/MusicPage';
 import GamesPage from './pages/GamesPage';
+import AchievementsPage from './pages/AchievementsPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import './App.css';
 
@@ -102,6 +104,8 @@ export default function App() {
                   <Route path="/history" element={<WatchHistoryPage />} />
                   <Route path="/music" element={<MusicPage />} />
                   <Route path="/games" element={<GamesPage />} />
+                  <Route path="/achievements" element={<ProtectedRoute><AchievementsPage /></ProtectedRoute>} />
+                  <Route path="/leaderboard" element={<LeaderboardPage />} />
                 </Routes>
               </main>
               <Footer />

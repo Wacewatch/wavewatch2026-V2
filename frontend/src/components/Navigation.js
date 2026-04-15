@@ -215,6 +215,7 @@ export default function Navigation() {
                     <DropdownItem to="/dashboard">Tableau de bord</DropdownItem>
                     <DropdownItem to="/favorites">Mes favoris</DropdownItem>
                     <DropdownItem to="/history">Historique</DropdownItem>
+                    <DropdownItem to="/achievements">Realisations</DropdownItem>
                     <DropdownItem to="/playlists">Mes playlists</DropdownItem>
                     <DropdownItem to="/profile">Profil</DropdownItem>
                     {!user.is_vip && <DropdownItem to="/subscription"><span className="text-yellow-400 flex items-center"><Crown className="w-4 h-4 mr-2" />Devenir VIP</span></DropdownItem>}
@@ -268,7 +269,7 @@ export default function Navigation() {
                   <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--nav-hover))' }}><User className="w-5 h-5" style={textStyle} /></div>
                   <div><p className="font-medium" style={textStyle}>{user.username}</p><p className="text-xs" style={textSecStyle}>{user.is_admin ? 'Admin' : 'Membre'}</p></div>
                 </div>
-                {[{to:'/dashboard',label:'Tableau de bord'},{to:'/favorites',label:'Mes favoris'},{to:'/history',label:'Historique'},{to:'/playlists',label:'Mes playlists'},{to:'/profile',label:'Profil'}].map(l => (
+                {[{to:'/dashboard',label:'Tableau de bord'},{to:'/favorites',label:'Mes favoris'},{to:'/history',label:'Historique'},{to:'/achievements',label:'Realisations'},{to:'/playlists',label:'Mes playlists'},{to:'/profile',label:'Profil'}].map(l => (
                   <Link key={l.to} to={l.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{l.label}</Link>
                 ))}
                 {(user.is_admin || user.is_uploader) && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg text-red-400">Administration</Link>}
@@ -289,7 +290,7 @@ export default function Navigation() {
             </div>
             <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Autres</p>
-              {[{to:'/calendar',l:'Calendrier'},{to:'/vip-game',l:'Jeu VIP'},{to:'/changelogs',l:'Nouveautes'}].map(i => (
+              {[{to:'/calendar',l:'Calendrier'},{to:'/vip-game',l:'Jeu VIP'},{to:'/leaderboard',l:'Classement'},{to:'/changelogs',l:'Nouveautes'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
             </div>
