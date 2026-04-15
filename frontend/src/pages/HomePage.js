@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
-import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users } from 'lucide-react';
+import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users, Sparkles } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
 import { LoadingGrid } from '../components/Loading';
+import { useAuth } from '../contexts/AuthContext';
 
 function Hero() {
   const [movies, setMovies] = useState([]);
@@ -194,7 +195,9 @@ function PopularCollectionsRow() {
 function PublicPlaylistsRow() {
   const [playlists, setPlaylists] = useState([]);
   useEffect(() => {
-    API.get('/api/playlists/public/discover').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {});
+    API.get('/api/playlists/public/enhanced').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {
+      API.get('/api/playlists/public/discover').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {});
+    });
   }, []);
 
   if (!playlists.length) return null;
@@ -209,10 +212,33 @@ function PublicPlaylistsRow() {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {playlists.slice(0, 6).map((p, i) => (
-          <Link key={p._id} to={`/discover/playlists`} className="group">
-            <div className={`aspect-square rounded-xl bg-gradient-to-br ${colors[i % colors.length]} p-4 flex flex-col justify-between group-hover:scale-105 transition-transform`}>
-              <div className="flex items-center gap-1"><Play className="w-4 h-4 text-white/70" /><span className="text-xs text-white/70">{p.items?.length || 0} titres</span></div>
-              <div><p className="text-sm font-bold text-white truncate">{p.name}</p><p className="text-xs text-white/60">par {p.username || 'Anonyme'}</p></div>
+          <Link key={p._id} to={`/playlists/${p._id}`} className="group">
+            <div className="rounded-xl overflow-hidden border border-border bg-card group-hover:border-primary/30 transition-all">
+              <div className="aspect-square relative overflow-hidden">
+                {p.items?.length > 0 ? (
+                  <div className="grid grid-cols-2 h-full">
+                    {p.items.slice(0, 4).map((item, idx) => (
+                      <div key={idx} className="overflow-hidden">
+                        {item.poster_path ? (
+                          <img src={`${TMDB_IMG}/w200${item.poster_path}`} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                        ) : <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />}
+                      </div>
+                    ))}
+                    {p.items.length < 4 && Array.from({ length: 4 - Math.min(p.items.length, 4) }).map((_, idx) => (
+                      <div key={`e-${idx}`} className="bg-gradient-to-br from-gray-800 to-gray-900" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`h-full bg-gradient-to-br ${p.gradient || colors[i % colors.length]} flex items-center justify-center`}>
+                    <Play className="w-8 h-8 text-white/30" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                <div className="absolute bottom-2 left-2 right-2">
+                  <p className="text-sm font-bold text-white truncate">{p.name}</p>
+                  <p className="text-xs text-white/60">{p.items_count || p.items?.length || 0} elem. - {p.user_info?.username || p.username || 'Anonyme'}</p>
+                </div>
+              </div>
             </div>
           </Link>
         ))}
@@ -430,12 +456,37 @@ function FootballCalendarWidget() {
   );
 }
 
+function RecommendationsRow() {
+  const { user } = useAuth();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      API.get('/api/user/recommendations').then(({ data }) => setItems(data.recommendations || [])).catch(() => {}).finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  if (!user || loading || !items.length) return null;
+
+  return (
+    <div data-testid="recommendations-section">
+      <ContentGrid title="Recommandations pour vous" link="/dashboard" icon={<Sparkles className="w-5 h-5 text-pink-400" />}>
+        {items.map(item => <ContentCard key={item.id} item={item} type={item.title ? 'movie' : 'tv'} />)}
+      </ContentGrid>
+    </div>
+  );
+}
+
 export default function HomePage() {
   return (
     <div className="space-y-8" data-testid="home-page">
       <Hero />
       <div className="container mx-auto px-4 space-y-12">
         <ContentRow title="Films Tendance" endpoint="/api/tmdb/trending/movies" type="movie" link="/movies" />
+        <RecommendationsRow />
         <ContentRow title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" link="/tv-shows" />
         <ContentRow title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime link="/anime" />
         <PopularCollectionsRow />

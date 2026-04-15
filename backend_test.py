@@ -9,500 +9,174 @@ class WaveWatchAPITester:
     def __init__(self, base_url="https://wavewatch-dev.preview.emergentagent.com"):
         self.base_url = base_url
         self.token = None
-        self.admin_token = None
         self.tests_run = 0
         self.tests_passed = 0
-        self.test_results = []
-
-    def log_test(self, name, success, details=""):
-        """Log test result"""
-        self.tests_run += 1
-        if success:
-            self.tests_passed += 1
-            print(f"✅ {name}")
-        else:
-            print(f"❌ {name} - {details}")
-        
-        self.test_results.append({
-            "test": name,
-            "success": success,
-            "details": details,
-            "timestamp": datetime.now().isoformat()
-        })
+        self.failed_tests = []
 
     def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
-        url = f"{self.base_url}{endpoint}"
-        test_headers = {'Content-Type': 'application/json'}
-        
-        if headers:
-            test_headers.update(headers)
-        
-        if self.token and 'Authorization' not in test_headers:
-            test_headers['Authorization'] = f'Bearer {self.token}'
+        url = f"{self.base_url}/{endpoint}"
+        if headers is None:
+            headers = {'Content-Type': 'application/json'}
+        if self.token:
+            headers['Authorization'] = f'Bearer {self.token}'
 
+        self.tests_run += 1
+        print(f"\n🔍 Testing {name}...")
+        
         try:
             if method == 'GET':
-                response = requests.get(url, headers=test_headers, timeout=10)
+                response = requests.get(url, headers=headers, timeout=10)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=test_headers, timeout=10)
+                response = requests.post(url, json=data, headers=headers, timeout=10)
             elif method == 'PUT':
-                response = requests.put(url, json=data, headers=test_headers, timeout=10)
+                response = requests.put(url, json=data, headers=headers, timeout=10)
             elif method == 'DELETE':
-                response = requests.delete(url, headers=test_headers, timeout=10)
+                response = requests.delete(url, headers=headers, timeout=10)
 
             success = response.status_code == expected_status
-            details = f"Status: {response.status_code}"
-            
-            if not success:
-                details += f", Expected: {expected_status}"
-                try:
-                    error_data = response.json()
-                    if 'detail' in error_data:
-                        details += f", Error: {error_data['detail']}"
-                except:
-                    details += f", Response: {response.text[:100]}"
-
-            self.log_test(name, success, details)
-            
             if success:
+                self.tests_passed += 1
+                print(f"✅ Passed - Status: {response.status_code}")
                 try:
-                    return response.json()
+                    return True, response.json()
                 except:
-                    return {"status": "ok"}
-            return {}
+                    return True, {}
+            else:
+                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
+                print(f"   Response: {response.text[:200]}")
+                self.failed_tests.append(f"{name}: Expected {expected_status}, got {response.status_code}")
+                return False, {}
 
         except Exception as e:
-            self.log_test(name, False, f"Exception: {str(e)}")
-            return {}
+            print(f"❌ Failed - Error: {str(e)}")
+            self.failed_tests.append(f"{name}: {str(e)}")
+            return False, {}
+
+    def test_login(self, email, password):
+        """Test login and get token"""
+        success, response = self.run_test(
+            "Admin Login",
+            "POST",
+            "api/auth/login",
+            200,
+            data={"email": email, "password": password}
+        )
+        if success and 'token' in response:
+            self.token = response['token']
+            print(f"   Token obtained: {self.token[:20]}...")
+            return True
+        return False
 
     def test_health_check(self):
         """Test health endpoint"""
-        return self.run_test("Health Check", "GET", "/api/health", 200)
+        return self.run_test("Health Check", "GET", "api/health", 200)
 
-    def test_admin_login(self):
-        """Test admin login"""
-        response = self.run_test(
-            "Admin Login",
-            "POST",
-            "/api/auth/login",
-            200,
-            data={"email": "admin@wavewatch.com", "password": "WaveWatch2026!"}
-        )
-        if response and 'token' in response:
-            self.admin_token = response['token']
-            return True
-        return False
-
-    def test_user_registration(self):
-        """Test user registration"""
-        timestamp = datetime.now().strftime("%H%M%S")
-        test_user = {
-            "username": f"testuser_{timestamp}",
-            "email": f"test_{timestamp}@example.com",
-            "password": "TestPass123!"
-        }
+    def test_notifications_endpoints(self):
+        """Test notification endpoints"""
+        print("\n📢 Testing Notification Endpoints...")
         
-        response = self.run_test(
-            "User Registration",
-            "POST",
-            "/api/auth/register",
-            200,
-            data=test_user
-        )
+        # Get notifications
+        self.run_test("Get Notifications", "GET", "api/notifications", 200)
         
-        if response and 'token' in response:
-            self.token = response['token']
-            return True
-        return False
+        # Mark all as read
+        self.run_test("Mark All Notifications Read", "PUT", "api/notifications/read-all", 200)
 
-    def test_user_login(self):
-        """Test user login with registered user"""
-        timestamp = datetime.now().strftime("%H%M%S")
-        response = self.run_test(
-            "User Login",
-            "POST",
-            "/api/auth/login",
-            200,
-            data={"email": f"test_{timestamp}@example.com", "password": "TestPass123!"}
-        )
-        return response and 'token' in response
+    def test_recommendations_endpoint(self):
+        """Test user recommendations"""
+        return self.run_test("User Recommendations", "GET", "api/user/recommendations", 200)
 
-    def test_auth_me(self):
-        """Test getting current user info"""
-        return self.run_test("Get Current User", "GET", "/api/auth/me", 200)
+    def test_playlists_enhanced(self):
+        """Test enhanced playlists endpoint"""
+        return self.run_test("Enhanced Public Playlists", "GET", "api/playlists/public/enhanced", 200)
+
+    def test_content_endpoints(self):
+        """Test content endpoints for Music, Games, Ebooks, Software"""
+        print("\n🎵 Testing Content Endpoints...")
+        
+        # Music
+        self.run_test("Get Music Items", "GET", "api/music", 200)
+        
+        # Games  
+        self.run_test("Get Games Items", "GET", "api/games", 200)
+        
+        # Ebooks
+        self.run_test("Get Ebooks Items", "GET", "api/ebooks", 200)
+        
+        # Software
+        self.run_test("Get Software Items", "GET", "api/software", 200)
+
+    def test_tv_channels(self):
+        """Test TV channels endpoint"""
+        return self.run_test("Get TV Channels", "GET", "api/tv-channels", 200)
 
     def test_tmdb_endpoints(self):
         """Test TMDB proxy endpoints"""
-        endpoints = [
-            ("/api/tmdb/trending/movies", "Trending Movies"),
-            ("/api/tmdb/trending/tv", "Trending TV"),
-            ("/api/tmdb/trending/anime", "Trending Anime"),
-            ("/api/tmdb/popular/movies", "Popular Movies"),
-            ("/api/tmdb/popular/tv", "Popular TV"),
-            ("/api/tmdb/search?q=avengers", "Search Movies"),
-            ("/api/tmdb/genres/movie", "Movie Genres"),
-            ("/api/tmdb/discover/movie", "Discover Movies")
-        ]
+        print("\n🎬 Testing TMDB Endpoints...")
         
-        for endpoint, name in endpoints:
-            self.run_test(f"TMDB - {name}", "GET", endpoint, 200)
+        self.run_test("TMDB Trending Movies", "GET", "api/tmdb/trending/movies", 200)
+        self.run_test("TMDB Trending TV", "GET", "api/tmdb/trending/tv", 200)
+        self.run_test("TMDB Popular Movies", "GET", "api/tmdb/popular/movies", 200)
 
-    def test_movie_details(self):
-        """Test movie details endpoint"""
-        # Test with a popular movie ID (Avengers: Endgame)
-        self.run_test("Movie Details", "GET", "/api/tmdb/movie/299534", 200)
-
-    def test_favorites(self):
-        """Test favorites functionality"""
-        if not self.token:
-            self.log_test("Favorites Test", False, "No auth token available")
-            return
-
-        # Get favorites
-        self.run_test("Get Favorites", "GET", "/api/user/favorites", 200)
+    def test_user_endpoints(self):
+        """Test user-specific endpoints"""
+        print("\n👤 Testing User Endpoints...")
         
-        # Add to favorites
-        favorite_data = {
-            "content_id": 299534,
-            "content_type": "movie",
-            "title": "Avengers: Endgame",
-            "poster_path": "/or06FN3Dka5tukK1e9sl16pB3iy.jpg"
-        }
-        self.run_test("Add to Favorites", "POST", "/api/user/favorites", 200, data=favorite_data)
-        
-        # Check if favorite
-        self.run_test("Check Favorite", "GET", "/api/user/favorites/check?content_id=299534&content_type=movie", 200)
-
-    def test_playlists(self):
-        """Test playlist functionality"""
-        if not self.token:
-            self.log_test("Playlists Test", False, "No auth token available")
-            return
-
-        # Get playlists
-        self.run_test("Get Playlists", "GET", "/api/playlists", 200)
-        
-        # Create playlist
-        playlist_data = {
-            "name": "Test Playlist",
-            "description": "A test playlist",
-            "is_public": False
-        }
-        response = self.run_test("Create Playlist", "POST", "/api/playlists", 200, data=playlist_data)
-        
-        if response and 'playlist' in response:
-            playlist_id = response['playlist']['_id']
-            # Get specific playlist
-            self.run_test("Get Specific Playlist", "GET", f"/api/playlists/{playlist_id}", 200)
+        self.run_test("Get User Profile", "GET", "api/auth/me", 200)
+        self.run_test("Get User Favorites", "GET", "api/user/favorites", 200)
+        self.run_test("Get User History", "GET", "api/user/history", 200)
+        self.run_test("Get User Stats", "GET", "api/user/stats", 200)
 
     def test_admin_endpoints(self):
-        """Test admin-only endpoints"""
-        if not self.admin_token:
-            self.log_test("Admin Endpoints Test", False, "No admin token available")
-            return
-
-        # Use admin token for these tests
-        old_token = self.token
-        self.token = self.admin_token
+        """Test admin endpoints"""
+        print("\n🔧 Testing Admin Endpoints...")
         
-        # Test admin endpoints
-        self.run_test("Admin - Get Users", "GET", "/api/admin/users", 200)
-        self.run_test("Admin - Get Stats", "GET", "/api/admin/stats", 200)
-        
-        # Restore original token
-        self.token = old_token
-
-    def test_content_requests(self):
-        """Test content requests"""
-        if not self.token:
-            self.log_test("Content Requests Test", False, "No auth token available")
-            return
-
-        # Get content requests
-        self.run_test("Get Content Requests", "GET", "/api/content-requests", 200)
-        
-        # Create content request
-        request_data = {
-            "title": "Test Movie Request",
-            "content_type": "movie",
-            "description": "A test movie request"
-        }
-        self.run_test("Create Content Request", "POST", "/api/content-requests", 200, data=request_data)
-
-    def test_feedback(self):
-        """Test feedback system"""
-        feedback_data = {
-            "content": 5,
-            "functionality": 4,
-            "design": 5,
-            "message": "Great platform!"
-        }
-        self.run_test("Submit Feedback", "POST", "/api/feedback", 200, data=feedback_data)
-        self.run_test("Get Feedback Stats", "GET", "/api/feedback/stats", 200)
-
-    def test_tv_channels_and_radio(self):
-        """Test TV channels and radio endpoints"""
-        self.run_test("Get TV Channels", "GET", "/api/tv-channels", 200)
-        self.run_test("Get Radio Stations", "GET", "/api/radio-stations", 200)
-
-    def test_ebooks_and_software(self):
-        """Test ebooks and software endpoints"""
-        self.run_test("Get Ebooks", "GET", "/api/ebooks", 200)
-        self.run_test("Get Software", "GET", "/api/software", 200)
-
-    def test_retrogaming(self):
-        """Test retrogaming endpoint"""
-        self.run_test("Get Retrogaming", "GET", "/api/retrogaming", 200)
-
-    def test_new_endpoints(self):
-        """Test new endpoints added in this iteration"""
-        if not self.token:
-            self.log_test("New Endpoints Test", False, "No auth token available")
-            return
-
-        # Test heartbeat endpoint
-        self.run_test("User Heartbeat", "POST", "/api/user/heartbeat", 200)
-        
-        # Test status batch endpoint
-        self.run_test("User Status Batch", "GET", "/api/user/status-batch", 200)
-        
-        # Test change password endpoint (with dummy data)
-        password_data = {
-            "current_password": "wrongpassword",
-            "new_password": "newpassword123"
-        }
-        # This should fail with wrong current password, but endpoint should exist
-        self.run_test("Change Password Endpoint", "PUT", "/api/user/change-password", 400, data=password_data)
-        
-        # Test activation code endpoint (with dummy code)
-        activation_data = {"code": "DUMMY_CODE"}
-        # This should fail with invalid code, but endpoint should exist
-        self.run_test("Activate Code Endpoint", "POST", "/api/user/activate-code", 400, data=activation_data)
-
-    def test_admin_new_endpoints(self):
-        """Test new admin endpoints"""
-        if not self.admin_token:
-            self.log_test("Admin New Endpoints Test", False, "No admin token available")
-            return
-
-        # Use admin token for these tests
-        old_token = self.token
-        self.token = self.admin_token
-        
-        # Test online users endpoint
-        self.run_test("Admin - Online Users", "GET", "/api/admin/online-users", 200)
-        
-        # Test enhanced stats endpoint
-        self.run_test("Admin - Enhanced Stats", "GET", "/api/admin/enhanced-stats", 200)
-        
-        # Restore original token
-        self.token = old_token
-
-    def test_ratings_endpoints(self):
-        """Test like/dislike ratings functionality"""
-        if not self.token:
-            self.log_test("Ratings Test", False, "No auth token available")
-            return
-
-        # Test rating a movie
-        rating_data = {
-            "content_id": 299534,
-            "content_type": "movie",
-            "rating": "like"
-        }
-        self.run_test("Rate Content (Like)", "POST", "/api/user/ratings", 200, data=rating_data)
-        
-        # Check rating
-        self.run_test("Check Rating", "GET", "/api/user/ratings/check?content_id=299534&content_type=movie", 200)
-        
-        # Test dislike
-        rating_data["rating"] = "dislike"
-        self.run_test("Rate Content (Dislike)", "POST", "/api/user/ratings", 200, data=rating_data)
-
-    def test_platform_reviews_endpoints(self):
-        """Test platform reviews functionality for dashboard"""
-        if not self.token:
-            self.log_test("Platform Reviews Test", False, "No auth token available")
-            return
-
-        # Test getting platform reviews
-        self.run_test("Get Platform Reviews", "GET", "/api/platform-reviews", 200)
-        
-        # Test getting my platform review
-        self.run_test("Get My Platform Review", "GET", "/api/platform-reviews/mine", 200)
-        
-        # Test submitting platform review
-        review_data = {
-            "contenu_score": 8,
-            "fonctionnalites_score": 9,
-            "design_score": 7,
-            "message": "Great platform! Love the new features."
-        }
-        self.run_test("Submit Platform Review", "POST", "/api/platform-reviews", 200, data=review_data)
-
-    def test_enhanced_playlists_endpoints(self):
-        """Test enhanced playlists with user info and likes"""
-        # Test enhanced public playlists endpoint
-        self.run_test("Get Enhanced Public Playlists", "GET", "/api/playlists/public/enhanced", 200)
-        
-        # Test playlist color customization if user is logged in
-        if self.token:
-            # First get playlists to find one to test with
-            playlists_response = self.run_test("Get User Playlists for Color Test", "GET", "/api/playlists", 200)
-            if playlists_response and 'playlists' in playlists_response and playlists_response['playlists']:
-                playlist_id = playlists_response['playlists'][0]['_id']
-                color_data = {
-                    "color": "blue",
-                    "gradient": "linear-gradient(135deg, #1e3a5f, #2563eb)"
-                }
-                self.run_test("Update Playlist Color", "PUT", f"/api/playlists/{playlist_id}/colors", 200, data=color_data)
-
-    def test_admin_activities_endpoints(self):
-        """Test admin activities feed"""
-        if not self.admin_token:
-            self.log_test("Admin Activities Test", False, "No admin token available")
-            return
-
-        # Use admin token for these tests
-        old_token = self.token
-        self.token = self.admin_token
-        
-        # Test admin activities endpoint
-        self.run_test("Admin - Get Activities", "GET", "/api/admin/activities", 200)
-        
-        # Restore original token
-        self.token = old_token
-
-    def test_tmdb_update_endpoints(self):
-        """Test TMDB update functionality"""
-        if not self.admin_token:
-            self.log_test("TMDB Update Test", False, "No admin token available")
-            return
-
-        # Use admin token for these tests
-        old_token = self.token
-        self.token = self.admin_token
-        
-        # Test TMDB update endpoints
-        for update_type in ['trending', 'popular', 'upcoming']:
-            update_data = {"type": update_type}
-            self.run_test(f"TMDB Update - {update_type.title()}", "POST", "/api/admin/tmdb-update", 200, data=update_data)
-        
-        # Restore original token
-        self.token = old_token
-
-    def test_user_messaging_endpoints(self):
-        """Test user messaging system"""
-        if not self.token:
-            self.log_test("User Messaging Test", False, "No auth token available")
-            return
-
-        # Test getting messages
-        self.run_test("Get User Messages", "GET", "/api/messages", 200)
-        
-        # Test sending a message (if endpoint exists)
-        message_data = {
-            "recipient_id": "test_recipient",
-            "content": "This is a test message"
-        }
-        # This might return 404 if recipient doesn't exist, but endpoint should be available
-        response = self.run_test("Send User Message", "POST", "/api/messages", 400, data=message_data)
-        if not response:
-            # Try alternative endpoint structure
-            self.run_test("Send User Message Alt", "POST", "/api/user/messages", 400, data=message_data)
-
-    def test_iteration9_features(self):
-        """Test new features from iteration 9"""
-        if not self.token:
-            self.log_test("Iteration 9 Features Test", False, "No auth token available")
-            return
-
-        # Test recommendations endpoint
-        self.run_test("Get User Recommendations", "GET", "/api/user/recommendations", 200)
-        
-        # Test platform reviews endpoint (should fetch from /api/platform-reviews instead of /api/feedback/stats)
-        self.run_test("Get Platform Reviews for Footer", "GET", "/api/platform-reviews", 200)
-        
-        # Test history deletion endpoint
-        # First add something to history
-        history_data = {
-            "content_id": 299534,
-            "content_type": "movie",
-            "title": "Test Movie",
-            "poster_path": "/test.jpg"
-        }
-        self.run_test("Add to History", "POST", "/api/user/history", 200, data=history_data)
-        
-        # Then test deletion
-        self.run_test("Delete from History", "DELETE", "/api/user/history/299534/movie", 200)
-        
-        # Test detailed stats endpoint
-        self.run_test("Get User Detailed Stats", "GET", "/api/user/detailed-stats", 200)
-
-    def run_all_tests(self):
-        """Run all tests"""
-        print("🚀 Starting WaveWatch API Tests...")
-        print(f"🔗 Testing against: {self.base_url}")
-        print("=" * 60)
-
-        # Basic tests
-        self.test_health_check()
-        
-        # Auth tests
-        self.test_admin_login()
-        self.test_user_registration()
-        self.test_auth_me()
-        
-        # TMDB tests
-        self.test_tmdb_endpoints()
-        self.test_movie_details()
-        
-        # User feature tests
-        self.test_favorites()
-        self.test_playlists()
-        self.test_content_requests()
-        
-        # Admin tests
-        self.test_admin_endpoints()
-        
-        # Content tests
-        self.test_feedback()
-        self.test_tv_channels_and_radio()
-        self.test_ebooks_and_software()
-        self.test_retrogaming()
-        
-        # New feature tests
-        self.test_new_endpoints()
-        self.test_admin_new_endpoints()
-        self.test_ratings_endpoints()
-        
-        # Test new iteration 8 features
-        self.test_platform_reviews_endpoints()
-        self.test_enhanced_playlists_endpoints()
-        self.test_admin_activities_endpoints()
-        self.test_tmdb_update_endpoints()
-        self.test_user_messaging_endpoints()
-        
-        # Test iteration 9 features
-        self.test_iteration9_features()
-
-        # Print summary
-        print("=" * 60)
-        print(f"📊 Tests completed: {self.tests_passed}/{self.tests_run} passed")
-        success_rate = (self.tests_passed / self.tests_run * 100) if self.tests_run > 0 else 0
-        print(f"📈 Success rate: {success_rate:.1f}%")
-        
-        if self.tests_passed == self.tests_run:
-            print("🎉 All tests passed!")
-            return 0
-        else:
-            print("⚠️  Some tests failed. Check the details above.")
-            return 1
+        self.run_test("Admin Stats", "GET", "api/admin/stats", 200)
+        self.run_test("Admin Enhanced Stats", "GET", "api/admin/enhanced-stats", 200)
+        self.run_test("Admin Users List", "GET", "api/admin/users", 200)
 
 def main():
+    print("🌊 WaveWatch API Testing Suite")
+    print("=" * 50)
+    
+    # Setup
     tester = WaveWatchAPITester()
-    return tester.run_all_tests()
+    
+    # Test health first
+    print("\n🏥 Testing Basic Connectivity...")
+    success, _ = tester.test_health_check()
+    if not success:
+        print("❌ Health check failed, stopping tests")
+        return 1
+
+    # Test login
+    print("\n🔐 Testing Authentication...")
+    if not tester.test_login("admin@wavewatch.com", "WaveWatch2026!"):
+        print("❌ Login failed, stopping authenticated tests")
+        return 1
+
+    # Test all endpoints
+    tester.test_notifications_endpoints()
+    tester.test_recommendations_endpoint()
+    tester.test_playlists_enhanced()
+    tester.test_content_endpoints()
+    tester.test_tv_channels()
+    tester.test_tmdb_endpoints()
+    tester.test_user_endpoints()
+    tester.test_admin_endpoints()
+
+    # Print results
+    print(f"\n📊 Test Results")
+    print("=" * 50)
+    print(f"Tests passed: {tester.tests_passed}/{tester.tests_run}")
+    print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
+    
+    if tester.failed_tests:
+        print(f"\n❌ Failed Tests:")
+        for failure in tester.failed_tests:
+            print(f"   - {failure}")
+    
+    return 0 if tester.tests_passed == tester.tests_run else 1
 
 if __name__ == "__main__":
     sys.exit(main())

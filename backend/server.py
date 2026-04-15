@@ -8,7 +8,7 @@ import secrets
 import httpx
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Request, Response, Depends, Query
+from fastapi import FastAPI, HTTPException, Request, Response, Depends, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -27,6 +27,36 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "WaveWatch2026!")
 # MongoDB client
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
+
+# WebSocket connections manager
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[str, WebSocket] = {}
+
+    async def connect(self, websocket: WebSocket, user_id: str):
+        await websocket.accept()
+        self.active_connections[user_id] = websocket
+
+    def disconnect(self, user_id: str):
+        self.active_connections.pop(user_id, None)
+
+    async def send_to_user(self, user_id: str, message: dict):
+        ws = self.active_connections.get(user_id)
+        if ws:
+            try:
+                await ws.send_json(message)
+            except:
+                self.disconnect(user_id)
+
+    async def broadcast(self, message: dict, exclude: str = None):
+        for uid, ws in list(self.active_connections.items()):
+            if uid != exclude:
+                try:
+                    await ws.send_json(message)
+                except:
+                    self.disconnect(uid)
+
+ws_manager = ConnectionManager()
 
 # Password helpers
 def hash_password(password: str) -> str:
@@ -1564,3 +1594,78 @@ async def get_public_playlists_enhanced(page: int = 1, limit: int = 20):
         result.append(p)
     total = await db.playlists.count_documents({"is_public": True})
     return {"playlists": result, "total": total, "page": page}
+
+
+# =================== WEBSOCKET & NOTIFICATIONS ===================
+
+@app.websocket("/api/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    await ws_manager.connect(websocket, user_id)
+    try:
+        # Send unread notifications count
+        unread = await db.notifications.count_documents({"user_id": user_id, "is_read": False})
+        await websocket.send_json({"type": "unread_count", "count": unread})
+        while True:
+            data = await websocket.receive_text()
+            # Keep alive
+    except WebSocketDisconnect:
+        ws_manager.disconnect(user_id)
+
+@app.get("/api/notifications")
+async def get_notifications(user: dict = Depends(get_current_user)):
+    notifs = await db.notifications.find({"user_id": user["_id"]}).sort("created_at", -1).to_list(50)
+    for n in notifs:
+        n["_id"] = str(n["_id"])
+    return {"notifications": notifs}
+
+@app.put("/api/notifications/read-all")
+async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
+    await db.notifications.update_many({"user_id": user["_id"], "is_read": False}, {"$set": {"is_read": True}})
+    return {"ok": True}
+
+async def create_notification(user_id: str, title: str, message: str, notif_type: str = "info", link: str = ""):
+    notif = {
+        "user_id": user_id, "title": title, "message": message,
+        "type": notif_type, "link": link, "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notif)
+    notif.pop("_id", None)
+    await ws_manager.send_to_user(user_id, {"type": "notification", **notif})
+
+# Hook into existing message send to trigger notification
+_original_send_message = send_user_message
+@app.post("/api/messages", include_in_schema=False)
+async def send_user_message_with_notif(request: Request, user: dict = Depends(get_current_user)):
+    body = await request.json()
+    recipient_id = body.get("recipient_id")
+    content = body.get("content", "").strip()
+    if not recipient_id or not content:
+        raise HTTPException(status_code=400, detail="Destinataire et contenu requis")
+    recipient = await db.users.find_one({"_id": ObjectId(recipient_id)})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Destinataire introuvable")
+    msg = {
+        "sender_id": user["_id"], "sender_username": user.get("username"),
+        "recipient_id": recipient_id, "content": content[:1000],
+        "is_read": False, "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.user_messages.insert_one(msg)
+    # Send notification
+    await create_notification(recipient_id, "Nouveau message", f"{user.get('username')} vous a envoye un message", "message", "/messages")
+    return {"message": "Message envoye"}
+
+# Admin broadcast with notifications
+@app.post("/api/admin/broadcast-notify")
+async def broadcast_with_notification(request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    subject = data.get("subject", "")
+    content = data.get("content", "")
+    if not subject or not content:
+        raise HTTPException(status_code=400, detail="Sujet et contenu requis")
+    users_list = await db.users.find({}, {"_id": 1}).to_list(10000)
+    for u in users_list:
+        uid = str(u["_id"])
+        await create_notification(uid, subject, content, "broadcast", "")
+    await log_admin_activity(user.get("username", "admin"), "Broadcast notification", f"{subject} - {len(users_list)} utilisateurs")
+    return {"message": f"Notification envoyee a {len(users_list)} utilisateurs"}

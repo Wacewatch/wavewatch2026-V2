@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import API, { TMDB_IMG } from '../lib/api';
 import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette, Calendar, Trophy, Gamepad2, Music, Film, Tv, Users as UsersIcon } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -129,6 +130,8 @@ export default function Navigation() {
                   <DropdownItem to="/collections">Collections</DropdownItem>
                   <DropdownItem to="/actors">Acteurs</DropdownItem>
                   <div className="border-t my-1" style={{ borderColor: 'hsl(var(--nav-border))' }} />
+                  <DropdownItem to="/music">Musique</DropdownItem>
+                  <DropdownItem to="/games">Jeux</DropdownItem>
                   <DropdownItem to="/ebooks" badge="NEW">Ebooks</DropdownItem>
                   <DropdownItem to="/logiciels" badge="NEW">Logiciels</DropdownItem>
                 </div>
@@ -142,7 +145,6 @@ export default function Navigation() {
                 <div className="absolute top-full left-0 mt-2 w-56 rounded-lg border shadow-xl py-1 z-50" style={dropBg}>
                   <DropdownItem to="/tv-channels">Chaines TV</DropdownItem>
                   <DropdownItem to="/radio">Radio FM</DropdownItem>
-                  <DropdownItem to="/music">Musique</DropdownItem>
                   <DropdownItem to="/retrogaming">Retrogaming</DropdownItem>
                   <DropdownItem to="/discover/playlists">Decouvrir des Playlists</DropdownItem>
                 </div>
@@ -238,6 +240,9 @@ export default function Navigation() {
               )}
             </div>
 
+            {/* Notification Bell */}
+            {user && <NotificationBell />}
+
             {/* User menu */}
             {user ? (
               <div className="relative">
@@ -321,13 +326,13 @@ export default function Navigation() {
             )}
             <div className="border-t pt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Contenu</p>
-              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/collections',l:'Collections'},{to:'/actors',l:'Acteurs'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
+              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/collections',l:'Collections'},{to:'/actors',l:'Acteurs'},{to:'/music',l:'Musique'},{to:'/games',l:'Jeux'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
             </div>
             <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Medias</p>
-              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/music',l:'Musique'},{to:'/retrogaming',l:'Retrogaming'},{to:'/discover/playlists',l:'Playlists publiques'}].map(i => (
+              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/retrogaming',l:'Retrogaming'},{to:'/discover/playlists',l:'Playlists publiques'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
             </div>
