@@ -897,7 +897,9 @@ async def get_ebooks(page: int = 1, category: Optional[str] = None):
     if category:
         query["category"] = category
     skip = (page - 1) * 20
-    ebooks = await db.ebooks.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(20).to_list(20)
+    ebooks = await db.ebooks.find(query).sort("created_at", -1).skip(skip).limit(20).to_list(20)
+    for e in ebooks:
+        e["_id"] = str(e["_id"])
     total = await db.ebooks.count_documents(query)
     if not ebooks:
         ebooks = [
@@ -914,7 +916,9 @@ async def get_software(page: int = 1, category: Optional[str] = None):
     if category:
         query["category"] = category
     skip = (page - 1) * 20
-    software = await db.software.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(20).to_list(20)
+    software = await db.software.find(query).sort("created_at", -1).skip(skip).limit(20).to_list(20)
+    for s in software:
+        s["_id"] = str(s["_id"])
     total = await db.software.count_documents(query)
     if not software:
         software = [

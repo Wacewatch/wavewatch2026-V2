@@ -3,28 +3,26 @@
 ## Architecture
 - React 18 + FastAPI + MongoDB + TMDB API + Tailwind CSS 3
 
-## What's Been Implemented (Jan-Apr 2026)
+## Implemented (Jan-Apr 2026)
 
-### Backend (115+ API endpoints)
-- JWT Auth, TMDB Proxy, Favorites, Watch History (+ delete toggle), Playlists (+ colors)
-- Platform Reviews (1-10 ratings + guestbook), User Messaging, Admin Activity Feed
-- TMDB Update admin, Enhanced playlists, User Recommendations (TMDB similar)
-- Online Users tracking, VIP Game, Achievements, Leaderboard
-- All content CRUD admin endpoints
+### Backend (120+ endpoints)
+- Auth, TMDB, Favorites, History (+delete), Playlists (+colors), Platform Reviews, Messaging
+- WebSocket notifications (/api/ws/{user_id}), Notifications CRUD, Broadcast with notifications
+- Recommendations (TMDB similar), Admin content CRUD (TV/Radio/Music/Software/Games/Ebooks/Retro/Changelogs)
+- Online users tracking, VIP Game, Achievements, Leaderboard
 
-### Frontend (50+ pages, 30+ components)
-- **Hero**: Movie logo from TMDB /images API
-- **ContentCard**: Eye (toggle watched) + Plus (playlist) hover buttons side by side, Fav/Watched badges
-- **Dashboard**: Stats, Rating bars 1-10, Guestbook, Community reviews, Recommendations, Achievements, History/Favorites tabs
-- **Admin**: 17 tabs, Online users counter, User edit modal, Activity feed, TMDB update
-- **Profile**: Full with themes, preferences, activation codes, account deletion
-- **Messages**: Compose, search recipients, received/sent tabs
-- **Discover Playlists**: Likes/dislikes, item count, user badges
-- **Playlists**: Color customization (12 colors)
-- **Footer**: Real community reviews from /api/platform-reviews
-- **Navigation**: Cleaned menus (removed Sports/Docs/Spectacles from Contenu, Jeux/Demandes from Medias, Realisations from User)
-- **Logo**: Enlarged in nav (h-14) and footer (h-12)
+### Frontend (50+ pages)
+- Hero with TMDB movie logos, ContentCard hover (Eye toggle + Plus playlist)
+- Homepage: Recommendations module, Playlists with poster grids, all sections
+- Dashboard: Stats, Rating bars, Guestbook, Community reviews, Recommendations, Achievements
+- Admin: 17 tabs + Feed + TMDB update, Online counter, User edit modal
+- Profile: Full with themes, preferences, activation, deletion
+- Messages page: Compose, search, received/sent
+- NotificationBell: Real-time WebSocket, badge, dropdown
+- TV Channels: Search, filter, stream modal with iframe
+- Music/Games/Ebooks/Software: DB-driven with detail modals
+- Footer: Real community reviews from /api/platform-reviews
 
-### Roles: Membre, VIP, VIP+, Uploader, Admin
+### Menus: Contenu (Films, Series, Anime, Collections, Acteurs, Musique, Jeux, Ebooks, Logiciels) | Medias (TV, Radio, Retrogaming, Playlists)
 
-## Testing: Iteration 9 - Backend 94.7%, Frontend 95%
+## Testing: Iteration 10 - Backend 100%, Frontend 85%
