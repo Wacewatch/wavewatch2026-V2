@@ -1851,6 +1851,11 @@ async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
     await db.notifications.update_many({"user_id": user["_id"], "is_read": False}, {"$set": {"is_read": True}})
     return {"ok": True}
 
+@app.delete("/api/notifications/{notif_id}")
+async def delete_notification(notif_id: str, user: dict = Depends(get_current_user)):
+    await db.notifications.delete_one({"_id": ObjectId(notif_id), "user_id": user["_id"]})
+    return {"ok": True}
+
 async def create_notification(user_id: str, title: str, message: str, notif_type: str = "info", link: str = ""):
     notif = {
         "user_id": user_id, "title": title, "message": message,

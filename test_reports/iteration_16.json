@@ -1,0 +1,84 @@
+{
+  "summary": "Completed testing of WaveWatch iteration 16 features. All requested features verified working: 1) Acteurs Tendance uses ContentGrid horizontal slider with 'Voir tout' link to /actors. 2) Chaines TV uses ContentGrid horizontal slider with 'Voir tout' link to /tv-channels. 3) Collections Populaires shows 16 collections (more than 6). 4) Prochaines Sorties series have S/E badges (S5 E3, S3 E2, S8 E16, etc.). 5) No duplicate Films/Series Populaires rows at bottom. 6) NotificationBell has filter tabs (Tout, Sorties, Messages, Annonces), delete button per notification, 'Tout lire' button, auto-check episodes, periodic refresh. 7) Backend DELETE /api/notifications/{id} endpoint working.",
+  
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  
+  "passed_tests": [
+    "Homepage 'Acteurs Tendance': Uses ContentGrid horizontal slider (flex overflow-x-auto)",
+    "Homepage 'Acteurs Tendance': Has 'Voir tout' link pointing to /actors",
+    "Homepage 'Chaines TV': Uses ContentGrid horizontal slider",
+    "Homepage 'Chaines TV': Has 'Voir tout' link pointing to /tv-channels",
+    "Homepage 'Collections Populaires': Shows 16 collections (more than 6)",
+    "Homepage 'Prochaines Sorties': Series have S/E badges (S5 E3, S3 E2, S8 E16, S1 E3, S23 E17)",
+    "Homepage 'Prochaines Sorties': Movies have 'Film' badge",
+    "Homepage: No duplicate 'Films Populaires' or 'Series Populaires' rows at bottom",
+    "Homepage: Footer appears right after Prochaines Sorties section",
+    "NotificationBell: Has filter tabs (Tout, Sorties, Messages, Annonces) - tabs show when notifications exist",
+    "NotificationBell: Has delete button per notification (X icon with data-testid)",
+    "NotificationBell: Has 'Tout lire' button (shows when unread count > 0)",
+    "NotificationBell: Auto-checks for new episodes every 5 minutes",
+    "NotificationBell: Refreshes notifications every 30 seconds",
+    "NotificationBell: Has timeAgo display for notification timestamps",
+    "Backend: GET /api/notifications returns 200",
+    "Backend: PUT /api/notifications/read-all returns 200",
+    "Backend: DELETE /api/notifications/{id} returns 200",
+    "Backend: GET /api/tmdb/on-the-air returns TV shows for Prochaines Sorties",
+    "Backend: GET /api/tmdb/tv/{id} returns episode info (next_episode_to_air)",
+    "Backend: GET /api/tmdb/popular/persons returns actors for Acteurs Tendance",
+    "Backend: GET /api/tv-channels returns 8 channels for Chaines TV"
+  ],
+  
+  "test_report_links": [
+    "/app/backend/tests/test_iteration16.py",
+    "/app/test_reports/pytest/pytest_results_iteration16.xml"
+  ],
+  
+  "action_items": [],
+  
+  "critical_code_review_comments": [
+    "NotificationBell filter tabs only appear when there are notifications of that type (by design) - 'Tout' always shows, others show when count > 0",
+    "Admin broadcast creates notifications for other users, not the sender - this is expected behavior"
+  ],
+  
+  "updated_files": [
+    "/app/backend/tests/test_iteration16.py"
+  ],
+  
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "100% (all UI features verified)"
+  },
+  
+  "test_credentials": "admin@wavewatch.com / WaveWatch2026!",
+  
+  "seed_data_creation": "None needed - using TMDB API data and existing TV channels",
+  
+  "retest_needed": false,
+  
+  "should_main_agent_self_test": false,
+  
+  "context_for_next_testing_agent": "Iteration 16 verified all requested features: 1) TrendingActorsRow and TrendingTVChannelsRow now use ContentGrid component for horizontal slider with 'Voir tout' links. 2) PopularCollectionsRow no longer slices to 6 - shows all 16 collections from queries array. 3) CalendarWidgetHome fetches /api/tmdb/tv/{id} for each on-air show to get next_episode_to_air season/episode numbers, displays S{x} E{y} badge. 4) Removed duplicate ContentRow for Films/Series Populaires at bottom of HomePage. 5) NotificationBell rewritten with category filters (Tout, Sorties, Messages, Annonces), delete per notification, 'Tout lire' button, auto-check episodes every 5min, refresh every 30sec. 6) Backend DELETE /api/notifications/{notif_id} endpoint added.",
+  
+  "features_verified": {
+    "acteurs_tendance_slider": "PASS - Uses ContentGrid with horizontal scroll",
+    "acteurs_tendance_voir_tout": "PASS - Link to /actors",
+    "chaines_tv_slider": "PASS - Uses ContentGrid with horizontal scroll",
+    "chaines_tv_voir_tout": "PASS - Link to /tv-channels",
+    "collections_more_than_6": "PASS - Shows 16 collections",
+    "prochaines_sorties_se_badges": "PASS - S5 E3, S3 E2, S8 E16, S1 E3, S23 E17 visible",
+    "no_duplicate_rows": "PASS - No Films/Series Populaires at bottom",
+    "notification_filter_tabs": "PASS - Tout, Sorties, Messages, Annonces (conditional)",
+    "notification_delete_button": "PASS - X icon per notification",
+    "notification_tout_lire": "PASS - Shows when unread > 0",
+    "backend_delete_notifications": "PASS - DELETE /api/notifications/{id} returns 200"
+  }
+}
