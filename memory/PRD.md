@@ -1,7 +1,7 @@
 # WaveWatch PRD
 
 ## Original Problem Statement
-Rebuild the WaveWatch streaming platform completely from the GitHub repo (https://github.com/Wacewatch/Wavewatch2026) with all features, options, and functionality identical to the original.
+Rebuild the WaveWatch streaming platform from GitHub repo with all features identical to the original.
 
 ## Architecture
 - **Original**: Next.js 16 + Supabase + TMDB API + Tailwind CSS v4
@@ -9,7 +9,7 @@ Rebuild the WaveWatch streaming platform completely from the GitHub repo (https:
 
 ## What's Been Implemented (Jan-Apr 2026)
 
-### Backend (80+ API endpoints)
+### Backend (95+ API endpoints)
 - JWT Auth (register, login, logout, me, refresh, brute force protection)
 - TMDB Proxy (trending, popular, search, details, credits, similar, collections, genres, discover, upcoming, persons)
 - Favorites CRUD, Watch History (batch upsert)
@@ -18,79 +18,58 @@ Rebuild the WaveWatch streaming platform completely from the GitHub repo (https:
 - Content Requests (voting), Admin (stats, users, settings, cinema rooms)
 - TV Channels, Radio, Retrogaming, Ebooks, Software
 - VIP Game (daily spin), Achievements (8 badges), Leaderboard
-- **NEW (Apr 15, 2026):** Admin CRUD for TV Channels, Radio, Music, Software, Games, Ebooks, Retrogaming
-- **NEW:** Changelogs CRUD, Broadcast messaging, Content Requests admin management
-- **NEW:** Enhanced stats (/api/admin/enhanced-stats, /api/user/detailed-stats)
-- **NEW:** User ratings (like/dislike) system
-- **NEW:** Admin content requests management (approve/reject/delete)
+- Admin CRUD for TV Channels, Radio, Music, Software, Games, Ebooks, Retrogaming
+- Changelogs CRUD, Broadcast messaging, Content Requests admin management
+- Enhanced stats, User ratings (like/dislike), User heartbeat/online tracking
+- Profile management (preferences, password change, activation codes, account deletion)
+- User status batch check for content card overlays
 
-### Frontend (49+ pages, 20+ components)
-- **Homepage**: Hero + 15 sections (trending, collections, playlists, actors, TV channels, promos, widgets)
-- **Content**: Movies, TV, Anime (listing + detail + season + episode) with Playlist & Favorite buttons
-- **ContentCard**: Quick "+" playlist add button on hover with dropdown
-- **Search**: Autocomplete with real-time suggestions (posters, types, years) + debounce
-- **Playlist System**: Create/manage/view/add items from detail pages and content cards, discover public playlists
-- **Dashboard**: **ENHANCED** - Collapsible sections, detailed stats (time/likes/dislikes), achievements grid, history/favorites tabs with thumbnail grids, feedback link, interesting facts
-- **User**: Favorites, Watch History, Playlists, Profile, Achievements, Leaderboard
-- **Specialized**: Sport, Documentaires, Spectacles, Calendar, Actors, Collections
-- **Media**: TV Channels, Radio FM, Music, Retrogaming, Games
-- **Admin**: **ENHANCED** - 15 tabs (Dashboard, Broadcast, TV, Radio, Music, Software, Games, Ebooks, Retrogaming, Requests, Users, Staff, Changelogs, Modules, Cinema) with full CRUD, search, pagination, user role filtering
+### Frontend (49+ pages, 25+ components)
+- **Homepage**: Hero + 15 sections with ContentCard overlays (favorite/watched badges)
+- **Content Detail Pages**: Movies, TV, Episodes, Actors, Playlists all with Like/Dislike buttons, Favoris, Mark as Watched
+- **Mark as Watched**: Improved visual feedback (green glow animation, "Deja vu" text)
+- **Dashboard**: Collapsible sections, detailed stats, achievements, history/favorites tabs
+- **Profile**: COMPLETE - Avatar, bio, location, themes (standard + VIP), VIP status, content preferences (adult/watched/auto-mark/anti-spoiler), messaging preferences, password change, activation codes, privilege removal, account deletion
+- **Admin**: 15 tabs with full CRUD, online users counter (real-time), user edit modal with role management
+- **ContentCard**: Overlay icons showing favorite (heart) and watched (eye) badges on all thumbnails
+- **Like/Dislike**: Reusable component on all detail pages
 - **Auth**: Login, Register, ProtectedRoute
-- **Navigation**: Autocomplete search, Contenu/Medias dropdowns, Calendar/VIP links, full mobile menu
-- **Logo**: Updated to user-provided URLs (imgur) in nav, footer, favicon
-- 17 themes (standard + limited + premium/VIP-gated)
+- **Navigation**: Logo image, autocomplete search, theme switcher
+- 17 themes (standard + limited/premium/VIP-gated)
 
-## Testing Status (6 iterations)
-- Iteration 6: Backend 100%, Frontend 95%
+### Roles System
+- **Membre** : Standard user (default on registration)
+- **VIP** : Premium themes, VIP game (code: vip2025)
+- **VIP+** : Additional premium features (code: vipplus2025)
+- **Uploader** : Can manage music, games, software, ebooks (code: uplo2025#)
+- **Admin** : Full platform management (code: 45684568)
+
+## Testing Status (7 iterations)
+- Iteration 7: Backend 100% (39/39), Frontend 95%
 - All major features working correctly
-- Mark as watched button present and functional on Movies and TV shows
-
-## User Personas
-- **Free User**: Can browse, search, watch, create playlists, add favorites, mark as watched
-- **VIP User**: Premium themes, VIP game, special badges
-- **VIP+ User**: Additional premium themes, more features
-- **Admin**: Full content management, user management, site settings, broadcast messaging
-- **Uploader**: Can manage music, games, software, ebooks content
-
-## Core Requirements
-- French language UI
-- Dark theme by default
-- TMDB integration for movies/TV content
-- User authentication with JWT
-- Watch tracking and history
-- Favorites system
-- Playlist management
-- Admin dashboard with content CRUD
-- VIP/subscription system
-- Theme system (17 themes)
 
 ## Prioritized Backlog
-### P0 (Done)
-- Logo and favicon update
-- Enhanced Dashboard with collapsible sections
-- Enhanced Admin with 15 content management tabs
-- Backend CRUD endpoints for all content types
-- Mark as watched button on movies and TV shows
+### P0 (Done - All completed)
+- Logo/favicon update, Enhanced Dashboard, Enhanced Admin with 15 tabs
+- Like/Dislike on all detail pages
+- Online users counter in admin
+- User edit form in admin
+- Improved mark as watched visual feedback
+- Content card overlays (fav/watched badges)
+- Complete Profile page with all original features
+- Roles system (membre, vip, uploader, admin)
 
 ### P1 (Next)
-- Like/Dislike buttons on movie/tv detail pages (backend ready, frontend needed)
-- Episode detail page "mark as watched" button improvements
-- Content request voting from user side
+- Content request voting from user side improvements
+- Admin activity feed (recent user actions)
+- User messaging system between users
 
 ### P2 (Later)
-- Real-time online users counter in admin
 - TMDB content update trigger from admin
 - System health check dashboard
-- User activity feed in admin
+- Real music streaming with audio player
 
 ### P3 (Future)
-- Interactive World 3D (excluded by user)
-- Full music streaming with real audio
+- Interactive World 3D
 - Real playable browser games
 - Ad gate modal
-
-## Next Tasks
-1. Add like/dislike buttons on movie and TV show detail pages
-2. Improve episode detail page with mark as watched
-3. Add content request voting from user side
-4. Add admin user editing form (instead of just toggles)
