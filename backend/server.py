@@ -842,7 +842,9 @@ async def get_user_stats(user: dict = Depends(get_current_user)):
 # ==================== TV CHANNELS / RADIO ====================
 @app.get("/api/tv-channels")
 async def get_tv_channels():
-    channels = await db.tv_channels.find({}, {"_id": 0}).to_list(500)
+    channels = await db.tv_channels.find().to_list(500)
+    for c in channels:
+        c["_id"] = str(c["_id"])
     if not channels:
         channels = [
             {"id": 1, "name": "TF1", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/TF1_logo_2013.png/200px-TF1_logo_2013.png", "stream_url": "", "category": "Generaliste", "country": "FR"},
@@ -858,7 +860,9 @@ async def get_tv_channels():
 
 @app.get("/api/radio-stations")
 async def get_radio_stations():
-    stations = await db.radio_stations.find({}, {"_id": 0}).to_list(500)
+    stations = await db.radio_stations.find().to_list(500)
+    for s in stations:
+        s["_id"] = str(s["_id"])
     if not stations:
         stations = [
             {"id": 1, "name": "NRJ", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/NRJ_logo.png/200px-NRJ_logo.png", "stream_url": "https://scdn.nrjaudio.fm/fr/30001/mp3_128.mp3", "genre": "Pop/Dance"},
@@ -947,22 +951,123 @@ async def vip_game_winners():
 # ==================== RETROGAMING SOURCES ====================
 @app.get("/api/retrogaming")
 async def get_retrogaming():
-    games = await db.retrogaming.find({}, {"_id": 0}).to_list(500)
-    if not games:
-        games = [
-            {"id": 1, "name": "Super Mario Bros", "console": "NES", "cover": "/placeholder.svg?height=200&width=200", "play_url": "https://www.retrogames.onl/play/nes/super-mario-bros.html", "year": 1985},
-            {"id": 2, "name": "Sonic the Hedgehog", "console": "Genesis", "cover": "/placeholder.svg?height=200&width=200", "play_url": "https://www.retrogames.onl/play/genesis/sonic-the-hedgehog.html", "year": 1991},
-            {"id": 3, "name": "Tetris", "console": "Game Boy", "cover": "/placeholder.svg?height=200&width=200", "play_url": "https://www.retrogames.onl/play/gb/tetris.html", "year": 1989},
-            {"id": 4, "name": "Pac-Man", "console": "Arcade", "cover": "/placeholder.svg?height=200&width=200", "play_url": "https://www.retrogames.onl/play/arcade/pac-man.html", "year": 1980},
-            {"id": 5, "name": "The Legend of Zelda", "console": "NES", "cover": "/placeholder.svg?height=200&width=200", "play_url": "https://www.retrogames.onl/play/nes/the-legend-of-zelda.html", "year": 1986},
-            {"id": 6, "name": "Street Fighter II", "console": "SNES", "cover": "/placeholder.svg?height=200&width=200", "play_url": "https://www.retrogames.onl/play/snes/street-fighter-ii.html", "year": 1992},
-        ]
-    return {"games": games}
+    sources = await db.retrogaming_sources.find().to_list(500)
+    for s in sources:
+        s["_id"] = str(s["_id"])
+    # Also check old collection name
+    if not sources:
+        sources = await db.retrogaming.find().to_list(500)
+        for s in sources:
+            s["_id"] = str(s["_id"])
+    return {"sources": sources, "games": sources}
 
 # Health check
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "app": "WaveWatch", "version": "2026"}
+
+
+# ==================== UNIVERSAL SEARCH ====================
+@app.get("/api/search/all")
+async def universal_search(q: str = ""):
+    if not q or len(q) < 2:
+        return {"results": []}
+    results = []
+    regex = {"$regex": q, "$options": "i"}
+    # Search TV channels
+    channels = await db.tv_channels.find({"$or": [{"name": regex}, {"category": regex}]}).to_list(10)
+    for c in channels:
+        c["_id"] = str(c["_id"])
+        results.append({"type": "tv_channel", "title": c.get("name"), "data": c})
+    # Search music
+    music = await db.music_content.find({"$or": [{"title": regex}, {"artist": regex}]}).to_list(10)
+    for m in music:
+        m["_id"] = str(m["_id"])
+        results.append({"type": "music", "title": m.get("title"), "data": m})
+    # Search games
+    games = await db.games.find({"$or": [{"title": regex}, {"genre": regex}]}).to_list(10)
+    for g in games:
+        g["_id"] = str(g["_id"])
+        results.append({"type": "game", "title": g.get("title"), "data": g})
+    # Search software
+    software = await db.software.find({"$or": [{"name": regex}, {"category": regex}]}).to_list(10)
+    for s in software:
+        s["_id"] = str(s["_id"])
+        results.append({"type": "software", "title": s.get("name"), "data": s})
+    # Search ebooks
+    ebooks = await db.ebooks.find({"$or": [{"title": regex}, {"author": regex}]}).to_list(10)
+    for e in ebooks:
+        e["_id"] = str(e["_id"])
+        results.append({"type": "ebook", "title": e.get("title"), "data": e})
+    return {"results": results}
+
+# ==================== SERIES MARK ALL WATCHED ====================
+@app.post("/api/user/history/series/{series_id}/mark-all")
+async def mark_series_all_watched(series_id: int, user: dict = Depends(get_current_user)):
+    tmdb_key = os.environ.get("TMDB_API_KEY")
+    if not tmdb_key:
+        raise HTTPException(status_code=500, detail="TMDB key missing")
+    import httpx
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"https://api.themoviedb.org/3/tv/{series_id}?api_key={tmdb_key}&language=fr-FR", timeout=10.0)
+        show = resp.json()
+        show_name = show.get("name", "")
+        poster = show.get("poster_path", "")
+        entries = []
+        for season in show.get("seasons", []):
+            snum = season.get("season_number", 0)
+            if snum == 0:
+                continue
+            season_resp = await client.get(f"https://api.themoviedb.org/3/tv/{series_id}/season/{snum}?api_key={tmdb_key}&language=fr-FR", timeout=10.0)
+            season_data = season_resp.json()
+            for ep in season_data.get("episodes", []):
+                epnum = ep.get("episode_number", 0)
+                ep_id = int(f"{series_id}{snum}{epnum}")
+                entries.append({
+                    "user_id": user["_id"], "content_id": ep_id, "content_type": "episode",
+                    "title": f"{show_name} S{snum}E{epnum}", "poster_path": poster,
+                    "watched_at": datetime.now(timezone.utc).isoformat()
+                })
+        # Also mark the series itself
+        entries.append({
+            "user_id": user["_id"], "content_id": series_id, "content_type": "tv",
+            "title": show_name, "poster_path": poster,
+            "watched_at": datetime.now(timezone.utc).isoformat()
+        })
+        # Batch upsert
+        for e in entries:
+            await db.watch_history.update_one(
+                {"user_id": e["user_id"], "content_id": e["content_id"], "content_type": e["content_type"]},
+                {"$set": e}, upsert=True
+            )
+    return {"message": f"{len(entries)} elements marques comme vus", "count": len(entries)}
+
+# ==================== SERIES RESUME ====================
+@app.get("/api/user/series/{series_id}/progress")
+async def get_series_progress(series_id: int, user: dict = Depends(get_current_user)):
+    history = await db.watch_history.find({"user_id": user["_id"], "content_type": "episode"}).to_list(5000)
+    watched_eps = set()
+    for h in history:
+        cid = str(h.get("content_id", ""))
+        if cid.startswith(str(series_id)):
+            watched_eps.add(cid)
+    # Find the next unwatched episode
+    tmdb_key = os.environ.get("TMDB_API_KEY")
+    if not tmdb_key:
+        return {"next_season": 1, "next_episode": 1, "total_watched": len(watched_eps)}
+    import httpx
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"https://api.themoviedb.org/3/tv/{series_id}?api_key={tmdb_key}&language=fr-FR", timeout=10.0)
+        show = resp.json()
+        for season in show.get("seasons", []):
+            snum = season.get("season_number", 0)
+            if snum == 0:
+                continue
+            for epnum in range(1, season.get("episode_count", 0) + 1):
+                ep_id = str(int(f"{series_id}{snum}{epnum}"))
+                if ep_id not in watched_eps:
+                    return {"next_season": snum, "next_episode": epnum, "total_watched": len(watched_eps)}
+    return {"next_season": None, "next_episode": None, "total_watched": len(watched_eps), "completed": True}
 
 # ==================== CINEMA ROOMS ====================
 class CinemaRoomCreate(BaseModel):

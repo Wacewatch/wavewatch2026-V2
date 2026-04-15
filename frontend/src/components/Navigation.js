@@ -146,6 +146,9 @@ export default function Navigation() {
                   <DropdownItem to="/radio">Radio FM</DropdownItem>
                   <DropdownItem to="/retrogaming">Retrogaming</DropdownItem>
                   <DropdownItem to="/discover/playlists">Decouvrir des Playlists</DropdownItem>
+                  <div className="border-t my-1" style={{ borderColor: 'hsl(var(--nav-border))' }} />
+                  <DropdownItem to="https://livewatch.sbs/" external>LiveWatch</DropdownItem>
+                  <DropdownItem to="https://sports-stream.sbs/" external>Sports-Stream</DropdownItem>
                 </div>
               )}
             </div>

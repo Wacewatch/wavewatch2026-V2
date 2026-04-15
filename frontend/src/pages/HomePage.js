@@ -267,24 +267,23 @@ function PublicPlaylistsRow() {
 
 function SportsStreamPromo() {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-900 via-red-800 to-orange-900 p-6 md:p-8" data-testid="sports-promo">
-      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23fff\' fill-opacity=\'0.3\'%3E%3Ccircle cx=\'20\' cy=\'20\' r=\'5\'/%3E%3C/g%3E%3C/svg%3E")' }} />
-      <div className="relative flex flex-col md:flex-row items-center gap-6">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-3"><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" /><span className="text-sm font-bold text-red-300">SPORTS EN DIRECT</span></div>
-          <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">Ne manquez aucun match !</h3>
-          <p className="text-white/70 mb-4">Football, Basketball, Tennis, F1 et plus - regardez en direct ou en replay</p>
-          <Link to="/sport" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white text-red-900 font-bold hover:bg-white/90 transition-colors">
-            <Play className="w-4 h-4" />Voir les sports
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {['Football', 'Basketball', 'Tennis', 'F1'].map(s => (
-            <div key={s} className="bg-white/10 backdrop-blur-sm rounded-lg p-3 text-center border border-white/10">
-              <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
-              <p className="text-xs font-medium text-white">{s}</p>
-            </div>
-          ))}
+    <div className="rounded-2xl border-2 border-red-500/30 bg-gradient-to-r from-gray-900 via-gray-900 to-red-950/30 overflow-hidden" data-testid="sports-promo">
+      <div className="flex flex-col md:flex-row items-center gap-8 p-8 md:p-12">
+        <div className="w-40 h-40 md:w-52 md:h-52 flex-shrink-0"><img src="https://i.imgur.com/aUOO21x.png" alt="Sports-Stream" className="w-full h-full object-contain drop-shadow-2xl" /></div>
+        <div className="flex-1 text-center md:text-left">
+          <h2 className="text-3xl font-bold text-white">Sports-Stream <span className="text-xs px-2 py-1 rounded-full bg-red-500 text-white align-middle ml-2">by WaveWatch</span></h2>
+          <p className="text-muted-foreground italic mt-1">Votre destination ultime pour le streaming sportif</p>
+          <div className="flex flex-wrap gap-2 mt-4 justify-center md:justify-start">
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">Multi-sources</span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">+15 Sports</span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">Sans inscription</span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-4 max-w-xl">Profitez d'un streaming multi-sports de haute qualite avec plus de 15 disciplines disponibles. Accedez a plusieurs sources de streaming pour chaque evenement, le tout sans inscription requise.</p>
+          <a href="https://sports-stream.sbs/" target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+            Acceder au site
+          </a>
+          <p className="text-xs text-muted-foreground mt-3">Football - Tennis - Basketball - Baseball - Hockey - Et plus encore...</p>
         </div>
       </div>
     </div>
@@ -293,20 +292,26 @@ function SportsStreamPromo() {
 
 function LiveWatchPromo() {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 p-6 md:p-8" data-testid="livewatch-promo">
-      <div className="relative flex flex-col md:flex-row items-center gap-6">
-        <div className="flex-1">
-          <h3 className="text-2xl font-bold text-white mb-2">WaveWatch Live</h3>
-          <p className="text-white/70 mb-4">Regardez ensemble en temps reel avec vos amis. Chat integre, synchronisation parfaite.</p>
-          <div className="flex gap-3">
-            <Link to="/tv-channels" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors"><Tv className="w-4 h-4" />TV en direct</Link>
-            <Link to="/radio" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-white/20 text-white font-medium hover:bg-white/10 transition-colors"><Radio className="w-4 h-4" />Radio FM</Link>
+    <div className="rounded-2xl border-2 border-cyan-500/30 bg-gradient-to-r from-gray-900 via-gray-900 to-cyan-950/30 overflow-hidden" data-testid="livewatch-promo">
+      <div className="flex flex-col md:flex-row items-center gap-8 p-8 md:p-12">
+        <div className="w-40 h-40 md:w-52 md:h-52 flex-shrink-0"><img src="https://i.imgur.com/ovX7j6R.png" alt="LiveWatch" className="w-full h-full object-contain drop-shadow-2xl" /></div>
+        <div className="flex-1 text-center md:text-left">
+          <h2 className="text-3xl font-bold text-white">LiveWatch <span className="text-xs px-2 py-1 rounded-full bg-cyan-500 text-white align-middle ml-2">by WaveWatch</span></h2>
+          <p className="text-muted-foreground italic mt-1">Votre plateforme mondiale de streaming TV en direct</p>
+          <div className="flex flex-wrap gap-2 mt-4 justify-center md:justify-start">
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">17 Pays</span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">40 000+ Chaines</span>
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">Acces Gratuit</span>
           </div>
-        </div>
-        <div className="flex gap-4">
-          <div className="bg-white/10 rounded-xl p-4 text-center"><Tv className="w-8 h-8 text-blue-400 mx-auto mb-2" /><p className="text-xs text-white font-medium">8+ chaines</p></div>
-          <div className="bg-white/10 rounded-xl p-4 text-center"><Radio className="w-8 h-8 text-purple-400 mx-auto mb-2" /><p className="text-xs text-white font-medium">8+ radios</p></div>
-          <div className="bg-white/10 rounded-xl p-4 text-center"><Gamepad2 className="w-8 h-8 text-green-400 mx-auto mb-2" /><p className="text-xs text-white font-medium">6+ jeux retro</p></div>
+          <p className="text-sm text-muted-foreground mt-4 max-w-xl">Decouvrez plus de 40 000 chaines TV en direct provenant de 17 pays. Profitez de toutes les chaines nationales et payantes sans abonnement, le tout accessible gratuitement et instantanement.</p>
+          <div className="flex gap-3 mt-5">
+            <a href="https://livewatch.sbs/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+              Acceder au site
+            </a>
+            <a href="https://v2.livewatch.sbs/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-cyan-600/50 text-cyan-400 hover:bg-cyan-900/20 font-medium transition-colors text-sm">Serveur de secours</a>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">France - Italie - Espagne - Royaume-Uni - Allemagne - Et 12 autres pays...</p>
         </div>
       </div>
     </div>
