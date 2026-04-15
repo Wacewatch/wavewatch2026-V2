@@ -155,12 +155,6 @@ export default function Navigation() {
                 </div>
               )}
             </div>
-            <Link to="/calendar" className="flex items-center font-medium transition-all hover:opacity-80" style={textStyle} data-testid="calendar-link">
-              <Calendar className="w-4 h-4 mr-1" />Calendrier
-            </Link>
-            <Link to="/vip-game" className="flex items-center font-medium transition-all hover:opacity-80" style={textStyle} data-testid="vip-game-link">
-              <Crown className="w-4 h-4 mr-1 text-yellow-400" />VIP
-            </Link>
           </div>
 
           {/* Search */}

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Play, Download, Youtube, Heart, Shuffle } from 'lucide-react';
+import { Star, Calendar, Play, Download, Youtube, Heart, Shuffle, CheckCircle } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import { LoadingSpinner } from '../components/Loading';
@@ -16,6 +16,7 @@ export default function TVShowDetailPage() {
   const [similar, setSimilar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isWatched, setIsWatched] = useState(false);
   const [showStream, setShowStream] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
 
@@ -28,7 +29,10 @@ export default function TVShowDetailPage() {
         const logo = data.logos?.find(l => l.iso_639_1 === 'fr') || data.logos?.find(l => l.iso_639_1 === 'en') || data.logos?.[0];
         if (logo?.file_path) setLogoUrl(`${TMDB_IMG}/original${logo.file_path}`);
       }).catch(() => {});
-    if (user) API.get(`/api/user/favorites/check?content_id=${id}&content_type=tv`).then(({ data }) => setIsFavorite(data.is_favorite)).catch(() => {});
+    if (user) {
+      API.get(`/api/user/favorites/check?content_id=${id}&content_type=tv`).then(({ data }) => setIsFavorite(data.is_favorite)).catch(() => {});
+      API.get('/api/user/history').then(({ data }) => { setIsWatched((data.history || []).some(h => h.content_id === parseInt(id) && h.content_type === 'tv')); }).catch(() => {});
+    }
   }, [id, user]);
 
   const toggleFavorite = async () => {
@@ -36,6 +40,15 @@ export default function TVShowDetailPage() {
     const { data } = await API.post('/api/user/favorites', { content_id: parseInt(id), content_type: 'tv', title: show.name, poster_path: show.poster_path });
     setIsFavorite(data.is_favorite);
     toast({ title: data.is_favorite ? 'Ajoute aux favoris' : 'Retire des favoris' });
+  };
+
+  const markAsWatched = async () => {
+    if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
+    try {
+      await API.post('/api/user/history', { content_id: parseInt(id), content_type: 'tv', title: show.name, poster_path: show.poster_path });
+      setIsWatched(true);
+      toast({ title: 'Marque comme vu' });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
   if (loading) return <LoadingSpinner />;
@@ -77,6 +90,9 @@ export default function TVShowDetailPage() {
               <button onClick={() => setShowStream(true)} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2"><Play className="w-5 h-5" />Regarder</button>
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 ${isFavorite ? 'bg-yellow-900/20' : ''}`}>
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />Favoris
+              </button>
+              <button onClick={markAsWatched} className={`px-5 py-2.5 rounded-lg border border-cyan-600 text-cyan-400 hover:bg-cyan-900/20 flex items-center gap-2 transition-colors ${isWatched ? 'bg-cyan-900/20' : ''}`} data-testid="watched-btn">
+                <CheckCircle className={`w-5 h-5 ${isWatched ? 'fill-cyan-500' : ''}`} />{isWatched ? 'Vu' : 'Marquer vu'}
               </button>
               <AddToPlaylistButton contentId={parseInt(id)} contentType="tv" title={show.name} posterPath={show.poster_path} />
             </div>

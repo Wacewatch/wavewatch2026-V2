@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Clock, Play, Download, Youtube, ThumbsUp, ThumbsDown, Heart, Eye, User, Plus } from 'lucide-react';
+import { Star, Calendar, Clock, Play, Download, Youtube, ThumbsUp, ThumbsDown, Heart, Eye, User, Plus, CheckCircle } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import { LoadingSpinner } from '../components/Loading';
@@ -17,6 +17,7 @@ export default function MovieDetailPage() {
   const [collection, setCollection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isWatched, setIsWatched] = useState(false);
   const [showStream, setShowStream] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
@@ -39,6 +40,7 @@ export default function MovieDetailPage() {
       }).catch(() => {});
     if (user) {
       API.get(`/api/user/favorites/check?content_id=${id}&content_type=movie`).then(({ data }) => setIsFavorite(data.is_favorite)).catch(() => {});
+      API.get('/api/user/history').then(({ data }) => { setIsWatched((data.history || []).some(h => h.content_id === parseInt(id) && h.content_type === 'movie')); }).catch(() => {});
     }
   }, [id, user]);
 
@@ -48,6 +50,15 @@ export default function MovieDetailPage() {
       const { data } = await API.post('/api/user/favorites', { content_id: parseInt(id), content_type: 'movie', title: movie.title, poster_path: movie.poster_path });
       setIsFavorite(data.is_favorite);
       toast({ title: data.is_favorite ? 'Ajoute aux favoris' : 'Retire des favoris' });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  const markAsWatched = async () => {
+    if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
+    try {
+      await API.post('/api/user/history', { content_id: parseInt(id), content_type: 'movie', title: movie.title, poster_path: movie.poster_path });
+      setIsWatched(true);
+      toast({ title: 'Marque comme vu' });
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
@@ -111,6 +122,9 @@ export default function MovieDetailPage() {
               <button onClick={() => setShowTrailer(true)} className="px-5 py-2.5 rounded-lg border border-orange-600 text-orange-400 hover:bg-orange-900/20 flex items-center gap-2 transition-colors"><Youtube className="w-5 h-5" />Bande-annonce</button>
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 transition-colors ${isFavorite ? 'bg-yellow-900/20' : ''}`} data-testid="favorite-btn">
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />Favoris
+              </button>
+              <button onClick={markAsWatched} className={`px-5 py-2.5 rounded-lg border border-cyan-600 text-cyan-400 hover:bg-cyan-900/20 flex items-center gap-2 transition-colors ${isWatched ? 'bg-cyan-900/20' : ''}`} data-testid="watched-btn">
+                <CheckCircle className={`w-5 h-5 ${isWatched ? 'fill-cyan-500' : ''}`} />{isWatched ? 'Vu' : 'Marquer vu'}
               </button>
               <AddToPlaylistButton contentId={parseInt(id)} contentType="movie" title={movie.title} posterPath={movie.poster_path} />
             </div>

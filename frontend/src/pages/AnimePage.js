@@ -13,7 +13,7 @@ export default function AnimePage() {
   useEffect(() => {
     setLoading(true);
     API.get(`/api/tmdb/popular/anime?page=${page}`).then(({ data }) => {
-      setAnime(data.results || []); setTotalPages(Math.min(data.total_pages || 1, 500));
+      setAnime(data.results || []); setTotalPages(data.total_pages || 1);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [page]);
 

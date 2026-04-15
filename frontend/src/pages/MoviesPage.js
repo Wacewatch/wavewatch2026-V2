@@ -25,7 +25,7 @@ export default function MoviesPage() {
       : `/api/tmdb/popular/movies?page=${page}`;
     API.get(endpoint).then(({ data }) => {
       setMovies(data.results || []);
-      setTotalPages(Math.min(data.total_pages || 1, 500));
+      setTotalPages(data.total_pages || 1);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [page, genreFilter]);
 

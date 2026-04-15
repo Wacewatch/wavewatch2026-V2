@@ -17,7 +17,7 @@ export default function TVShowsPage() {
   useEffect(() => {
     setLoading(true);
     const ep = selectedGenre ? `/api/tmdb/discover/tv?genre=${selectedGenre}&page=${page}` : `/api/tmdb/popular/tv?page=${page}`;
-    API.get(ep).then(({ data }) => { setShows(data.results || []); setTotalPages(Math.min(data.total_pages || 1, 500)); }).catch(() => {}).finally(() => setLoading(false));
+    API.get(ep).then(({ data }) => { setShows(data.results || []); setTotalPages(data.total_pages || 1); }).catch(() => {}).finally(() => setLoading(false));
   }, [page, selectedGenre]);
 
   return (
