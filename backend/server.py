@@ -7,7 +7,7 @@ import jwt
 import secrets
 import httpx
 from datetime import datetime, timezone, timedelta
-from typing import Optional, List
+from typing import Optional, List, Any
 from fastapi import FastAPI, HTTPException, Request, Response, Depends, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -233,7 +233,7 @@ class FavoriteToggle(BaseModel):
 
 class SiteSettingUpdate(BaseModel):
     setting_key: str
-    setting_value: dict
+    setting_value: Any
 
 class UserRoleUpdate(BaseModel):
     role: Optional[str] = None
