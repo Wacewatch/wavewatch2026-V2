@@ -103,7 +103,7 @@ function TrendingActorsRow() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    API.get('/api/tmdb/popular/persons').then(({ data }) => setActors((data.results || []).slice(0, 12))).catch(() => {}).finally(() => setLoading(false));
+    API.get('/api/tmdb/popular/persons').then(({ data }) => setActors((data.results || []).slice(0, 20))).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="space-y-4"><h2 className="text-xl font-bold">Acteurs Tendance</h2><LoadingGrid count={6} /></div>;
@@ -115,13 +115,13 @@ function TrendingActorsRow() {
         <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5 text-blue-400" />Acteurs Tendance</h2>
         <Link to="/actors" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
       </div>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-12 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
         {actors.map(a => (
           <Link key={a.id} to={`/actors/${a.id}`} className="group text-center">
-            <div className="aspect-square rounded-full overflow-hidden bg-muted mb-2 mx-auto w-full max-w-[100px]">
-              <img src={a.profile_path ? `${TMDB_IMG}/w200${a.profile_path}` : 'https://placehold.co/200x200/333/ccc?text=?'} alt={a.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+            <div className="aspect-[3/4] rounded-xl overflow-hidden bg-muted mb-2 mx-auto w-full">
+              <img src={a.profile_path ? `${TMDB_IMG}/w300${a.profile_path}` : 'https://placehold.co/300x400/333/ccc?text=?'} alt={a.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
             </div>
-            <p className="text-xs font-medium truncate group-hover:text-blue-400">{a.name}</p>
+            <p className="text-sm font-medium truncate group-hover:text-blue-400">{a.name}</p>
           </Link>
         ))}
       </div>
@@ -133,7 +133,11 @@ function TrendingTVChannelsRow() {
   const [channels, setChannels] = useState([]);
   const [selectedChannel, setSelectedChannel] = useState(null);
   useEffect(() => {
-    API.get('/api/tv-channels').then(({ data }) => setChannels(data.channels || [])).catch(() => {});
+    API.get('/api/tv-channels').then(({ data }) => {
+      // Randomize order on each load
+      const shuffled = (data.channels || []).sort(() => Math.random() - 0.5);
+      setChannels(shuffled);
+    }).catch(() => {});
   }, []);
 
   if (!channels.length) return null;
@@ -141,18 +145,27 @@ function TrendingTVChannelsRow() {
   return (
     <div data-testid="trending-tv-channels-section">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold flex items-center gap-2"><Tv className="w-5 h-5 text-green-400" />Chaines TV Populaires</h2>
+        <h2 className="text-xl font-bold flex items-center gap-2"><Tv className="w-5 h-5 text-green-400" />Chaines TV</h2>
         <Link to="/tv-channels" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
       </div>
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {channels.slice(0, 8).map(ch => (
-          <div key={ch.id || ch._id || ch.name} onClick={() => setSelectedChannel(ch)} className="bg-card border border-border rounded-xl p-3 text-center hover:border-primary/30 transition-colors group cursor-pointer">
-            <div className="w-12 h-12 mx-auto mb-2 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center relative">
-              {(ch.logo || ch.logo_url) ? <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-contain p-1" onError={e => { e.target.style.display = 'none'; const fb = e.target.parentElement.querySelector('[data-fallback]'); if(fb) fb.style.display = 'flex'; }} /> : null}
-              <div data-fallback className={`${(ch.logo || ch.logo_url) ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center`}><Tv className="w-6 h-6 text-muted-foreground" /></div>
+          <div key={ch.id || ch._id || ch.name} onClick={() => setSelectedChannel(ch)} className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all group cursor-pointer" data-testid={`home-channel-${ch.name}`}>
+            <div className="aspect-video bg-gradient-to-br from-blue-900/30 to-purple-900/30 flex items-center justify-center relative overflow-hidden">
+              {(ch.logo || ch.logo_url) ? (
+                <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; const fb = e.target.parentElement.querySelector('[data-fallback]'); if(fb) fb.style.display = 'flex'; }} />
+              ) : null}
+              <div data-fallback className={`${(ch.logo || ch.logo_url) ? 'hidden' : 'flex'} absolute inset-0 items-center justify-center bg-gradient-to-br from-blue-800/50 to-purple-800/50`}>
+                <Tv className="w-10 h-10 text-muted-foreground" />
+              </div>
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                <Play className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </div>
-            <p className="text-xs font-medium truncate group-hover:text-green-400">{ch.name}</p>
-            <p className="text-[10px] text-muted-foreground">{ch.category}</p>
+            <div className="p-2.5 text-center">
+              <p className="text-sm font-medium truncate group-hover:text-green-400">{ch.name}</p>
+              <p className="text-xs text-muted-foreground">{ch.category}</p>
+            </div>
           </div>
         ))}
       </div>
@@ -180,7 +193,7 @@ function TrendingTVChannelsRow() {
 function PopularCollectionsRow() {
   const [collections, setCollections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const queries = ['Marvel', 'Star Wars', 'Harry Potter', 'Fast Furious', 'Jurassic', 'Batman'];
+  const queries = ['Marvel', 'Star Wars', 'Harry Potter', 'Fast Furious', 'Jurassic', 'Batman', 'X-Men', 'Mission Impossible', 'Toy Story', 'Pirates Caribbean', 'Alien', 'Hunger Games', 'Transformers', 'John Wick', 'The Avengers', 'Spider-Man'];
 
   useEffect(() => {
     Promise.all(queries.map(q => API.get(`/api/tmdb/collections/search?q=${q}`).then(({ data }) => data.results?.[0]).catch(() => null)))
@@ -404,14 +417,12 @@ function CalendarWidgetHome() {
     ]).then(([moviesRes, tvRes]) => {
       const today = new Date().toISOString().split('T')[0];
       const movies = (moviesRes.data.results || []).filter(m => m.release_date >= today).map(m => ({ ...m, _type: 'movie' }));
-      // Les series "on the air" sont deja en cours - pas besoin de filtrer par date
-      const tvShows = (tvRes.data.results || []).slice(0, 8).map(s => ({ ...s, title: s.name, release_date: s.first_air_date || today, _type: 'tv' }));
-      // Alterner films et series pour un mix equilibre
+      const tvShows = (tvRes.data.results || []).slice(0, 10).map(s => ({ ...s, title: s.name, release_date: s.first_air_date || today, _type: 'tv' }));
       const combined = [];
       let mi = 0, ti = 0;
-      while (combined.length < 12 && (mi < movies.length || ti < tvShows.length)) {
+      while (combined.length < 20 && (mi < movies.length || ti < tvShows.length)) {
         if (mi < movies.length) combined.push(movies[mi++]);
-        if (ti < tvShows.length && combined.length < 12) combined.push(tvShows[ti++]);
+        if (ti < tvShows.length && combined.length < 20) combined.push(tvShows[ti++]);
       }
       setUpcoming(combined);
     }).catch(() => {});
@@ -420,26 +431,24 @@ function CalendarWidgetHome() {
   if (!upcoming.length) return null;
 
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden" data-testid="calendar-widget">
-      <div className="p-4 flex items-center justify-between border-b border-border">
-        <h2 className="text-xl font-bold flex items-center gap-2"><CalIcon className="w-5 h-5 text-blue-400" />Prochaines Sorties</h2>
-        <Link to="/calendar" className="text-sm text-blue-400 hover:underline">Voir le calendrier</Link>
-      </div>
-      <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {upcoming.map(m => (
-          <Link key={`${m._type}-${m.id}`} to={`/${m._type === 'tv' ? 'tv-shows' : 'movies'}/${m.id}`} className="group">
-            <div className="aspect-[2/3] rounded-lg overflow-hidden bg-muted mb-2 relative">
-              {m.poster_path && <img src={`${TMDB_IMG}/w200${m.poster_path}`} alt={m.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
-              <span className={`absolute top-1 left-1 text-[9px] px-1.5 py-0.5 rounded-full font-bold ${m._type === 'tv' ? 'bg-blue-500/80 text-white' : 'bg-red-500/80 text-white'}`}>
+    <ContentGrid title="Prochaines Sorties" link="/calendar" icon={<CalIcon className="w-5 h-5 text-blue-400" />}>
+      {upcoming.map(m => (
+        <Link key={`${m._type}-${m.id}`} to={`/${m._type === 'tv' ? 'tv-shows' : 'movies'}/${m.id}`} className="block group" data-testid={`upcoming-${m._type}-${m.id}`}>
+          <div className="overflow-hidden rounded-lg border border-border bg-card transition-transform duration-200 group-hover:scale-105">
+            <div className="relative aspect-[2/3]">
+              {m.poster_path && <img src={`${TMDB_IMG}/w300${m.poster_path}`} alt={m.title} className="w-full h-full object-cover" />}
+              <span className={`absolute top-2 left-2 text-[10px] px-2 py-0.5 rounded-full font-bold ${m._type === 'tv' ? 'bg-blue-500/90 text-white' : 'bg-red-500/90 text-white'}`}>
                 {m._type === 'tv' ? 'Serie' : 'Film'}
               </span>
             </div>
-            <p className="text-xs font-medium truncate group-hover:text-blue-400">{m.title}</p>
-            <p className="text-[10px] text-muted-foreground">{new Date(m.release_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>
-          </Link>
-        ))}
-      </div>
-    </div>
+            <div className="p-2.5">
+              <p className="text-sm font-medium truncate group-hover:text-blue-400">{m.title}</p>
+              <p className="text-xs text-muted-foreground">{m.release_date ? new Date(m.release_date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''}</p>
+            </div>
+          </div>
+        </Link>
+      ))}
+    </ContentGrid>
   );
 }
 

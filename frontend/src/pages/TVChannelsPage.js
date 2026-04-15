@@ -33,13 +33,13 @@ export default function TVChannelsPage() {
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {filtered.map(ch => (
           <div key={ch.id || ch._id || ch.name} onClick={() => setSelectedChannel(ch)}
             className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all cursor-pointer group" data-testid={`channel-${ch.name}`}>
             <div className="aspect-video bg-gradient-to-br from-blue-900/30 to-purple-900/30 flex items-center justify-center relative overflow-hidden">
               {(ch.logo || ch.logo_url) ? (
-                <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-contain p-3" onError={e => { e.target.style.display = 'none'; const fb = e.target.parentElement.querySelector('[data-fallback]'); if(fb) fb.style.display = 'flex'; }} />
+                <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; const fb = e.target.parentElement.querySelector('[data-fallback]'); if(fb) fb.style.display = 'flex'; }} />
               ) : null}
               <div data-fallback className={`${(ch.logo || ch.logo_url) ? 'hidden' : 'flex'} w-full h-full items-center justify-center absolute inset-0`}>
                 <Tv className="w-10 h-10 text-muted-foreground" />

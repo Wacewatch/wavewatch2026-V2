@@ -80,7 +80,7 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     if (!id) {
-      const queries = ['Marvel', 'Star Wars', 'Harry Potter', 'James Bond', 'Fast & Furious', 'Batman', 'X-Men', 'Mission Impossible', 'Jurassic', 'Alien', 'Pirates des Caraibes', 'Toy Story'];
+      const queries = ['Marvel', 'Star Wars', 'Harry Potter', 'James Bond', 'Fast & Furious', 'Batman', 'X-Men', 'Mission Impossible', 'Jurassic', 'Alien', 'Pirates des Caraibes', 'Toy Story', 'Transformers', 'John Wick', 'Spider-Man', 'Hunger Games', 'Shrek', 'Madagascar', 'Ice Age', 'Indiana Jones', 'Lord of the Rings', 'Matrix', 'Terminator', 'Rocky'];
       queries.forEach(q => {
         API.get(`/api/tmdb/collections/search?q=${encodeURIComponent(q)}`).then(({ data }) => {
           if (data.results?.[0]) setPopular(prev => [...prev.filter(p => p.id !== data.results[0].id), data.results[0]]);
