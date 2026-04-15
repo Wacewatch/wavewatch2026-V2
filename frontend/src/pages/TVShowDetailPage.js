@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Play, Download, Youtube, Heart, Shuffle, CheckCircle } from 'lucide-react';
+import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
@@ -13,6 +13,7 @@ export default function TVShowDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [show, setShow] = useState(null);
   const [similar, setSimilar] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,6 +21,9 @@ export default function TVShowDetailPage() {
   const [isWatched, setIsWatched] = useState(false);
   const [showStream, setShowStream] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [watchedEpisodes, setWatchedEpisodes] = useState({});
+  const [continueInfo, setContinueInfo] = useState(null);
+  const [markingAll, setMarkingAll] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -33,6 +37,11 @@ export default function TVShowDetailPage() {
     if (user) {
       API.get(`/api/user/favorites/check?content_id=${id}&content_type=tv`).then(({ data }) => setIsFavorite(data.is_favorite)).catch(() => {});
       API.get('/api/user/history').then(({ data }) => { setIsWatched((data.history || []).some(h => h.content_id === parseInt(id) && h.content_type === 'tv')); }).catch(() => {});
+      // Get watched episodes for this show
+      API.get(`/api/user/tv-progress/${id}`).then(({ data }) => {
+        setWatchedEpisodes(data.watched_episodes || {});
+        setContinueInfo(data.continue_watching);
+      }).catch(() => {});
     }
   }, [id, user]);
 
@@ -51,6 +60,46 @@ export default function TVShowDetailPage() {
       toast({ title: 'Marque comme vu' });
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
+
+  // Marquer TOUTE la série comme vue (toutes les saisons et épisodes)
+  const markAllAsWatched = async () => {
+    if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
+    if (!window.confirm(`Marquer toutes les ${show.number_of_seasons} saisons et ${show.number_of_episodes} épisodes comme vus ?`)) return;
+    
+    setMarkingAll(true);
+    try {
+      await API.post(`/api/user/tv-progress/${id}/mark-all-watched`, { show_name: show.name, poster_path: show.poster_path });
+      setIsWatched(true);
+      // Refresh watched episodes
+      const { data } = await API.get(`/api/user/tv-progress/${id}`);
+      setWatchedEpisodes(data.watched_episodes || {});
+      toast({ title: 'Toute la série marquée comme vue !', description: `${show.number_of_seasons} saisons, ${show.number_of_episodes} épisodes` });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+    finally { setMarkingAll(false); }
+  };
+
+  // Reprendre la lecture
+  const handleContinueWatching = () => {
+    if (continueInfo) {
+      navigate(`/tv-shows/${id}/season/${continueInfo.season}/episode/${continueInfo.episode}`);
+    }
+  };
+
+  // Calculer la progression
+  const getProgress = () => {
+    if (!show || !watchedEpisodes) return { watched: 0, total: show?.number_of_episodes || 0, percent: 0 };
+    let total = 0;
+    let watched = 0;
+    Object.values(watchedEpisodes).forEach(seasonEps => {
+      Object.values(seasonEps).forEach(isWatched => {
+        total++;
+        if (isWatched) watched++;
+      });
+    });
+    return { watched, total: show.number_of_episodes, percent: show.number_of_episodes > 0 ? Math.round((watched / show.number_of_episodes) * 100) : 0 };
+  };
+
+  const progress = getProgress();
 
   if (loading) return <LoadingSpinner />;
   if (!show) return <div className="container mx-auto px-4 py-12 text-center">Serie non trouvee</div>;
@@ -72,6 +121,15 @@ export default function TVShowDetailPage() {
           <div className="lg:col-span-1">
             <div className="relative aspect-[2/3] w-full max-w-[200px] mx-auto lg:max-w-none rounded-lg overflow-hidden shadow-2xl">
               <img src={poster} alt={show.name} className="w-full h-full object-cover" />
+              {/* Progress bar overlay */}
+              {progress.watched > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2">
+                  <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${progress.percent}%` }} />
+                  </div>
+                  <p className="text-xs text-center text-gray-400 mt-1">{progress.watched}/{progress.total} ({progress.percent}%)</p>
+                </div>
+              )}
             </div>
           </div>
           <div className="lg:col-span-3 space-y-6">
@@ -87,7 +145,21 @@ export default function TVShowDetailPage() {
               {show.genres?.map(g => <span key={g.id} className="px-3 py-1 text-sm rounded-full bg-gray-800 text-gray-300 border border-gray-700">{g.name}</span>)}
             </div>
             <p className="text-base md:text-xl text-gray-200 leading-relaxed">{show.overview}</p>
+            
+            {/* Action Buttons */}
             <div className="flex flex-wrap gap-3">
+              {/* Bouton Reprendre (si applicable) */}
+              {continueInfo && (
+                <button 
+                  onClick={handleContinueWatching} 
+                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium flex items-center gap-2 hover:from-green-500 hover:to-emerald-500 shadow-lg shadow-green-500/25 transition-all"
+                  data-testid="continue-watching-btn"
+                >
+                  <SkipForward className="w-5 h-5" />
+                  Reprendre S{continueInfo.season} E{continueInfo.episode}
+                </button>
+              )}
+              
               <button onClick={() => setShowStream(true)} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2"><Play className="w-5 h-5" />Regarder</button>
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 ${isFavorite ? 'bg-yellow-900/20' : ''}`}>
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />Favoris
@@ -97,6 +169,34 @@ export default function TVShowDetailPage() {
               </button>
               <AddToPlaylistButton contentId={parseInt(id)} contentType="tv" title={show.name} posterPath={show.poster_path} />
             </div>
+            
+            {/* Marquer TOUTE la série comme vue */}
+            <div className="flex items-center gap-3 p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+              <Tv className="w-6 h-6 text-blue-400" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white">Marquer toute la série comme vue</p>
+                <p className="text-xs text-gray-400">Marque automatiquement {show.number_of_seasons} saisons et {show.number_of_episodes} épisodes</p>
+              </div>
+              <button 
+                onClick={markAllAsWatched}
+                disabled={markingAll}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                  progress.percent === 100 
+                    ? 'bg-green-600/20 border border-green-500/30 text-green-400'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white'
+                }`}
+                data-testid="mark-all-watched-btn"
+              >
+                {markingAll ? (
+                  <span className="animate-spin">⏳</span>
+                ) : progress.percent === 100 ? (
+                  <><CheckCircle className="w-4 h-4 fill-green-500" /> Serie complete</>
+                ) : (
+                  <><Eye className="w-4 h-4" /> Tout marquer</>
+                )}
+              </button>
+            </div>
+
             {/* Like/Dislike */}
             <LikeDislike contentId={parseInt(id)} contentType="tv" />
             
@@ -104,18 +204,37 @@ export default function TVShowDetailPage() {
             <div className="space-y-4">
               <h2 className="text-2xl font-bold text-white">Saisons</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {show.seasons?.filter(s => s.season_number > 0).map(season => (
-                  <Link key={season.id} to={`/tv-shows/${id}/season/${season.season_number}`} className="flex items-center gap-4 p-4 rounded-lg border border-gray-800 bg-gray-900/50 hover:bg-gray-800/50 transition-colors group">
-                    <div className="w-16 h-24 flex-shrink-0 rounded overflow-hidden bg-gray-800">
-                      <img src={season.poster_path ? `${TMDB_IMG}/w200${season.poster_path}` : poster} alt={season.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-white group-hover:text-blue-400">{season.name}</h3>
-                      <p className="text-sm text-gray-400">{season.episode_count} episodes</p>
-                      {season.air_date && <p className="text-sm text-gray-400">{new Date(season.air_date).getFullYear()}</p>}
-                    </div>
-                  </Link>
-                ))}
+                {show.seasons?.filter(s => s.season_number > 0).map(season => {
+                  // Calculer la progression de la saison
+                  const seasonWatched = watchedEpisodes[season.season_number] || {};
+                  const watchedCount = Object.values(seasonWatched).filter(Boolean).length;
+                  const seasonPercent = season.episode_count > 0 ? Math.round((watchedCount / season.episode_count) * 100) : 0;
+                  
+                  return (
+                    <Link key={season.id} to={`/tv-shows/${id}/season/${season.season_number}`} className="flex items-center gap-4 p-4 rounded-lg border border-gray-800 bg-gray-900/50 hover:bg-gray-800/50 transition-colors group relative overflow-hidden">
+                      {/* Progress bar background */}
+                      <div className="absolute bottom-0 left-0 h-1 bg-gray-700 w-full">
+                        <div className="h-full bg-green-500 transition-all" style={{ width: `${seasonPercent}%` }} />
+                      </div>
+                      <div className="w-16 h-24 flex-shrink-0 rounded overflow-hidden bg-gray-800 relative">
+                        <img src={season.poster_path ? `${TMDB_IMG}/w200${season.poster_path}` : poster} alt={season.name} className="w-full h-full object-cover" />
+                        {seasonPercent === 100 && (
+                          <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center">
+                            <CheckCircle className="w-8 h-8 text-green-400 fill-green-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-white group-hover:text-blue-400">{season.name}</h3>
+                        <p className="text-sm text-gray-400">{season.episode_count} episodes</p>
+                        {season.air_date && <p className="text-sm text-gray-400">{new Date(season.air_date).getFullYear()}</p>}
+                        {watchedCount > 0 && (
+                          <p className="text-xs text-green-400 mt-1">{watchedCount}/{season.episode_count} vus ({seasonPercent}%)</p>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
             {/* Cast */}

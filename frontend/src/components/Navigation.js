@@ -201,14 +201,15 @@ export default function Navigation() {
                 <Palette className="w-4 h-4" style={textStyle} />
               </button>
               {themeOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 max-h-96 overflow-y-auto rounded-lg border shadow-xl p-3 z-50" style={dropBg}>
+                <div className="absolute right-0 top-full mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-lg border shadow-xl p-3 z-50" style={dropBg}>
                   <p className="text-xs font-semibold mb-2 px-1" style={textStyle}>Themes Standard</p>
                   <div className="grid grid-cols-2 gap-1.5 mb-3">
                     {THEMES.map(t => (
                       <button key={t.id} onClick={() => handleThemeChange(t.id)}
-                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors hover:opacity-80 ${theme === t.id ? 'ring-2 ring-blue-500' : ''}`}>
+                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors hover:opacity-80 relative ${theme === t.id ? 'ring-2 ring-blue-500' : ''}`}>
                         <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient}`} />
                         <span className="text-xs" style={textStyle}>{t.name}</span>
+                        {t.isNew && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded">NEW</span>}
                       </button>
                     ))}
                   </div>
@@ -216,9 +217,10 @@ export default function Navigation() {
                   <div className="grid grid-cols-2 gap-1.5 mb-3">
                     {LIMITED_THEMES.map(t => (
                       <button key={t.id} onClick={() => handleThemeChange(t.id)}
-                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors hover:opacity-80 ${theme === t.id ? 'ring-2 ring-blue-500' : ''}`}>
+                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors hover:opacity-80 relative ${theme === t.id ? 'ring-2 ring-blue-500' : ''}`}>
                         <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient}`} />
                         <span className="text-xs" style={textStyle}>{t.name}</span>
+                        {t.isNew && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded">NEW</span>}
                       </button>
                     ))}
                   </div>
@@ -232,8 +234,10 @@ export default function Navigation() {
                           className={`flex items-center gap-2 p-2 rounded-lg transition-colors hover:opacity-80 relative ${theme === t.id ? 'ring-2 ring-blue-500' : ''} ${
                             (t.requiresVipPlus && !user.is_vip_plus && !user.is_admin) || (t.requiresVip && !user.is_vip && !user.is_vip_plus && !user.is_admin) ? 'opacity-50' : ''
                           }`}>
-                          <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient}`} />
+                          <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient} ${t.hasAnimation ? 'animate-pulse' : ''}`} />
                           <span className="text-xs" style={textStyle}>{t.name}</span>
+                          {t.requiresVipPlus && <Crown className="w-3 h-3 text-purple-400" />}
+                          {t.isNew && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded">NEW</span>}
                         </button>
                       ))}
                     </div>

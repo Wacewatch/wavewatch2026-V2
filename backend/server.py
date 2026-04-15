@@ -974,31 +974,79 @@ async def universal_search(q: str = ""):
         return {"results": []}
     results = []
     regex = {"$regex": q, "$options": "i"}
+    
     # Search TV channels
-    channels = await db.tv_channels.find({"$or": [{"name": regex}, {"category": regex}]}).to_list(10)
+    channels = await db.tv_channels.find({"$or": [{"name": regex}, {"category": regex}, {"country": regex}]}).to_list(20)
     for c in channels:
-        c["_id"] = str(c["_id"])
-        results.append({"type": "tv_channel", "title": c.get("name"), "data": c})
+        results.append({
+            "type": "tv_channel", 
+            "title": c.get("name"), 
+            "subtitle": c.get("category", ""),
+            "image": c.get("logo_url"),
+            "_id": str(c["_id"]),
+            "data": {**c, "_id": str(c["_id"])}
+        })
+    
     # Search music
-    music = await db.music_content.find({"$or": [{"title": regex}, {"artist": regex}]}).to_list(10)
+    music = await db.music_content.find({"$or": [{"title": regex}, {"artist": regex}, {"genre": regex}], "is_active": True}).to_list(20)
     for m in music:
-        m["_id"] = str(m["_id"])
-        results.append({"type": "music", "title": m.get("title"), "data": m})
+        results.append({
+            "type": "music", 
+            "title": m.get("title"), 
+            "subtitle": m.get("artist", ""),
+            "image": m.get("thumbnail_url"),
+            "_id": str(m["_id"]),
+            "data": {**m, "_id": str(m["_id"])}
+        })
+    
     # Search games
-    games = await db.games.find({"$or": [{"title": regex}, {"genre": regex}]}).to_list(10)
+    games = await db.games.find({"$or": [{"title": regex}, {"genre": regex}, {"developer": regex}], "is_active": True}).to_list(20)
     for g in games:
-        g["_id"] = str(g["_id"])
-        results.append({"type": "game", "title": g.get("title"), "data": g})
+        results.append({
+            "type": "game", 
+            "title": g.get("title"), 
+            "subtitle": g.get("genre", ""),
+            "image": g.get("cover_url"),
+            "_id": str(g["_id"]),
+            "data": {**g, "_id": str(g["_id"])}
+        })
+    
     # Search software
-    software = await db.software.find({"$or": [{"name": regex}, {"category": regex}]}).to_list(10)
+    software = await db.software.find({"$or": [{"name": regex}, {"category": regex}, {"developer": regex}], "is_active": True}).to_list(20)
     for s in software:
-        s["_id"] = str(s["_id"])
-        results.append({"type": "software", "title": s.get("name"), "data": s})
+        results.append({
+            "type": "software", 
+            "title": s.get("name"), 
+            "subtitle": s.get("category", ""),
+            "image": s.get("icon_url"),
+            "_id": str(s["_id"]),
+            "data": {**s, "_id": str(s["_id"])}
+        })
+    
     # Search ebooks
-    ebooks = await db.ebooks.find({"$or": [{"title": regex}, {"author": regex}]}).to_list(10)
+    ebooks = await db.ebooks.find({"$or": [{"title": regex}, {"author": regex}, {"category": regex}], "is_active": True}).to_list(20)
     for e in ebooks:
-        e["_id"] = str(e["_id"])
-        results.append({"type": "ebook", "title": e.get("title"), "data": e})
+        results.append({
+            "type": "ebook", 
+            "title": e.get("title"), 
+            "subtitle": e.get("author", ""),
+            "image": e.get("cover_url"),
+            "_id": str(e["_id"]),
+            "data": {**e, "_id": str(e["_id"])}
+        })
+    
+    # Search radio stations
+    radios = await db.radio_stations.find({"$or": [{"name": regex}, {"genre": regex}]}).to_list(20)
+    for r in radios:
+        results.append({
+            "type": "radio", 
+            "title": r.get("name"), 
+            "subtitle": r.get("genre", ""),
+            "image": r.get("logo_url"),
+            "_id": str(r["_id"]),
+            "data": {**r, "_id": str(r["_id"])}
+        })
+    
     return {"results": results}
 
 # ==================== SERIES MARK ALL WATCHED ====================
@@ -1171,23 +1219,29 @@ async def require_admin_or_uploader(user: dict = Depends(get_current_user)):
 @app.post("/api/admin/tv-channels")
 async def create_tv_channel(request: Request, user: dict = Depends(require_admin)):
     data = await request.json()
+    # Remove any _id from input to avoid duplicates
+    data.pop("_id", None)
+    data.pop("id", None)
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     data["is_active"] = data.get("is_active", True)
     result = await db.tv_channels.insert_one(data)
-    data["_id"] = str(result.inserted_id)
-    return data
+    return {"_id": str(result.inserted_id), **{k:v for k,v in data.items() if k != "_id"}}
 
 @app.put("/api/admin/tv-channels/{channel_id}")
 async def update_tv_channel(channel_id: str, request: Request, user: dict = Depends(require_admin)):
     data = await request.json()
     data.pop("_id", None)
+    data.pop("id", None)
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.tv_channels.update_one({"_id": ObjectId(channel_id)}, {"$set": data})
-    return {"message": "Mis a jour"}
+    return {"message": "Mis a jour", "_id": channel_id}
 
 @app.delete("/api/admin/tv-channels/{channel_id}")
 async def delete_tv_channel(channel_id: str, user: dict = Depends(require_admin)):
-    await db.tv_channels.delete_one({"_id": ObjectId(channel_id)})
-    return {"message": "Supprime"}
+    result = await db.tv_channels.delete_one({"_id": ObjectId(channel_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Chaine non trouvee")
+    return {"message": "Supprime", "deleted_id": channel_id}
 
 # --- Radio Stations CRUD ---
 @app.post("/api/admin/radio-stations")
@@ -1317,23 +1371,26 @@ async def delete_ebook(ebook_id: str, user: dict = Depends(require_admin)):
 @app.post("/api/admin/retrogaming")
 async def create_retrogaming(request: Request, user: dict = Depends(require_admin)):
     data = await request.json()
+    data.pop("_id", None)
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     data["is_active"] = data.get("is_active", True)
     result = await db.retrogaming_sources.insert_one(data)
-    data["_id"] = str(result.inserted_id)
-    return data
+    return {"_id": str(result.inserted_id), **{k:v for k,v in data.items() if k != "_id"}}
 
 @app.put("/api/admin/retrogaming/{source_id}")
 async def update_retrogaming(source_id: str, request: Request, user: dict = Depends(require_admin)):
     data = await request.json()
     data.pop("_id", None)
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
     await db.retrogaming_sources.update_one({"_id": ObjectId(source_id)}, {"$set": data})
-    return {"message": "Mis a jour"}
+    return {"message": "Mis a jour", "_id": source_id}
 
 @app.delete("/api/admin/retrogaming/{source_id}")
 async def delete_retrogaming(source_id: str, user: dict = Depends(require_admin)):
-    await db.retrogaming_sources.delete_one({"_id": ObjectId(source_id)})
-    return {"message": "Supprime"}
+    result = await db.retrogaming_sources.delete_one({"_id": ObjectId(source_id)})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Source non trouvee")
+    return {"message": "Supprime", "deleted_id": source_id}
 
 # --- Changelogs CRUD ---
 @app.get("/api/changelogs")
@@ -1821,3 +1878,114 @@ async def activate_code_v2(request: Request, user: dict = Depends(get_current_us
     updated = await db.users.find_one({"_id": ObjectId(user["_id"])}, {"password_hash": 0})
     updated["_id"] = str(updated["_id"])
     return {"message": f"Code {code_type} active !", "user": updated}
+
+
+
+# =================== TV SHOW PROGRESS ===================
+
+@app.get("/api/user/tv-progress/{show_id}")
+async def get_tv_progress(show_id: str, user: dict = Depends(get_current_user)):
+    """Get watching progress for a TV show"""
+    progress = await db.tv_progress.find_one({"user_id": user["_id"], "show_id": show_id})
+    if not progress:
+        return {"watched_episodes": {}, "continue_watching": None}
+    
+    # Determine next episode to watch
+    watched = progress.get("watched_episodes", {})
+    continue_info = progress.get("last_watched")
+    
+    return {
+        "watched_episodes": watched,
+        "continue_watching": continue_info
+    }
+
+@app.post("/api/user/tv-progress/{show_id}/episode")
+async def mark_episode_watched(show_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Mark a single episode as watched"""
+    data = await request.json()
+    season = str(data.get("season", 1))
+    episode = str(data.get("episode", 1))
+    watched = data.get("watched", True)
+    
+    progress = await db.tv_progress.find_one({"user_id": user["_id"], "show_id": show_id})
+    if not progress:
+        progress = {"user_id": user["_id"], "show_id": show_id, "watched_episodes": {}, "created_at": datetime.now(timezone.utc).isoformat()}
+    
+    if season not in progress["watched_episodes"]:
+        progress["watched_episodes"][season] = {}
+    
+    progress["watched_episodes"][season][episode] = watched
+    progress["last_watched"] = {"season": int(season), "episode": int(episode) + 1} if watched else progress.get("last_watched")
+    progress["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.tv_progress.update_one(
+        {"user_id": user["_id"], "show_id": show_id},
+        {"$set": progress},
+        upsert=True
+    )
+    
+    return {"message": "Episode marque", "watched": watched}
+
+@app.post("/api/user/tv-progress/{show_id}/mark-all-watched")
+async def mark_all_episodes_watched(show_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Mark entire TV show (all seasons/episodes) as watched"""
+    data = await request.json()
+    show_name = data.get("show_name", "")
+    poster_path = data.get("poster_path", "")
+    
+    # Fetch show details from TMDB to get all seasons/episodes
+    try:
+        tmdb_key = os.environ.get("TMDB_API_KEY", "d4b8332681051181b69c8a6c9ba1a70a")
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"https://api.themoviedb.org/3/tv/{show_id}?api_key={tmdb_key}&language=fr-FR")
+            show_data = resp.json()
+    except:
+        raise HTTPException(status_code=500, detail="Impossible de recuperer les infos de la serie")
+    
+    watched_episodes = {}
+    total_episodes = 0
+    
+    for season in show_data.get("seasons", []):
+        season_num = season.get("season_number", 0)
+        if season_num == 0:  # Skip specials
+            continue
+        episode_count = season.get("episode_count", 0)
+        watched_episodes[str(season_num)] = {}
+        for ep in range(1, episode_count + 1):
+            watched_episodes[str(season_num)][str(ep)] = True
+            total_episodes += 1
+    
+    # Update progress
+    await db.tv_progress.update_one(
+        {"user_id": user["_id"], "show_id": show_id},
+        {"$set": {
+            "user_id": user["_id"],
+            "show_id": show_id,
+            "watched_episodes": watched_episodes,
+            "all_watched": True,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    # Also add to history
+    await db.user_history.update_one(
+        {"user_id": user["_id"], "content_id": int(show_id), "content_type": "tv"},
+        {"$set": {
+            "user_id": user["_id"],
+            "content_id": int(show_id),
+            "content_type": "tv",
+            "title": show_name,
+            "poster_path": poster_path,
+            "watched_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+    
+    return {"message": "Serie complete marquee comme vue", "total_episodes": total_episodes}
+
+@app.delete("/api/user/tv-progress/{show_id}")
+async def reset_tv_progress(show_id: str, user: dict = Depends(get_current_user)):
+    """Reset all progress for a TV show"""
+    await db.tv_progress.delete_one({"user_id": user["_id"], "show_id": show_id})
+    return {"message": "Progression reintialisee"}

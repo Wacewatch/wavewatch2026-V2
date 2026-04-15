@@ -4,6 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/api';
 import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X } from 'lucide-react';
+import ModuleOrderManager from '../components/ModuleOrderManager';
 
 const USERS_PER_PAGE = 15;
 
@@ -224,16 +225,27 @@ export default function AdminPage() {
 
   const handleSubmit = async (type, apiBase) => {
     try {
+      // Nettoyer formData pour éviter les doublons - supprimer _id si on crée
+      const cleanData = { ...formData };
+      if (!editingId) {
+        delete cleanData._id;
+        delete cleanData.id;
+      }
+      
       if (editingId) {
-        await API.put(`${apiBase}/${editingId}`, formData);
+        await API.put(`${apiBase}/${editingId}`, cleanData);
         toast({ title: 'Mis a jour avec succes' });
       } else {
-        await API.post(apiBase, formData);
+        await API.post(apiBase, cleanData);
         toast({ title: 'Ajoute avec succes' });
       }
       setShowForm(null);
+      setFormData({});
       loadData(tab);
-    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+    } catch (e) { 
+      console.error('Submit error:', e);
+      toast({ title: 'Erreur', variant: 'destructive' }); 
+    }
   };
 
   const handleDelete = async (apiBase, id, label) => {
@@ -661,16 +673,20 @@ export default function AdminPage() {
       {tab === 'modules' && (
         <div className="bg-card border border-border rounded-xl p-6" data-testid="admin-modules">
           <h2 className="text-xl font-bold mb-4">Modules de la page d'accueil</h2>
-          <p className="text-sm text-muted-foreground mb-6">Activez ou desactivez les sections de la page d'accueil</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Object.entries(moduleLabels).map(([key, label]) => (
-              <button key={key} onClick={() => toggleModule(key)}
-                className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${modules[key] ? 'border-green-500/30 bg-green-500/10' : 'border-border bg-secondary/30'}`}>
-                <span className="text-sm font-medium">{label}</span>
-                {modules[key] ? <Eye className="w-4 h-4 text-green-400" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
-              </button>
-            ))}
-          </div>
+          <p className="text-sm text-muted-foreground mb-6">Activez, desactivez et reordonnez les sections de la page d'accueil. Glissez-deposez pour changer l'ordre.</p>
+          
+          {/* Module Order State */}
+          <ModuleOrderManager 
+            modules={modules} 
+            moduleLabels={moduleLabels} 
+            toggleModule={toggleModule}
+            onReorder={async (newOrder) => {
+              try {
+                await API.put('/api/admin/site-settings', { setting_key: 'module_order', setting_value: newOrder });
+                toast({ title: 'Ordre des modules mis a jour' });
+              } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+            }}
+          />
         </div>
       )}
 

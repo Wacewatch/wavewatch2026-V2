@@ -1,30 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import API from '../lib/api';
-import { Music, Play, Search } from 'lucide-react';
+import { Music, Play } from 'lucide-react';
 
 export default function MusicPage() {
   const [items, setItems] = useState([]);
-  const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
   useEffect(() => { API.get('/api/music').then(({ data }) => setItems(Array.isArray(data) ? data : [])).catch(() => {}); }, []);
 
   const genres = ['all', ...new Set(items.map(i => i.genre).filter(Boolean))];
-  const filtered = items.filter(i => {
-    if (filter !== 'all' && i.genre !== filter) return false;
-    if (search && !(i.title || '').toLowerCase().includes(search.toLowerCase()) && !(i.artist || '').toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filtered = filter === 'all' ? items : items.filter(i => i.genre === filter);
 
   return (
     <div className="container mx-auto px-4 py-8" data-testid="music-page">
       <h1 className="text-3xl font-bold mb-2 flex items-center gap-3"><Music className="w-8 h-8 text-purple-400" />Musique</h1>
-      <p className="text-muted-foreground mb-6">{items.length} contenu{items.length > 1 ? 's' : ''} musical{items.length > 1 ? 'aux' : ''}</p>
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1 max-w-sm"><Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-9 pr-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" /></div>
-        <div className="flex flex-wrap gap-2">{genres.map(g => (<button key={g} onClick={() => setFilter(g)} className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${filter === g ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}>{g === 'all' ? 'Tous' : g}</button>))}</div>
-      </div>
+      <p className="text-muted-foreground mb-6">{items.length} contenu{items.length > 1 ? 's' : ''} musical{items.length > 1 ? 'aux' : ''} - Utilisez la recherche principale pour filtrer</p>
+      {genres.length > 1 && (
+        <div className="flex flex-wrap gap-2 mb-6">{genres.map(g => (<button key={g} onClick={() => setFilter(g)} className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${filter === g ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}>{g === 'all' ? 'Tous' : g}</button>))}</div>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {filtered.map(item => (
           <Link key={item._id} to={`/music/${item._id}`} className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/30 transition-all group" data-testid={`music-${item._id}`}>
