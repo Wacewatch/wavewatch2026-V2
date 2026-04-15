@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
-import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette, Calendar, Trophy, Gamepad2, Music } from 'lucide-react';
+import API, { TMDB_IMG } from '../lib/api';
+import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette, Calendar, Trophy, Gamepad2, Music, Film, Tv, Users as UsersIcon } from 'lucide-react';
 
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -12,6 +13,10 @@ export default function Navigation() {
   const [mediaOpen, setMediaOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef(null);
+  const debounceRef = useRef(null);
   const { user, signOut } = useAuth();
   const { theme, setTheme, THEMES, LIMITED_THEMES, PREMIUM_THEMES } = useTheme();
   const { toast } = useToast();
@@ -24,16 +29,41 @@ export default function Navigation() {
       if (navRef.current && !navRef.current.contains(e.target)) {
         setContentOpen(false); setMediaOpen(false); setThemeOpen(false); setUserMenuOpen(false);
       }
+      if (searchRef.current && !searchRef.current.contains(e.target)) setShowSuggestions(false);
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Autocomplete
+  const fetchSuggestions = useCallback((q) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!q || q.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    debounceRef.current = setTimeout(() => {
+      API.get(`/api/tmdb/search?q=${encodeURIComponent(q)}&page=1`).then(({ data }) => {
+        const results = (data.results || []).slice(0, 8).map(r => ({
+          id: r.id, title: r.title || r.name, media_type: r.media_type,
+          poster_path: r.poster_path || r.profile_path,
+          year: (r.release_date || r.first_air_date || '').substring(0, 4)
+        }));
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      }).catch(() => {});
+    }, 300);
+  }, []);
+
+  const onSearchChange = (e) => { setSearchQuery(e.target.value); fetchSuggestions(e.target.value); };
+
+  const handleSuggestionClick = (s) => {
+    const path = s.media_type === 'movie' ? `/movies/${s.id}` : s.media_type === 'tv' ? `/tv-shows/${s.id}` : s.media_type === 'person' ? `/actors/${s.id}` : `/search?q=${s.title}`;
+    navigate(path); setSearchQuery(''); setShowSuggestions(false); setSuggestions([]);
+  };
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setIsMenuOpen(false);
+      setIsMenuOpen(false); setShowSuggestions(false); setSuggestions([]);
     }
   };
 
@@ -134,13 +164,40 @@ export default function Navigation() {
           </div>
 
           {/* Search */}
-          <form onSubmit={handleSearch} className="hidden md:flex items-center flex-1 max-w-md mx-4">
+          <form onSubmit={handleSearch} className="hidden md:flex items-center flex-1 max-w-md mx-4" ref={searchRef}>
             <div className="relative w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={textSecStyle} />
-              <input type="text" placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              <input type="text" placeholder="Rechercher films, series, acteurs..." value={searchQuery} onChange={onSearchChange}
+                onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
                 className="w-full pl-12 pr-4 h-11 rounded-full border transition-colors outline-none"
                 style={{ backgroundColor: 'hsl(var(--nav-hover))', borderColor: 'hsl(var(--nav-border))', color: 'hsl(var(--nav-text))' }}
                 data-testid="search-input" />
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border shadow-2xl overflow-hidden z-50" style={dropBg} data-testid="search-suggestions">
+                  {suggestions.map(s => (
+                    <button key={`${s.media_type}-${s.id}`} onClick={() => handleSuggestionClick(s)}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:opacity-80 transition-opacity" style={textStyle}>
+                      <div className="w-9 h-13 flex-shrink-0 rounded overflow-hidden bg-muted">
+                        {s.poster_path ? <img src={`${TMDB_IMG}/w92${s.poster_path}`} alt="" className="w-full h-full object-cover" /> :
+                          <div className="w-full h-full flex items-center justify-center">{s.media_type === 'person' ? <UsersIcon className="w-4 h-4 text-muted-foreground" /> : <Film className="w-4 h-4 text-muted-foreground" />}</div>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{s.title}</p>
+                        <div className="flex items-center gap-2 text-xs" style={textSecStyle}>
+                          {s.media_type === 'movie' && <span className="flex items-center gap-1"><Film className="w-3 h-3" />Film</span>}
+                          {s.media_type === 'tv' && <span className="flex items-center gap-1"><Tv className="w-3 h-3" />Serie</span>}
+                          {s.media_type === 'person' && <span className="flex items-center gap-1"><UsersIcon className="w-3 h-3" />Acteur</span>}
+                          {s.year && <span>{s.year}</span>}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  <button onClick={() => { navigate(`/search?q=${encodeURIComponent(searchQuery)}`); setShowSuggestions(false); }}
+                    className="w-full px-4 py-2.5 text-sm text-center border-t font-medium" style={{ ...textStyle, borderColor: 'hsl(var(--nav-border))' }}>
+                    Voir tous les resultats
+                  </button>
+                </div>
+              )}
             </div>
           </form>
 
