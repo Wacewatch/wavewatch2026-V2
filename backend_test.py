@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 class WaveWatchAPITester:
-    def __init__(self, base_url="https://wavewatch-admin.preview.emergentagent.com"):
+    def __init__(self, base_url="https://code-monitor-7.preview.emergentagent.com"):
         self.base_url = base_url
         self.session = requests.Session()
         self.admin_token = None
@@ -162,6 +162,76 @@ class WaveWatchAPITester:
         # Test public playlists
         self.test_api_call("GET", "/api/playlists/public/discover", 200, description="(Public Playlists)")
 
+    def test_watch_party_endpoints(self):
+        """Test Watch Party (Soiree Cine) endpoints"""
+        if not self.admin_token:
+            print("❌ Skipping Watch Party tests - no admin token")
+            return
+
+        print("\n🎬 Testing Watch Party Endpoints...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+        party_id = None
+        room_code = None
+
+        # Test 1: List public watch parties (should work without auth)
+        self.test_api_call("GET", "/api/watch-party", 200, description="(List Public Parties)")
+
+        # Test 2: Get user's parties (requires auth)
+        self.test_api_call("GET", "/api/watch-party/my", 200, headers=auth_headers, description="(Get My Parties)")
+
+        # Test 3: Create a new watch party (requires auth)
+        party_data = {
+            "title": "Test Movie Night",
+            "content_id": 550,  # Fight Club
+            "content_type": "movie",
+            "content_title": "Fight Club",
+            "poster_path": "/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+            "max_guests": 5,
+            "is_public": True
+        }
+        success, response = self.test_api_call("POST", "/api/watch-party", 200, party_data, headers=auth_headers, description="(Create Party)")
+        
+        if success and response:
+            try:
+                data = response.json()
+                party_id = data.get("party", {}).get("_id")
+                room_code = data.get("party", {}).get("room_code")
+                print(f"   Created party ID: {party_id}, Room Code: {room_code}")
+            except:
+                print("   Failed to extract party details")
+
+        if party_id:
+            # Test 4: Get party details by ID
+            self.test_api_call("GET", f"/api/watch-party/{party_id}", 200, description="(Get Party by ID)")
+
+            # Test 5: Get party details by room code
+            if room_code:
+                self.test_api_call("GET", f"/api/watch-party/{room_code}", 200, description="(Get Party by Room Code)")
+
+            # Test 6: Send a chat message (requires auth)
+            message_data = {"message": "Hello from test!"}
+            self.test_api_call("POST", f"/api/watch-party/{party_id}/message", 200, message_data, headers=auth_headers, description="(Send Chat Message)")
+
+            # Test 7: Get chat messages (polling endpoint)
+            self.test_api_call("GET", f"/api/watch-party/{party_id}/messages", 200, description="(Get Chat Messages)")
+
+            # Test 8: Update party status (host only)
+            status_data = {"status": "playing"}
+            self.test_api_call("PUT", f"/api/watch-party/{party_id}/status", 200, status_data, headers=auth_headers, description="(Update Status to Playing)")
+
+            # Test 9: Update status to paused
+            status_data = {"status": "paused"}
+            self.test_api_call("PUT", f"/api/watch-party/{party_id}/status", 200, status_data, headers=auth_headers, description="(Update Status to Paused)")
+
+            # Test 10: End the party (host only)
+            self.test_api_call("DELETE", f"/api/watch-party/{party_id}", 200, headers=auth_headers, description="(End Party)")
+
+        # Test 11: Try to join non-existent party (should fail)
+        self.test_api_call("POST", "/api/watch-party/INVALID123/join", 404, headers=auth_headers, description="(Join Invalid Party - Should Fail)")
+
+        # Test 12: Try to get non-existent party (should fail)
+        self.test_api_call("GET", "/api/watch-party/INVALID123", 404, description="(Get Invalid Party - Should Fail)")
+
     def run_all_tests(self):
         """Run comprehensive API tests"""
         print("🚀 Starting WaveWatch API Tests...")
@@ -182,6 +252,9 @@ class WaveWatchAPITester:
         
         # Test content endpoints
         self.test_content_endpoints()
+        
+        # Test Watch Party endpoints
+        self.test_watch_party_endpoints()
         
         # Print summary
         print(f"\n📊 Test Summary:")

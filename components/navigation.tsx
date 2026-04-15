@@ -264,6 +264,18 @@ export function Navigation() {
                 <DropdownMenuSeparator style={{ backgroundColor: "hsl(var(--nav-border))" }} />
                 <DropdownMenuItem asChild>
                   <Link
+                    href="/watch-party"
+                    style={{ color: "hsl(var(--nav-text))" }}
+                    className="flex items-center justify-between"
+                  >
+                    Soiree Cine
+                    <Badge className="ml-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs">
+                      NEW
+                    </Badge>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
                     href="/interactive"
                     style={{ color: "hsl(var(--nav-text))" }}
                     className="flex items-center justify-between"
@@ -883,6 +895,23 @@ export function Navigation() {
                   >
                     <Link href="/discover/playlists" onClick={() => setIsMenuOpen(false)}>
                       Playlists Public
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="w-full justify-start"
+                    style={{ color: "hsl(var(--nav-text))" }}
+                  >
+                    <Link
+                      href="/watch-party"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center justify-between"
+                    >
+                      Soiree Cine
+                      <Badge className="ml-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs">
+                        NEW
+                      </Badge>
                     </Link>
                   </Button>
                   <Button

@@ -54,6 +54,8 @@ import MusicDetailPage from './pages/MusicDetailPage';
 import GameDetailPage from './pages/GameDetailPage';
 import EbookDetailPage from './pages/EbookDetailPage';
 import SoftwareDetailPage from './pages/SoftwareDetailPage';
+import WatchPartyPage from './pages/WatchPartyPage';
+import WatchPartyRoomPage from './pages/WatchPartyRoomPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { StatusProvider } from './components/ContentCard';
 import './App.css';
@@ -121,6 +123,8 @@ export default function App() {
                   <Route path="/logiciels/:id" element={<SoftwareDetailPage />} />
                   <Route path="/achievements" element={<ProtectedRoute><AchievementsPage /></ProtectedRoute>} />
                   <Route path="/leaderboard" element={<LeaderboardPage />} />
+                  <Route path="/watch-party" element={<WatchPartyPage />} />
+                  <Route path="/watch-party/:id" element={<WatchPartyRoomPage />} />
                 </Routes>
               </main>
               <Footer />
