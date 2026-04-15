@@ -434,11 +434,26 @@ async def tmdb_genres(media_type: str):
     return await tmdb_fetch(f"/genre/{media_type}/list")
 
 @app.get("/api/tmdb/discover/{media_type}")
-async def tmdb_discover(media_type: str, page: int = 1, genre: Optional[int] = None, sort_by: str = "popularity.desc"):
-    params = {"page": str(page), "sort_by": sort_by}
+async def tmdb_discover(media_type: str, page: int = 1, genre: Optional[int] = None, sort_by: str = "popularity.desc",
+                        provider: Optional[int] = None, year: Optional[int] = None, vote_avg: Optional[float] = None):
+    params = {"page": str(page), "sort_by": sort_by, "watch_region": "FR"}
     if genre:
         params["with_genres"] = str(genre)
+    if provider:
+        params["with_watch_providers"] = str(provider)
+    if year:
+        if media_type == "movie":
+            params["primary_release_year"] = str(year)
+        else:
+            params["first_air_date_year"] = str(year)
+    if vote_avg:
+        params["vote_average.gte"] = str(vote_avg)
+        params["vote_count.gte"] = "50"
     return await tmdb_fetch(f"/discover/{media_type}", params)
+
+@app.get("/api/tmdb/providers/{media_type}")
+async def tmdb_watch_providers(media_type: str):
+    return await tmdb_fetch(f"/watch/providers/{media_type}", {"watch_region": "FR"})
 
 @app.get("/api/tmdb/similar/movies/{movie_id}")
 async def tmdb_similar_movies(movie_id: int):

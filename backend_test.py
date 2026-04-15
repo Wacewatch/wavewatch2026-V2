@@ -149,6 +149,44 @@ class WaveWatchAPITester:
         # Test popular movies
         self.test_api_call("GET", "/api/tmdb/popular/movies", 200, description="(Popular Movies)")
 
+    def test_discover_endpoints_with_filters(self):
+        """Test TMDB discover endpoints with new filter parameters"""
+        print("\n🔍 Testing TMDB Discover Endpoints with Filters...")
+        
+        # Test basic movie discovery
+        self.test_api_call("GET", "/api/tmdb/discover/movie", 200, description="(Basic Movie Discovery)")
+        
+        # Test movie discovery with provider filter (Netflix = 8)
+        self.test_api_call("GET", "/api/tmdb/discover/movie?provider=8", 200, description="(Movies with Netflix Provider)")
+        
+        # Test movie discovery with year filter
+        self.test_api_call("GET", "/api/tmdb/discover/movie?year=2023", 200, description="(Movies from 2023)")
+        
+        # Test movie discovery with sort parameter
+        self.test_api_call("GET", "/api/tmdb/discover/movie?sort_by=vote_average.desc", 200, description="(Movies sorted by rating)")
+        
+        # Test movie discovery with combined filters
+        self.test_api_call("GET", "/api/tmdb/discover/movie?provider=8&year=2023&sort_by=popularity.desc", 200, description="(Movies with combined filters)")
+        
+        # Test basic TV discovery
+        self.test_api_call("GET", "/api/tmdb/discover/tv", 200, description="(Basic TV Discovery)")
+        
+        # Test TV discovery with provider filter (Netflix = 8)
+        self.test_api_call("GET", "/api/tmdb/discover/tv?provider=8", 200, description="(TV Shows with Netflix Provider)")
+        
+        # Test TV discovery with year filter
+        self.test_api_call("GET", "/api/tmdb/discover/tv?year=2023", 200, description="(TV Shows from 2023)")
+        
+        # Test TV discovery with sort parameter
+        self.test_api_call("GET", "/api/tmdb/discover/tv?sort_by=vote_average.desc", 200, description="(TV Shows sorted by rating)")
+        
+        # Test TV discovery with combined filters
+        self.test_api_call("GET", "/api/tmdb/discover/tv?provider=8&year=2023&sort_by=popularity.desc", 200, description="(TV Shows with combined filters)")
+        
+        # Test genre endpoints
+        self.test_api_call("GET", "/api/tmdb/genres/movie", 200, description="(Movie Genres)")
+        self.test_api_call("GET", "/api/tmdb/genres/tv", 200, description="(TV Genres)")
+
     def test_public_endpoints(self):
         """Test public endpoints that don't require auth"""
         print("\n🌐 Testing Public Endpoints...")
@@ -242,6 +280,9 @@ class WaveWatchAPITester:
         
         # Test TMDB endpoints
         self.test_tmdb_endpoints()
+        
+        # Test TMDB discover endpoints with filters
+        self.test_discover_endpoints_with_filters()
         
         # Test admin login
         if self.test_admin_login():
