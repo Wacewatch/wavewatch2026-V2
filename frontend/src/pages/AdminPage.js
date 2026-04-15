@@ -99,7 +99,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [modules, setModules] = useState({
-    hero: true, trending_movies: true, trending_tv_shows: true, popular_anime: true,
+    hero: true, trending_movies: true, recommendations: true, trending_tv_shows: true, popular_anime: true,
     popular_collections: true, public_playlists: true, trending_actors: true,
     trending_tv_channels: true, subscription_offer: true, random_content: true,
     football_calendar: true, calendar_widget: true, sports_promo: true, livewatch_promo: true, vip_game_promo: true
@@ -357,7 +357,8 @@ export default function AdminPage() {
   ];
 
   const moduleLabels = {
-    hero: 'Hero (Carrousel)', trending_movies: 'Films Tendance', trending_tv_shows: 'Series Tendance',
+    hero: 'Hero (Carrousel)', trending_movies: 'Films Tendance', recommendations: 'Recommandations',
+    trending_tv_shows: 'Series Tendance',
     popular_anime: 'Animes Populaires', popular_collections: 'Collections Populaires',
     public_playlists: 'Playlists Communaute', trending_actors: 'Acteurs Tendance',
     trending_tv_channels: 'Chaines TV', subscription_offer: 'Offre VIP',

@@ -566,7 +566,7 @@ export default function HomePage() {
       {show('hero') && <Hero />}
       <div className="container mx-auto px-4 space-y-12">
         {show('trending_movies') && <ContentRow title="Films Tendance" endpoint="/api/tmdb/trending/movies" type="movie" link="/movies" />}
-        <RecommendationsRow />
+        {show('recommendations') && <RecommendationsRow />}
         {show('trending_tv_shows') && <ContentRow title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" link="/tv-shows" />}
         {show('popular_anime') && <ContentRow title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime link="/anime" />}
         {show('popular_collections') && <PopularCollectionsRow />}
