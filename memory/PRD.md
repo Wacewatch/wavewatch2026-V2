@@ -1,65 +1,34 @@
 # WaveWatch PRD
 
 ## Original Problem Statement
-Plateforme de streaming WaveWatch - Corrections et ameliorations demandees pour l'admin, la recherche, les themes et les fonctionnalites series.
-
-## User Personas
-- **Administrateur** : Gere le contenu, les utilisateurs, les modules de la page d'accueil
-- **Utilisateur Standard** : Regarde films/series, cree des playlists, utilise la recherche
-- **Utilisateur VIP/VIP+** : Acces aux themes premium, fonctionnalites exclusives
-
-## Core Requirements (Static)
-- Interface de streaming avec films, series, anime
-- Gestion admin complete (CRUD pour tous les contenus)
-- Systeme de themes personnalisables
-- Recherche globale multi-contenus
-- Gestion des playlists et favoris
-- Integration TMDB pour le contenu
+Plateforme de streaming WaveWatch - Corrections et ameliorations pour l'admin, la recherche, les themes et les fonctionnalites series.
 
 ## What's Been Implemented
 
-### 2026-04-15 - Session 1
-1. Admin - Modules avec drag & drop
-2. Fix Chaines TV et Retrogaming
-3. Recherche globale amelioree
-4. Nouveaux themes (Cyberpunk, Monochrome, Sakura, Estival, Inferno, Arctic)
-5. Fonctionnalites Series (Reprendre, Marquer tout comme vu)
-6. Promos LiveWatch/Sports-Stream
-7. VIP Playlist badges et personnalisation
-8. Calendrier des sorties
+### Session 1 - Base
+- Admin modules drag & drop, Fix TV/Retrogaming, Recherche globale, Themes, Series resume/mark all, Promos, VIP Playlists, Calendrier
 
-### 2026-04-15 - Session 2
-1. Fix TV Channel Image Bug
-2. TMDB Totals dans Admin Dashboard
-3. Search Filters Fix
+### Session 2 - Fixes
+- Fix TV Channel Image Bug, TMDB Totals Admin, Search Filters Fix, Seed Default Content
 
-### 2026-04-15 - Session 3
-1. Collections Page avec vue detail
-2. Prochaines Sorties films + series
-3. Calendar Page Fix
+### Session 3 - Collections & Calendar
+- Collections detail page, Prochaines Sorties films+series, Calendar Page Fix, Routes
 
-### 2026-04-15 - Session 4
-1. **Fix Themes CSS** - Ajout CSS variables pour cyberpunk, monochrome, sakura, estival, inferno, arctic (etaient blancs car pas de CSS)
-2. **Calendrier en slider** - Module Prochaines Sorties utilise ContentGrid horizontal comme les autres
-3. **Plus de Collections** - 24 collections sur la page, 16 sur le module homepage
-4. **Acteurs plus grands** - Images aspect-[3/4] rectangulaires au lieu de petits cercles
-5. **Chaines TV ameliorees** - Cards plus grandes, images object-cover, ordre aleatoire a chaque chargement
-6. **TV Channels page** - 5 colonnes, images plein cadre
-7. **Responsive mobile** - Fonctionne correctement sur mobile (390x844)
+### Session 4 - Themes & UI
+- Fix 6 themes CSS (cyberpunk, monochrome, sakura, estival, inferno, arctic), Calendar slider, Plus de collections, Acteurs plus grands, Chaines TV ameliorees, Responsive mobile
+
+### Session 5 - Sliders & Notifications
+1. **Acteurs Tendance en slider** - Utilise ContentGrid horizontal comme les autres modules
+2. **Chaines TV en slider** - Utilise ContentGrid horizontal avec randomisation
+3. **Collections 16+** - Affiche toutes les collections (16 au lieu de 6)
+4. **Badges S/E sur series** - Prochaines Sorties affiche S5 E3, S3 E2, etc. pour chaque serie
+5. **Doublons retires** - Films Populaires et Series Populaires retires de la fin de page
+6. **Notifications avancees** - Filtres par categorie (Tout, Sorties, Messages, Annonces), suppression individuelle, auto-verification episodes toutes les 5min, rafraichissement toutes les 30s, affichage temps relatif
 
 ## Prioritized Backlog
-
-### P0 (Complete)
-- [x] Tous les themes fonctionnent avec couleurs propres
-- [x] Collections page avec vue detail + 24 collections
-- [x] Calendar et Prochaines Sorties fonctionnels
-- [x] Acteurs images plus grandes
-- [x] Chaines TV ameliorees (taille, images, aleatoire)
-- [x] Responsive mobile
-
 ### P2 (Backlog)
 - [ ] Watch Party (regarder ensemble)
-- [ ] Notifications push avancees (au-dela du systeme actuel)
+- [ ] Plus d'ameliorations UI demandees par l'utilisateur
 
 ## Tech Stack
 - Frontend: React 18 + Tailwind CSS
