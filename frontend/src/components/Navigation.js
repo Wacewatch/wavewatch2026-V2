@@ -127,7 +127,6 @@ export default function Navigation() {
                   <DropdownItem to="/movies">Films</DropdownItem>
                   <DropdownItem to="/tv-shows">Series</DropdownItem>
                   <DropdownItem to="/anime">Animes</DropdownItem>
-                  <DropdownItem to="/collections">Collections</DropdownItem>
                   <DropdownItem to="/actors">Acteurs</DropdownItem>
                   <div className="border-t my-1" style={{ borderColor: 'hsl(var(--nav-border))' }} />
                   <DropdownItem to="/music">Musique</DropdownItem>
@@ -326,7 +325,7 @@ export default function Navigation() {
             )}
             <div className="border-t pt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Contenu</p>
-              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/collections',l:'Collections'},{to:'/actors',l:'Acteurs'},{to:'/music',l:'Musique'},{to:'/games',l:'Jeux'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
+              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/actors',l:'Acteurs'},{to:'/music',l:'Musique'},{to:'/games',l:'Jeux'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
             </div>

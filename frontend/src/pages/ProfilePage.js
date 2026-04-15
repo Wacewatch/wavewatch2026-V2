@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../lib/api';
-import { User, Save, Camera, Calendar, MapPin, Edit, Crown, Shield, Mail, X, Lock, MessageSquare, ArrowLeft, Trash2, Palette } from 'lucide-react';
+import { User, Save, Camera, Calendar, MapPin, Edit, Crown, Shield, Mail, X, Lock, MessageSquare, ArrowLeft, Trash2 } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const { toast } = useToast();
-  const { theme, setTheme, THEMES, LIMITED_THEMES, PREMIUM_THEMES } = useTheme();
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -127,8 +125,6 @@ export default function ProfilePage() {
     return <span className="px-3 py-1 rounded-full text-sm bg-gray-500/20 text-gray-400 border border-gray-500/30">Membre</span>;
   };
 
-  const hasPremiumAccess = user.is_admin || user.is_vip || user.is_vip_plus;
-
   const PreferenceToggle = ({ id, label, description, checked, onChange }) => (
     <div className="flex items-center justify-between py-3">
       <div className="space-y-0.5">
@@ -214,39 +210,6 @@ export default function ProfilePage() {
                 className={`w-full mt-1 px-3 py-2 rounded-lg border outline-none text-sm ${isEditing ? 'border-input bg-background' : 'border-border bg-muted opacity-60'}`} />
             </div>
           </div>
-
-          {/* Themes */}
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><Palette className="w-5 h-5 text-purple-400" />Themes</h2>
-            <p className="text-sm text-muted-foreground mb-4">Choisissez votre theme prefere</p>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-              {THEMES.map(t => (
-                <button key={t.id} onClick={() => { setTheme(t.id); toast({ title: `Theme ${t.name} applique` }); }}
-                  className={`p-2 rounded-lg border text-xs font-medium text-center transition-all ${theme === t.id ? 'border-primary bg-primary/10 ring-2 ring-primary' : 'border-border hover:border-primary/50'}`}
-                  data-testid={`theme-${t.id}`}>
-                  <div className="w-6 h-6 rounded-full mx-auto mb-1" style={{ background: t.preview || '#333' }} />
-                  {t.name}
-                </button>
-              ))}
-            </div>
-            {LIMITED_THEMES?.length > 0 && (
-              <div className="mt-4">
-                <p className="text-sm font-medium text-yellow-400 mb-2">Themes VIP</p>
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                  {LIMITED_THEMES.map(t => (
-                    <button key={t.id} onClick={() => {
-                      if (!hasPremiumAccess) { toast({ title: 'Theme VIP requis', variant: 'destructive' }); return; }
-                      setTheme(t.id); toast({ title: `Theme ${t.name} applique` });
-                    }}
-                      className={`p-2 rounded-lg border text-xs font-medium text-center transition-all ${theme === t.id ? 'border-yellow-500 bg-yellow-500/10' : 'border-border hover:border-yellow-500/50'} ${!hasPremiumAccess ? 'opacity-50' : ''}`}>
-                      <div className="w-6 h-6 rounded-full mx-auto mb-1" style={{ background: t.preview || '#855' }} />
-                      {t.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Right Sidebar */}
@@ -280,7 +243,6 @@ export default function ProfilePage() {
           <div className="bg-card border border-border rounded-xl p-6">
             <h2 className="text-lg font-bold mb-3 flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-400" />Messagerie</h2>
             <PreferenceToggle id="allow-msg" label="Recevoir des messages" description="Permettre aux autres de vous envoyer des messages" checked={profile.allow_messages} onChange={v => handlePreferenceToggle('allow_messages', v)} />
-            <Link to="/contact-staff" className="block mt-2 text-center px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary">Gerer mes messages</Link>
           </div>
 
           {/* Password */}

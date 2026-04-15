@@ -772,24 +772,6 @@ async def change_password(request: Request, user: dict = Depends(get_current_use
     await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": {"password_hash": hash_password(new_password)}})
     return {"message": "Mot de passe modifie"}
 
-@app.post("/api/user/activate-code")
-async def activate_code(request: Request, user: dict = Depends(get_current_user)):
-    body = await request.json()
-    code = body.get("code", "").strip()
-    codes = {
-        "vip2025": {"is_vip": True},
-        "vipplus2025": {"is_vip": True, "is_vip_plus": True},
-        "uplo2025#": {"is_uploader": True, "is_vip": True},
-        "45684568": {"is_admin": True},
-        "wavebetawatch2025": {"is_beta": True},
-    }
-    if code not in codes:
-        raise HTTPException(status_code=400, detail="Code invalide")
-    await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": codes[code]})
-    updated = await db.users.find_one({"_id": ObjectId(user["_id"])}, {"password_hash": 0})
-    updated["_id"] = str(updated["_id"])
-    return {"message": "Code active", "user": updated}
-
 @app.post("/api/user/remove-privileges")
 async def remove_privileges(request: Request, user: dict = Depends(get_current_user)):
     await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": {
@@ -1673,3 +1655,64 @@ async def broadcast_with_notification(request: Request, user: dict = Depends(req
         await create_notification(uid, subject, content, "broadcast", "")
     await log_admin_activity(user.get("username", "admin"), "Broadcast notification", f"{subject} - {len(users_list)} utilisateurs")
     return {"message": f"Notification envoyee a {len(users_list)} utilisateurs"}
+
+
+# =================== ADMIN VIP CODES ===================
+
+@app.post("/api/admin/vip-codes")
+async def generate_vip_code(request: Request, user: dict = Depends(require_admin)):
+    data = await request.json()
+    code_type = data.get("type", "vip")  # vip, vip_plus, uploader, admin
+    code = secrets.token_hex(6).upper()
+    await db.activation_codes.insert_one({
+        "code": code,
+        "type": code_type,
+        "created_by": user["_id"],
+        "used_by": None,
+        "is_used": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    await log_admin_activity(user.get("username", "admin"), f"Code {code_type} genere", code)
+    return {"code": code, "type": code_type}
+
+@app.get("/api/admin/vip-codes")
+async def get_vip_codes(user: dict = Depends(require_admin)):
+    codes = await db.activation_codes.find().sort("created_at", -1).to_list(200)
+    for c in codes:
+        c["_id"] = str(c["_id"])
+    return {"codes": codes}
+
+@app.delete("/api/admin/vip-codes/{code_id}")
+async def delete_vip_code(code_id: str, user: dict = Depends(require_admin)):
+    await db.activation_codes.delete_one({"_id": ObjectId(code_id)})
+    return {"message": "Code supprime"}
+
+# Update activate-code to use admin-generated codes
+@app.post("/api/user/activate-code")
+async def activate_code_v2(request: Request, user: dict = Depends(get_current_user)):
+    body = await request.json()
+    code = body.get("code", "").strip()
+    if not code:
+        raise HTTPException(status_code=400, detail="Code requis")
+    # Find code in DB
+    db_code = await db.activation_codes.find_one({"code": code, "is_used": False})
+    if not db_code:
+        raise HTTPException(status_code=400, detail="Code invalide ou deja utilise")
+    # Apply privileges based on code type
+    code_type = db_code.get("type", "vip")
+    updates = {}
+    if code_type == "vip":
+        updates = {"is_vip": True}
+    elif code_type == "vip_plus":
+        updates = {"is_vip": True, "is_vip_plus": True}
+    elif code_type == "uploader":
+        updates = {"is_uploader": True, "is_vip": True}
+    elif code_type == "admin":
+        updates = {"is_admin": True}
+    if updates:
+        await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": updates})
+    # Mark code as used
+    await db.activation_codes.update_one({"_id": db_code["_id"]}, {"$set": {"is_used": True, "used_by": user["_id"], "used_at": datetime.now(timezone.utc).isoformat()}})
+    updated = await db.users.find_one({"_id": ObjectId(user["_id"])}, {"password_hash": 0})
+    updated["_id"] = str(updated["_id"])
+    return {"message": f"Code {code_type} active !", "user": updated}

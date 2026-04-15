@@ -50,6 +50,10 @@ import GamesPage from './pages/GamesPage';
 import AchievementsPage from './pages/AchievementsPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import MessagesPage from './pages/MessagesPage';
+import MusicDetailPage from './pages/MusicDetailPage';
+import GameDetailPage from './pages/GameDetailPage';
+import EbookDetailPage from './pages/EbookDetailPage';
+import SoftwareDetailPage from './pages/SoftwareDetailPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { StatusProvider } from './components/ContentCard';
 import './App.css';
@@ -109,7 +113,11 @@ export default function App() {
                   <Route path="/vip-game" element={<VIPGamePage />} />
                   <Route path="/history" element={<WatchHistoryPage />} />
                   <Route path="/music" element={<MusicPage />} />
+                  <Route path="/music/:id" element={<MusicDetailPage />} />
                   <Route path="/games" element={<GamesPage />} />
+                  <Route path="/games/:id" element={<GameDetailPage />} />
+                  <Route path="/ebooks/:id" element={<EbookDetailPage />} />
+                  <Route path="/logiciels/:id" element={<SoftwareDetailPage />} />
                   <Route path="/achievements" element={<ProtectedRoute><AchievementsPage /></ProtectedRoute>} />
                   <Route path="/leaderboard" element={<LeaderboardPage />} />
                 </Routes>

@@ -8,175 +8,197 @@ from datetime import datetime
 class WaveWatchAPITester:
     def __init__(self, base_url="https://wavewatch-dev.preview.emergentagent.com"):
         self.base_url = base_url
-        self.token = None
+        self.session = requests.Session()
+        self.admin_token = None
         self.tests_run = 0
         self.tests_passed = 0
         self.failed_tests = []
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
-        """Run a single API test"""
-        url = f"{self.base_url}/{endpoint}"
-        if headers is None:
-            headers = {'Content-Type': 'application/json'}
-        if self.token:
-            headers['Authorization'] = f'Bearer {self.token}'
-
+    def log_test(self, name, success, details=""):
+        """Log test result"""
         self.tests_run += 1
-        print(f"\n🔍 Testing {name}...")
+        if success:
+            self.tests_passed += 1
+            print(f"✅ {name}")
+        else:
+            print(f"❌ {name} - {details}")
+            self.failed_tests.append({"test": name, "error": details})
+
+    def test_api_call(self, method, endpoint, expected_status=200, data=None, headers=None, description=""):
+        """Generic API test method"""
+        url = f"{self.base_url}{endpoint}"
+        test_headers = {"Content-Type": "application/json"}
+        if headers:
+            test_headers.update(headers)
         
         try:
-            if method == 'GET':
-                response = requests.get(url, headers=headers, timeout=10)
-            elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers, timeout=10)
-            elif method == 'PUT':
-                response = requests.put(url, json=data, headers=headers, timeout=10)
-            elif method == 'DELETE':
-                response = requests.delete(url, headers=headers, timeout=10)
+            if method == "GET":
+                response = self.session.get(url, headers=test_headers, timeout=10)
+            elif method == "POST":
+                response = self.session.post(url, json=data, headers=test_headers, timeout=10)
+            elif method == "PUT":
+                response = self.session.put(url, json=data, headers=test_headers, timeout=10)
+            elif method == "DELETE":
+                response = self.session.delete(url, headers=test_headers, timeout=10)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
 
             success = response.status_code == expected_status
-            if success:
-                self.tests_passed += 1
-                print(f"✅ Passed - Status: {response.status_code}")
+            details = f"Status: {response.status_code}"
+            if not success:
                 try:
-                    return True, response.json()
+                    error_data = response.json()
+                    details += f", Error: {error_data.get('detail', 'Unknown error')}"
                 except:
-                    return True, {}
-            else:
-                print(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
-                print(f"   Response: {response.text[:200]}")
-                self.failed_tests.append(f"{name}: Expected {expected_status}, got {response.status_code}")
-                return False, {}
-
+                    details += f", Response: {response.text[:100]}"
+            
+            self.log_test(f"{method} {endpoint} {description}", success, details)
+            return success, response
+            
         except Exception as e:
-            print(f"❌ Failed - Error: {str(e)}")
-            self.failed_tests.append(f"{name}: {str(e)}")
-            return False, {}
+            self.log_test(f"{method} {endpoint} {description}", False, f"Exception: {str(e)}")
+            return False, None
 
-    def test_login(self, email, password):
-        """Test login and get token"""
-        success, response = self.run_test(
-            "Admin Login",
-            "POST",
-            "api/auth/login",
-            200,
-            data={"email": email, "password": password}
+    def test_admin_login(self):
+        """Test admin login and store token"""
+        print("\n🔐 Testing Admin Authentication...")
+        success, response = self.test_api_call(
+            "POST", "/api/auth/login", 200,
+            {"email": "admin@wavewatch.com", "password": "WaveWatch2026!"},
+            description="(Admin Login)"
         )
-        if success and 'token' in response:
-            self.token = response['token']
-            print(f"   Token obtained: {self.token[:20]}...")
-            return True
+        
+        if success and response:
+            try:
+                data = response.json()
+                self.admin_token = data.get("token")
+                # Store cookies for session-based auth
+                self.session.cookies.update(response.cookies)
+                return True
+            except:
+                self.log_test("Admin Login Token Extraction", False, "Failed to extract token")
+                return False
         return False
 
-    def test_health_check(self):
-        """Test health endpoint"""
-        return self.run_test("Health Check", "GET", "api/health", 200)
+    def test_admin_endpoints(self):
+        """Test admin-specific endpoints"""
+        if not self.admin_token:
+            print("❌ Skipping admin tests - no admin token")
+            return
 
-    def test_notifications_endpoints(self):
-        """Test notification endpoints"""
-        print("\n📢 Testing Notification Endpoints...")
+        print("\n👑 Testing Admin Endpoints...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+
+        # Test admin stats
+        self.test_api_call("GET", "/api/admin/enhanced-stats", 200, headers=auth_headers, description="(Enhanced Stats)")
         
-        # Get notifications
-        self.run_test("Get Notifications", "GET", "api/notifications", 200)
+        # Test admin users
+        self.test_api_call("GET", "/api/admin/users", 200, headers=auth_headers, description="(Users List)")
         
-        # Mark all as read
-        self.run_test("Mark All Notifications Read", "PUT", "api/notifications/read-all", 200)
-
-    def test_recommendations_endpoint(self):
-        """Test user recommendations"""
-        return self.run_test("User Recommendations", "GET", "api/user/recommendations", 200)
-
-    def test_playlists_enhanced(self):
-        """Test enhanced playlists endpoint"""
-        return self.run_test("Enhanced Public Playlists", "GET", "api/playlists/public/enhanced", 200)
+        # Test site settings
+        self.test_api_call("GET", "/api/admin/site-settings/home_modules", 200, headers=auth_headers, description="(Home Modules Settings)")
 
     def test_content_endpoints(self):
-        """Test content endpoints for Music, Games, Ebooks, Software"""
-        print("\n🎵 Testing Content Endpoints...")
+        """Test content retrieval endpoints"""
+        print("\n📺 Testing Content Endpoints...")
         
-        # Music
-        self.run_test("Get Music Items", "GET", "api/music", 200)
+        # Test TV channels
+        self.test_api_call("GET", "/api/tv-channels", 200, description="(TV Channels)")
         
-        # Games  
-        self.run_test("Get Games Items", "GET", "api/games", 200)
+        # Test radio stations  
+        self.test_api_call("GET", "/api/radio-stations", 200, description="(Radio Stations)")
         
-        # Ebooks
-        self.run_test("Get Ebooks Items", "GET", "api/ebooks", 200)
+        # Test music content
+        self.test_api_call("GET", "/api/music", 200, description="(Music Content)")
         
-        # Software
-        self.run_test("Get Software Items", "GET", "api/software", 200)
+        # Test games
+        self.test_api_call("GET", "/api/games", 200, description="(Games)")
+        
+        # Test software
+        self.test_api_call("GET", "/api/software", 200, description="(Software)")
+        
+        # Test ebooks
+        self.test_api_call("GET", "/api/ebooks", 200, description="(Ebooks)")
 
-    def test_tv_channels(self):
-        """Test TV channels endpoint"""
-        return self.run_test("Get TV Channels", "GET", "api/tv-channels", 200)
+    def test_vip_codes_system(self):
+        """Test VIP codes system"""
+        if not self.admin_token:
+            print("❌ Skipping VIP codes tests - no admin token")
+            return
+
+        print("\n👑 Testing VIP Codes System...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+
+        # Test getting VIP codes
+        self.test_api_call("GET", "/api/admin/vip-codes", 200, headers=auth_headers, description="(Get VIP Codes)")
+        
+        # Test generating a VIP code
+        self.test_api_call("POST", "/api/admin/vip-codes", 200, 
+                          {"type": "vip"}, headers=auth_headers, description="(Generate VIP Code)")
 
     def test_tmdb_endpoints(self):
         """Test TMDB proxy endpoints"""
         print("\n🎬 Testing TMDB Endpoints...")
         
-        self.run_test("TMDB Trending Movies", "GET", "api/tmdb/trending/movies", 200)
-        self.run_test("TMDB Trending TV", "GET", "api/tmdb/trending/tv", 200)
-        self.run_test("TMDB Popular Movies", "GET", "api/tmdb/popular/movies", 200)
-
-    def test_user_endpoints(self):
-        """Test user-specific endpoints"""
-        print("\n👤 Testing User Endpoints...")
+        # Test trending movies
+        self.test_api_call("GET", "/api/tmdb/trending/movies", 200, description="(Trending Movies)")
         
-        self.run_test("Get User Profile", "GET", "api/auth/me", 200)
-        self.run_test("Get User Favorites", "GET", "api/user/favorites", 200)
-        self.run_test("Get User History", "GET", "api/user/history", 200)
-        self.run_test("Get User Stats", "GET", "api/user/stats", 200)
-
-    def test_admin_endpoints(self):
-        """Test admin endpoints"""
-        print("\n🔧 Testing Admin Endpoints...")
+        # Test trending TV
+        self.test_api_call("GET", "/api/tmdb/trending/tv", 200, description="(Trending TV)")
         
-        self.run_test("Admin Stats", "GET", "api/admin/stats", 200)
-        self.run_test("Admin Enhanced Stats", "GET", "api/admin/enhanced-stats", 200)
-        self.run_test("Admin Users List", "GET", "api/admin/users", 200)
+        # Test popular movies
+        self.test_api_call("GET", "/api/tmdb/popular/movies", 200, description="(Popular Movies)")
+
+    def test_public_endpoints(self):
+        """Test public endpoints that don't require auth"""
+        print("\n🌐 Testing Public Endpoints...")
+        
+        # Test health check
+        self.test_api_call("GET", "/api/health", 200, description="(Health Check)")
+        
+        # Test feedback stats
+        self.test_api_call("GET", "/api/feedback/stats", 200, description="(Feedback Stats)")
+        
+        # Test public playlists
+        self.test_api_call("GET", "/api/playlists/public/discover", 200, description="(Public Playlists)")
+
+    def run_all_tests(self):
+        """Run comprehensive API tests"""
+        print("🚀 Starting WaveWatch API Tests...")
+        print(f"🔗 Base URL: {self.base_url}")
+        
+        # Test public endpoints first
+        self.test_public_endpoints()
+        
+        # Test TMDB endpoints
+        self.test_tmdb_endpoints()
+        
+        # Test admin login
+        if self.test_admin_login():
+            # Test admin endpoints
+            self.test_admin_endpoints()
+            # Test VIP codes system
+            self.test_vip_codes_system()
+        
+        # Test content endpoints
+        self.test_content_endpoints()
+        
+        # Print summary
+        print(f"\n📊 Test Summary:")
+        print(f"✅ Passed: {self.tests_passed}/{self.tests_run}")
+        print(f"❌ Failed: {len(self.failed_tests)}")
+        
+        if self.failed_tests:
+            print(f"\n💥 Failed Tests:")
+            for test in self.failed_tests:
+                print(f"  - {test['test']}: {test['error']}")
+        
+        return self.tests_passed == self.tests_run
 
 def main():
-    print("🌊 WaveWatch API Testing Suite")
-    print("=" * 50)
-    
-    # Setup
     tester = WaveWatchAPITester()
-    
-    # Test health first
-    print("\n🏥 Testing Basic Connectivity...")
-    success, _ = tester.test_health_check()
-    if not success:
-        print("❌ Health check failed, stopping tests")
-        return 1
-
-    # Test login
-    print("\n🔐 Testing Authentication...")
-    if not tester.test_login("admin@wavewatch.com", "WaveWatch2026!"):
-        print("❌ Login failed, stopping authenticated tests")
-        return 1
-
-    # Test all endpoints
-    tester.test_notifications_endpoints()
-    tester.test_recommendations_endpoint()
-    tester.test_playlists_enhanced()
-    tester.test_content_endpoints()
-    tester.test_tv_channels()
-    tester.test_tmdb_endpoints()
-    tester.test_user_endpoints()
-    tester.test_admin_endpoints()
-
-    # Print results
-    print(f"\n📊 Test Results")
-    print("=" * 50)
-    print(f"Tests passed: {tester.tests_passed}/{tester.tests_run}")
-    print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
-    
-    if tester.failed_tests:
-        print(f"\n❌ Failed Tests:")
-        for failure in tester.failed_tests:
-            print(f"   - {failure}")
-    
-    return 0 if tester.tests_passed == tester.tests_run else 1
+    success = tester.run_all_tests()
+    return 0 if success else 1
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
-import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users, Sparkles } from 'lucide-react';
+import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users, Sparkles, X } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
 import { LoadingGrid } from '../components/Loading';
@@ -131,6 +131,7 @@ function TrendingActorsRow() {
 
 function TrendingTVChannelsRow() {
   const [channels, setChannels] = useState([]);
+  const [selectedChannel, setSelectedChannel] = useState(null);
   useEffect(() => {
     API.get('/api/tv-channels').then(({ data }) => setChannels(data.channels || [])).catch(() => {});
   }, []);
@@ -145,15 +146,32 @@ function TrendingTVChannelsRow() {
       </div>
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
         {channels.slice(0, 8).map(ch => (
-          <div key={ch.id} className="bg-card border border-border rounded-xl p-3 text-center hover:border-primary/30 transition-colors group cursor-pointer">
+          <div key={ch.id || ch._id || ch.name} onClick={() => setSelectedChannel(ch)} className="bg-card border border-border rounded-xl p-3 text-center hover:border-primary/30 transition-colors group cursor-pointer">
             <div className="w-12 h-12 mx-auto mb-2 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center">
-              {ch.logo ? <img src={ch.logo} alt={ch.name} className="w-full h-full object-contain p-1" onError={e => { e.target.style.display = 'none'; }} /> : <Tv className="w-6 h-6 text-muted-foreground" />}
+              {(ch.logo || ch.logo_url) ? <img src={ch.logo || ch.logo_url} alt={ch.name} className="w-full h-full object-contain p-1" onError={e => { e.target.style.display = 'none'; }} /> : <Tv className="w-6 h-6 text-muted-foreground" />}
             </div>
             <p className="text-xs font-medium truncate group-hover:text-green-400">{ch.name}</p>
             <p className="text-[10px] text-muted-foreground">{ch.category}</p>
           </div>
         ))}
       </div>
+      {selectedChannel && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setSelectedChannel(null)}>
+          <div className="w-full max-w-5xl bg-black rounded-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-800">
+              <h3 className="text-white font-bold">{selectedChannel.name}</h3>
+              <button onClick={() => setSelectedChannel(null)} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+            </div>
+            <div className="aspect-video bg-black">
+              {selectedChannel.stream_url ? (
+                <iframe src={selectedChannel.stream_url} title={selectedChannel.name} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-500"><Tv className="w-16 h-16 mb-3" /><p>Aucun flux disponible</p></div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -481,25 +499,34 @@ function RecommendationsRow() {
 }
 
 export default function HomePage() {
+  const [modules, setModules] = useState(null);
+  useEffect(() => {
+    API.get('/api/admin/site-settings/home_modules').then(({ data }) => {
+      if (data.setting_value) setModules(data.setting_value);
+    }).catch(() => {});
+  }, []);
+
+  const show = (key) => !modules || modules[key] !== false;
+
   return (
     <div className="space-y-8" data-testid="home-page">
-      <Hero />
+      {show('hero') && <Hero />}
       <div className="container mx-auto px-4 space-y-12">
-        <ContentRow title="Films Tendance" endpoint="/api/tmdb/trending/movies" type="movie" link="/movies" />
+        {show('trending_movies') && <ContentRow title="Films Tendance" endpoint="/api/tmdb/trending/movies" type="movie" link="/movies" />}
         <RecommendationsRow />
-        <ContentRow title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" link="/tv-shows" />
-        <ContentRow title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime link="/anime" />
-        <PopularCollectionsRow />
-        <PublicPlaylistsRow />
-        <TrendingActorsRow />
-        <TrendingTVChannelsRow />
-        <SportsStreamPromo />
-        <LiveWatchPromo />
-        <VIPGamePromo />
-        <SubscriptionOffer />
-        <RandomContent />
-        <FootballCalendarWidget />
-        <CalendarWidgetHome />
+        {show('trending_tv_shows') && <ContentRow title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" link="/tv-shows" />}
+        {show('popular_anime') && <ContentRow title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime link="/anime" />}
+        {show('popular_collections') && <PopularCollectionsRow />}
+        {show('public_playlists') && <PublicPlaylistsRow />}
+        {show('trending_actors') && <TrendingActorsRow />}
+        {show('trending_tv_channels') && <TrendingTVChannelsRow />}
+        {show('sports_promo') && <SportsStreamPromo />}
+        {show('livewatch_promo') && <LiveWatchPromo />}
+        {show('vip_game_promo') && <VIPGamePromo />}
+        {show('subscription_offer') && <SubscriptionOffer />}
+        {show('random_content') && <RandomContent />}
+        {show('football_calendar') && <FootballCalendarWidget />}
+        {show('calendar_widget') && <CalendarWidgetHome />}
         <ContentRow title="Films Populaires" endpoint="/api/tmdb/popular/movies" type="movie" link="/movies" />
         <ContentRow title="Series Populaires" endpoint="/api/tmdb/popular/tv" type="tv" link="/tv-shows" />
       </div>

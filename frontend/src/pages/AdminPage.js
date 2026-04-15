@@ -147,6 +147,10 @@ export default function AdminPage() {
   // TMDB update
   const [tmdbUpdating, setTmdbUpdating] = useState(false);
 
+  // VIP Codes
+  const [vipCodes, setVipCodes] = useState([]);
+  const [newCodeType, setNewCodeType] = useState('vip');
+
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
 
   const loadData = useCallback((currentTab) => {
@@ -159,14 +163,15 @@ export default function AdminPage() {
       cinema: () => API.get('/api/admin/cinema-rooms').then(({ data }) => setCinemaRooms(data.rooms || [])),
       tvchannels: () => API.get('/api/tv-channels').then(({ data }) => setTvChannels(data.channels || [])),
       radio: () => API.get('/api/radio-stations').then(({ data }) => setRadioStations(data.stations || [])),
-      music: () => API.get('/api/music').then(({ data }) => setMusicContent(data || [])),
-      software: () => API.get('/api/software').then(({ data }) => setSoftwareItems(data.items || [])),
-      games: () => API.get('/api/games').then(({ data }) => setGamesItems(data || [])),
-      ebooks: () => API.get('/api/ebooks').then(({ data }) => setEbooksItems(data.items || [])),
+      music: () => API.get('/api/music').then(({ data }) => setMusicContent(Array.isArray(data) ? data : [])),
+      software: () => API.get('/api/software').then(({ data }) => setSoftwareItems(data.software || data.items || (Array.isArray(data) ? data : []))),
+      games: () => API.get('/api/games').then(({ data }) => setGamesItems(Array.isArray(data) ? data : [])),
+      ebooks: () => API.get('/api/ebooks').then(({ data }) => setEbooksItems(data.ebooks || data.items || (Array.isArray(data) ? data : []))),
       retrogaming: () => API.get('/api/retrogaming').then(({ data }) => setRetrogaming(data.sources || [])),
       changelogs: () => API.get('/api/changelogs').then(({ data }) => setChangelogs(data || [])),
       requests: () => API.get('/api/content-requests').then(({ data }) => setRequests(data.requests || [])),
       activities: () => API.get('/api/admin/activities').then(({ data }) => setActivities(data.activities || [])),
+      vipcodes: () => API.get('/api/admin/vip-codes').then(({ data }) => setVipCodes(data.codes || [])),
     };
     if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
   }, [user]);
@@ -335,6 +340,7 @@ export default function AdminPage() {
     { id: 'modules', label: 'Modules', icon: <Settings className="w-4 h-4" /> },
     { id: 'cinema', label: 'Cinema', icon: <Film className="w-4 h-4" /> },
     { id: 'activities', label: 'Feed', icon: <Users className="w-4 h-4" /> },
+    { id: 'vipcodes', label: 'Codes', icon: <Crown className="w-4 h-4" /> },
     { id: 'tmdb', label: 'TMDB', icon: <Film className="w-4 h-4" /> },
   ];
 
@@ -740,6 +746,54 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground mt-1">Mettre a jour</p>
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* VIP Codes */}
+      {tab === 'vipcodes' && (
+        <div className="space-y-6" data-testid="admin-vipcodes">
+          <h2 className="text-xl font-bold flex items-center gap-2"><Crown className="w-5 h-5 text-yellow-400" />Codes d'activation</h2>
+          <div className="bg-card border border-border rounded-xl p-6">
+            <h3 className="font-bold mb-4">Generer un nouveau code</h3>
+            <div className="flex gap-3 items-end">
+              <div>
+                <label className="text-sm font-medium">Type</label>
+                <select value={newCodeType} onChange={e => setNewCodeType(e.target.value)} className="mt-1 block px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm">
+                  <option value="vip">VIP</option>
+                  <option value="vip_plus">VIP+</option>
+                  <option value="uploader">Uploader</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <button onClick={async () => {
+                try { const { data } = await API.post('/api/admin/vip-codes', { type: newCodeType }); toast({ title: `Code genere: ${data.code}` }); loadData('vipcodes'); }
+                catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+              }} className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium flex items-center gap-2" data-testid="generate-code-btn">
+                <Plus className="w-4 h-4" />Generer
+              </button>
+            </div>
+          </div>
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-border"><h3 className="font-bold">Codes ({vipCodes.length})</h3></div>
+            {vipCodes.length === 0 ? <p className="text-center py-8 text-muted-foreground">Aucun code</p> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b border-border bg-secondary/30"><th className="px-4 py-2 text-left">Code</th><th className="px-4 py-2 text-left">Type</th><th className="px-4 py-2 text-left">Statut</th><th className="px-4 py-2 text-left">Date</th><th className="px-4 py-2 text-left">Actions</th></tr></thead>
+                  <tbody>
+                    {vipCodes.map(c => (
+                      <tr key={c._id} className="border-b border-border/50 hover:bg-secondary/20">
+                        <td className="px-4 py-2 font-mono font-bold">{c.code}</td>
+                        <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded-full text-xs ${c.type === 'admin' ? 'bg-red-500/20 text-red-400' : c.type === 'vip_plus' ? 'bg-purple-500/20 text-purple-400' : c.type === 'uploader' ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{c.type}</span></td>
+                        <td className="px-4 py-2">{c.is_used ? <span className="text-red-400 text-xs">Utilise{c.used_by ? ` par ${c.used_by}` : ''}</span> : <span className="text-green-400 text-xs">Disponible</span>}</td>
+                        <td className="px-4 py-2 text-xs text-muted-foreground">{c.created_at ? new Date(c.created_at).toLocaleDateString('fr-FR') : ''}</td>
+                        <td className="px-4 py-2"><button onClick={async () => { try { await API.delete(`/api/admin/vip-codes/${c._id}`); toast({ title: 'Supprime' }); loadData('vipcodes'); } catch {} }} className="text-muted-foreground hover:text-red-400"><Trash2 className="w-4 h-4" /></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
