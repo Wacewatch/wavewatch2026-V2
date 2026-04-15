@@ -5,29 +5,26 @@
 
 ## What's Been Implemented (Jan-Apr 2026)
 
-### Backend (110+ API endpoints)
-- JWT Auth, TMDB Proxy, Favorites, Watch History, Playlists (full CRUD + colors)
-- Feedback, Staff Messages, Content Requests, Admin CRUD for all content types
-- VIP Game, Achievements, Leaderboard, Online Users tracking (heartbeat)
+### Backend (115+ API endpoints)
+- JWT Auth, TMDB Proxy, Favorites, Watch History (+ delete toggle), Playlists (+ colors)
 - Platform Reviews (1-10 ratings + guestbook), User Messaging, Admin Activity Feed
-- TMDB Update admin trigger, Enhanced public playlists with user info & ratings
-- User Ratings (like/dislike), Profile management (preferences, password, activation codes, account deletion)
+- TMDB Update admin, Enhanced playlists, User Recommendations (TMDB similar)
+- Online Users tracking, VIP Game, Achievements, Leaderboard
+- All content CRUD admin endpoints
 
-### Frontend (49+ pages, 30+ components)
-- **Hero**: Movie logo from TMDB /images API (fr/en/null fallback)
-- **ContentCard**: Hover overlay with Eye (mark watched) + Plus (playlist) buttons, Fav/Watched badges
-- **Dashboard**: Rating bars 1-10 (colored red/yellow/green), Guestbook, Community reviews with user badges, Collapsible sections, Stats, Achievements, History/Favorites tabs
-- **Admin**: 17 tabs (Stats, Broadcast, TV, Radio, Music, Software, Games, Ebooks, Retro, Requests, Users, Staff, Changelogs, Modules, Cinema, Feed, TMDB), Online users counter, User edit modal
-- **Profile**: Avatar, bio, location, themes, VIP status, preferences, password, activation codes, account deletion
-- **Playlists**: Color customization (12 colors: standard + VIP + VIP+)
-- **Discover Playlists**: Likes/dislikes count, item count, user badges
-- **Detail Pages**: Like/Dislike + Favoris + Marquer vu on Movies, TV Shows, Episodes, Actors, Playlists
+### Frontend (50+ pages, 30+ components)
+- **Hero**: Movie logo from TMDB /images API
+- **ContentCard**: Eye (toggle watched) + Plus (playlist) hover buttons side by side, Fav/Watched badges
+- **Dashboard**: Stats, Rating bars 1-10, Guestbook, Community reviews, Recommendations, Achievements, History/Favorites tabs
+- **Admin**: 17 tabs, Online users counter, User edit modal, Activity feed, TMDB update
+- **Profile**: Full with themes, preferences, activation codes, account deletion
+- **Messages**: Compose, search recipients, received/sent tabs
+- **Discover Playlists**: Likes/dislikes, item count, user badges
+- **Playlists**: Color customization (12 colors)
+- **Footer**: Real community reviews from /api/platform-reviews
+- **Navigation**: Cleaned menus (removed Sports/Docs/Spectacles from Contenu, Jeux/Demandes from Medias, Realisations from User)
+- **Logo**: Enlarged in nav (h-14) and footer (h-12)
 
-### Roles: Membre, VIP (vip2025), VIP+ (vipplus2025), Uploader (uplo2025#), Admin (45684568)
+### Roles: Membre, VIP, VIP+, Uploader, Admin
 
-## Testing: Iteration 8 - Backend 96.2%, Frontend 90%
-
-## Next Tasks
-- User messaging page (frontend for /api/messages)
-- Admin user search improvements
-- Content recommendations based on watch history
+## Testing: Iteration 9 - Backend 94.7%, Frontend 95%
