@@ -1,12 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Crown, Star, Zap, Shield, Palette } from 'lucide-react';
+import { Crown, Star, Clock } from 'lucide-react';
 
 export default function SubscriptionPage() {
   const plans = [
     { name: 'Gratuit', price: '0', features: ['Acces aux films et series', 'Recherche de contenu', 'Themes standards', 'Playlists basiques'], current: true },
     { name: 'VIP', price: '4.99', badge: <Crown className="w-5 h-5 text-yellow-400" />, features: ['Tout le plan Gratuit', 'Themes VIP exclusifs', 'Badge VIP', 'Priorite de streaming', 'Pas de publicite'], highlight: true },
-    { name: 'VIP+', price: '9.99', badge: <Crown className="w-5 h-5 text-purple-400" />, features: ['Tout le plan VIP', 'Themes VIP+ exclusifs', 'Badge VIP+', 'Acces anticipé aux nouveautes', 'Support prioritaire'] },
+    { name: 'VIP+', price: '9.99', badge: <Crown className="w-5 h-5 text-purple-400" />, features: ['Tout le plan VIP', 'Themes VIP+ exclusifs', 'Badge VIP+', 'Acces anticipe aux nouveautes', 'Support prioritaire'] },
   ];
 
   return (
@@ -23,9 +22,13 @@ export default function SubscriptionPage() {
             <ul className="space-y-3 mb-8">
               {p.features.map(f => <li key={f} className="flex items-center gap-2 text-sm"><Star className="w-4 h-4 text-primary flex-shrink-0" />{f}</li>)}
             </ul>
-            <button className={`w-full py-2.5 rounded-lg font-medium transition-opacity hover:opacity-90 ${p.highlight ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white' : p.current ? 'bg-secondary text-secondary-foreground' : 'bg-primary text-primary-foreground'}`}>
-              {p.current ? 'Plan actuel' : 'Choisir ce plan'}
-            </button>
+            {p.current ? (
+              <button className="w-full py-2.5 rounded-lg font-medium bg-secondary text-secondary-foreground cursor-default">Plan actuel</button>
+            ) : (
+              <button disabled className="w-full py-2.5 rounded-lg font-medium bg-gray-700 text-gray-400 cursor-not-allowed flex items-center justify-center gap-2 opacity-60" data-testid={`plan-btn-${p.name}`}>
+                <Clock className="w-4 h-4" />Bientot disponible
+              </button>
+            )}
           </div>
         ))}
       </div>

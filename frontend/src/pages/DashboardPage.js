@@ -218,17 +218,6 @@ export default function DashboardPage() {
         </div>
       </Section>
 
-      {/* Recommendations */}
-      {recommendations.length > 0 && (
-        <Section title="Recommandations pour vous" icon={<Sparkles className="w-5 h-5 text-pink-400" />} isOpen={recsOpen} setIsOpen={setRecsOpen} gradient="bg-gradient-to-r from-pink-500/5 to-purple-500/5 border-pink-500/20">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {recommendations.map(item => (
-              <ContentCard key={item.id} item={item} type={item.title ? 'movie' : 'tv'} />
-            ))}
-          </div>
-        </Section>
-      )}
-
       {/* Votre avis compte */}
       <Section title="Votre avis compte" icon={<Star className="w-5 h-5 text-yellow-400" />} isOpen={feedbackOpen} setIsOpen={setFeedbackOpen}>
         <p className="text-sm text-muted-foreground mb-4">Aidez-nous a ameliorer WaveWatch en partageant votre experience</p>

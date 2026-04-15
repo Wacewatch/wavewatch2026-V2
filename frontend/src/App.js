@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -54,11 +54,21 @@ import MusicDetailPage from './pages/MusicDetailPage';
 import GameDetailPage from './pages/GameDetailPage';
 import EbookDetailPage from './pages/EbookDetailPage';
 import SoftwareDetailPage from './pages/SoftwareDetailPage';
-import WatchPartyPage from './pages/WatchPartyPage';
-import WatchPartyRoomPage from './pages/WatchPartyRoomPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { StatusProvider } from './components/ContentCard';
 import './App.css';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  const prevPath = React.useRef(pathname);
+  React.useEffect(() => {
+    if (prevPath.current !== pathname) {
+      window.scrollTo(0, 0);
+      prevPath.current = pathname;
+    }
+  }, [pathname]);
+  return null;
+}
 
 export default function App() {
   return (
@@ -68,6 +78,7 @@ export default function App() {
           <StatusProvider>
           <BrowserRouter>
             <div className="min-h-screen bg-background text-foreground flex flex-col">
+              <ScrollToTop />
               <Navigation />
               <main className="flex-1">
                 <Routes>
@@ -123,8 +134,6 @@ export default function App() {
                   <Route path="/logiciels/:id" element={<SoftwareDetailPage />} />
                   <Route path="/achievements" element={<ProtectedRoute><AchievementsPage /></ProtectedRoute>} />
                   <Route path="/leaderboard" element={<LeaderboardPage />} />
-                  <Route path="/watch-party" element={<WatchPartyPage />} />
-                  <Route path="/watch-party/:id" element={<WatchPartyRoomPage />} />
                 </Routes>
               </main>
               <Footer />

@@ -86,17 +86,21 @@ function QuickPlaylistAdd({ contentId, contentType, title, posterPath, inline = 
         <Plus className="w-4 h-4" />
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 mb-1 w-52 bg-card border border-border rounded-lg shadow-2xl z-50 overflow-hidden" onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
-          <div className="p-2 text-xs font-bold border-b border-border">Ajouter a...</div>
-          <div className="max-h-40 overflow-y-auto">
-            {playlists.length === 0 ? <p className="text-xs text-muted-foreground p-2">Aucune playlist</p> :
-              playlists.map(p => (
-                <button key={p._id} onClick={(e) => addTo(e, p._id)} className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-secondary/50 transition-colors text-xs">
-                  {addedTo.has(p._id) ? <Check className="w-3 h-3 text-green-400 flex-shrink-0" /> : <ListMusic className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
-                  <span className="truncate">{p.name}</span>
-                </button>
-              ))
-            }
+        <div className="fixed inset-0 z-[100]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}>
+          <div className="absolute w-52 bg-card border border-border rounded-lg shadow-2xl z-[101] overflow-hidden"
+            style={{ bottom: 'auto', top: ref.current ? Math.max(10, ref.current.getBoundingClientRect().top - 180) : 100, left: ref.current ? Math.min(ref.current.getBoundingClientRect().left, window.innerWidth - 220) : 100 }}
+            onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
+            <div className="p-2 text-xs font-bold border-b border-border">Ajouter a...</div>
+            <div className="max-h-40 overflow-y-auto">
+              {playlists.length === 0 ? <p className="text-xs text-muted-foreground p-2">Aucune playlist</p> :
+                playlists.map(p => (
+                  <button key={p._id} onClick={(e) => addTo(e, p._id)} className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-secondary/50 transition-colors text-xs">
+                    {addedTo.has(p._id) ? <Check className="w-3 h-3 text-green-400 flex-shrink-0" /> : <ListMusic className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+                    <span className="truncate">{p.name}</span>
+                  </button>
+                ))
+              }
+            </div>
           </div>
         </div>
       )}

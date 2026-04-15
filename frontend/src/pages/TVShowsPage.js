@@ -165,10 +165,10 @@ export default function TVShowsPage() {
       )}
 
       <div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
-        <button onClick={() => { setPage(1); window.scrollTo(0, 0); }} disabled={page <= 1} className="px-3 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors text-sm">1</button>
-        <button onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }} disabled={page <= 1} className="px-4 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors" data-testid="prev-page-btn">Precedent</button>
+        <button onClick={() => { setPage(1); }} disabled={page <= 1} className="px-3 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors text-sm">1</button>
+        <button onClick={() => { setPage(p => Math.max(1, p - 1)); }} disabled={page <= 1} className="px-4 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors" data-testid="prev-page-btn">Precedent</button>
         <span className="px-4 py-2 text-muted-foreground text-sm">Page {page} / {totalPages}</span>
-        <button onClick={() => { setPage(p => Math.min(totalPages, p + 1)); window.scrollTo(0, 0); }} disabled={page >= totalPages} className="px-4 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors" data-testid="next-page-btn">Suivant</button>
+        <button onClick={() => { setPage(p => Math.min(totalPages, p + 1)); }} disabled={page >= totalPages} className="px-4 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors" data-testid="next-page-btn">Suivant</button>
       </div>
     </div>
   );

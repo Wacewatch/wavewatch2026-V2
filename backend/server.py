@@ -435,8 +435,9 @@ async def tmdb_genres(media_type: str):
 
 @app.get("/api/tmdb/discover/{media_type}")
 async def tmdb_discover(media_type: str, page: int = 1, genre: Optional[int] = None, sort_by: str = "popularity.desc",
-                        provider: Optional[int] = None, year: Optional[int] = None, vote_avg: Optional[float] = None):
-    params = {"page": str(page), "sort_by": sort_by, "watch_region": "FR"}
+                        provider: Optional[int] = None, year: Optional[int] = None, vote_avg: Optional[float] = None,
+                        include_adult: bool = False):
+    params = {"page": str(page), "sort_by": sort_by, "watch_region": "FR", "include_adult": str(include_adult).lower()}
     if genre:
         params["with_genres"] = str(genre)
     if provider:
@@ -1677,9 +1678,30 @@ async def rate_content(request: Request, user: dict = Depends(get_current_user))
         return {"rating": rating, "message": "Vote enregistre"}
 
 @app.get("/api/user/ratings/check")
-async def check_rating(content_id: int, content_type: str, user: dict = Depends(get_current_user)):
+async def check_rating(content_id: str = Query(...), content_type: str = Query(...), user: dict = Depends(get_current_user)):
+    # Try both string and int content_id for compatibility
     existing = await db.user_ratings.find_one({"user_id": user["_id"], "content_id": content_id, "content_type": content_type})
+    if not existing:
+        try:
+            existing = await db.user_ratings.find_one({"user_id": user["_id"], "content_id": int(content_id), "content_type": content_type})
+        except:
+            pass
     return {"rating": existing.get("rating") if existing else None}
+
+@app.get("/api/ratings/counts")
+async def get_rating_counts(content_id: str = Query(...), content_type: str = Query(...)):
+    """Public endpoint to get like/dislike counts for any content"""
+    # Try both string and int content_id
+    likes = await db.user_ratings.count_documents({"content_id": content_id, "content_type": content_type, "rating": "like"})
+    dislikes = await db.user_ratings.count_documents({"content_id": content_id, "content_type": content_type, "rating": "dislike"})
+    if likes == 0 and dislikes == 0:
+        try:
+            cid = int(content_id)
+            likes = await db.user_ratings.count_documents({"content_id": cid, "content_type": content_type, "rating": "like"})
+            dislikes = await db.user_ratings.count_documents({"content_id": cid, "content_type": content_type, "rating": "dislike"})
+        except:
+            pass
+    return {"likes": likes, "dislikes": dislikes, "content_id": content_id, "content_type": content_type}
 
 # --- Content Requests Admin Management ---
 @app.put("/api/admin/content-requests/{request_id}")
@@ -1837,24 +1859,48 @@ async def update_playlist_colors(playlist_id: str, request: Request, user: dict 
 # =================== PUBLIC PLAYLISTS ENHANCED ===================
 
 @app.get("/api/playlists/public/enhanced")
-async def get_public_playlists_enhanced(page: int = 1, limit: int = 20):
+async def get_public_playlists_enhanced(page: int = 1, limit: int = 20, sort_by: str = "recent", content_type_filter: str = ""):
     skip = (page - 1) * limit
-    playlists = await db.playlists.find({"is_public": True}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
-    result = []
+    query = {"is_public": True}
+    
+    # Determine sort
+    sort_field = [("created_at", -1)]
+    if sort_by == "likes":
+        sort_field = [("likes_count_cached", -1), ("created_at", -1)]
+    elif sort_by == "size":
+        sort_field = [("items_count_cached", -1), ("created_at", -1)]
+    
+    playlists = await db.playlists.find(query).sort(sort_field).skip(skip).limit(limit).to_list(limit)
+    result_uploaders = []
+    result_others = []
+    
     for p in playlists:
         p["_id"] = str(p["_id"])
         # Get user info
-        u = await db.users.find_one({"_id": ObjectId(p["user_id"])}, {"username": 1, "is_admin": 1, "is_vip": 1, "is_vip_plus": 1, "is_uploader": 1})
+        try:
+            uid = ObjectId(p["user_id"]) if isinstance(p["user_id"], str) else p["user_id"]
+            u = await db.users.find_one({"_id": uid}, {"username": 1, "is_admin": 1, "is_vip": 1, "is_vip_plus": 1, "is_uploader": 1})
+        except:
+            u = None
         if u:
             p["user_info"] = {"username": u.get("username"), "is_admin": u.get("is_admin", False), "is_vip": u.get("is_vip", False), "is_vip_plus": u.get("is_vip_plus", False), "is_uploader": u.get("is_uploader", False)}
+            p["username"] = u.get("username")
         # Count likes/dislikes
         likes = await db.user_ratings.count_documents({"content_id": p["_id"], "content_type": "playlist", "rating": "like"})
         dislikes = await db.user_ratings.count_documents({"content_id": p["_id"], "content_type": "playlist", "rating": "dislike"})
         p["likes_count"] = likes
         p["dislikes_count"] = dislikes
         p["items_count"] = len(p.get("items", []))
-        result.append(p)
-    total = await db.playlists.count_documents({"is_public": True})
+        
+        # Separate uploaders/admins from others (uploaders always first)
+        if u and (u.get("is_uploader") or u.get("is_admin")):
+            result_uploaders.append(p)
+        else:
+            result_others.append(p)
+    
+    # Uploaders first, then others
+    result = result_uploaders + result_others
+    total = await db.playlists.count_documents(query)
     return {"playlists": result, "total": total, "page": page}
 
 
