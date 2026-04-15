@@ -404,7 +404,6 @@ class WaveWatchAPITester:
         # Test sending a message (if endpoint exists)
         message_data = {
             "recipient_id": "test_recipient",
-            "subject": "Test Message",
             "content": "This is a test message"
         }
         # This might return 404 if recipient doesn't exist, but endpoint should be available
@@ -412,6 +411,34 @@ class WaveWatchAPITester:
         if not response:
             # Try alternative endpoint structure
             self.run_test("Send User Message Alt", "POST", "/api/user/messages", 400, data=message_data)
+
+    def test_iteration9_features(self):
+        """Test new features from iteration 9"""
+        if not self.token:
+            self.log_test("Iteration 9 Features Test", False, "No auth token available")
+            return
+
+        # Test recommendations endpoint
+        self.run_test("Get User Recommendations", "GET", "/api/user/recommendations", 200)
+        
+        # Test platform reviews endpoint (should fetch from /api/platform-reviews instead of /api/feedback/stats)
+        self.run_test("Get Platform Reviews for Footer", "GET", "/api/platform-reviews", 200)
+        
+        # Test history deletion endpoint
+        # First add something to history
+        history_data = {
+            "content_id": 299534,
+            "content_type": "movie",
+            "title": "Test Movie",
+            "poster_path": "/test.jpg"
+        }
+        self.run_test("Add to History", "POST", "/api/user/history", 200, data=history_data)
+        
+        # Then test deletion
+        self.run_test("Delete from History", "DELETE", "/api/user/history/299534/movie", 200)
+        
+        # Test detailed stats endpoint
+        self.run_test("Get User Detailed Stats", "GET", "/api/user/detailed-stats", 200)
 
     def run_all_tests(self):
         """Run all tests"""
@@ -456,6 +483,9 @@ class WaveWatchAPITester:
         self.test_admin_activities_endpoints()
         self.test_tmdb_update_endpoints()
         self.test_user_messaging_endpoints()
+        
+        # Test iteration 9 features
+        self.test_iteration9_features()
 
         # Print summary
         print("=" * 60)

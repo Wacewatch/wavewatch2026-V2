@@ -112,7 +112,7 @@ export default function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           <Link to="/" className="flex items-center flex-shrink-0 group" data-testid="logo-link">
-            <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-8 md:h-10 w-auto object-contain" />
+            <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-10 md:h-14 w-auto object-contain" />
           </Link>
 
           {/* Desktop Nav */}
@@ -126,9 +126,6 @@ export default function Navigation() {
                   <DropdownItem to="/movies">Films</DropdownItem>
                   <DropdownItem to="/tv-shows">Series</DropdownItem>
                   <DropdownItem to="/anime">Animes</DropdownItem>
-                  <DropdownItem to="/sport">Sport</DropdownItem>
-                  <DropdownItem to="/documentaires">Documentaires</DropdownItem>
-                  <DropdownItem to="/spectacles">Spectacles</DropdownItem>
                   <DropdownItem to="/collections">Collections</DropdownItem>
                   <DropdownItem to="/actors">Acteurs</DropdownItem>
                   <div className="border-t my-1" style={{ borderColor: 'hsl(var(--nav-border))' }} />
@@ -147,9 +144,7 @@ export default function Navigation() {
                   <DropdownItem to="/radio">Radio FM</DropdownItem>
                   <DropdownItem to="/music">Musique</DropdownItem>
                   <DropdownItem to="/retrogaming">Retrogaming</DropdownItem>
-                  <DropdownItem to="/games">Jeux</DropdownItem>
                   <DropdownItem to="/discover/playlists">Decouvrir des Playlists</DropdownItem>
-                  <DropdownItem to="/requests">Demandes de contenu</DropdownItem>
                 </div>
               )}
             </div>
@@ -264,7 +259,6 @@ export default function Navigation() {
                     <DropdownItem to="/dashboard">Tableau de bord</DropdownItem>
                     <DropdownItem to="/favorites">Mes favoris</DropdownItem>
                     <DropdownItem to="/history">Historique</DropdownItem>
-                    <DropdownItem to="/achievements">Realisations</DropdownItem>
                     <DropdownItem to="/playlists">Mes playlists</DropdownItem>
                     <DropdownItem to="/profile">Profil</DropdownItem>
                     {!user.is_vip && <DropdownItem to="/subscription"><span className="text-yellow-400 flex items-center"><Crown className="w-4 h-4 mr-2" />Devenir VIP</span></DropdownItem>}
@@ -297,7 +291,7 @@ export default function Navigation() {
         <div className="fixed inset-0 z-50 lg:hidden overflow-y-auto" style={{ backgroundColor: 'hsl(var(--nav-bg) / 0.98)' }}>
           <div className="container mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-6">
-              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-8 w-auto object-contain" />
+              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-10 w-auto object-contain" />
               <button onClick={() => setIsMenuOpen(false)}><X className="w-6 h-6" style={textStyle} /></button>
             </div>
             <form onSubmit={handleSearch} className="mb-6">
@@ -318,7 +312,7 @@ export default function Navigation() {
                   <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--nav-hover))' }}><User className="w-5 h-5" style={textStyle} /></div>
                   <div><p className="font-medium" style={textStyle}>{user.username}</p><p className="text-xs" style={textSecStyle}>{user.is_admin ? 'Admin' : 'Membre'}</p></div>
                 </div>
-                {[{to:'/dashboard',label:'Tableau de bord'},{to:'/favorites',label:'Mes favoris'},{to:'/history',label:'Historique'},{to:'/achievements',label:'Realisations'},{to:'/playlists',label:'Mes playlists'},{to:'/profile',label:'Profil'}].map(l => (
+                {[{to:'/dashboard',label:'Tableau de bord'},{to:'/favorites',label:'Mes favoris'},{to:'/history',label:'Historique'},{to:'/playlists',label:'Mes playlists'},{to:'/profile',label:'Profil'}].map(l => (
                   <Link key={l.to} to={l.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{l.label}</Link>
                 ))}
                 {(user.is_admin || user.is_uploader) && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg text-red-400">Administration</Link>}
@@ -327,13 +321,13 @@ export default function Navigation() {
             )}
             <div className="border-t pt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Contenu</p>
-              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/sport',l:'Sport'},{to:'/documentaires',l:'Documentaires'},{to:'/spectacles',l:'Spectacles'},{to:'/collections',l:'Collections'},{to:'/actors',l:'Acteurs'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
+              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/collections',l:'Collections'},{to:'/actors',l:'Acteurs'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
             </div>
             <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
               <p className="text-sm font-semibold mb-2" style={textStyle}>Medias</p>
-              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/music',l:'Musique'},{to:'/retrogaming',l:'Retrogaming'},{to:'/games',l:'Jeux'},{to:'/discover/playlists',l:'Playlists publiques'},{to:'/requests',l:'Demandes'}].map(i => (
+              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/music',l:'Musique'},{to:'/retrogaming',l:'Retrogaming'},{to:'/discover/playlists',l:'Playlists publiques'}].map(i => (
                 <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
               ))}
             </div>

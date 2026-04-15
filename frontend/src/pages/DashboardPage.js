@@ -3,7 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
-import { Heart, Eye, ListMusic, Crown, Star, Clock, Award, MessageSquare, Film, Tv, Trophy, ChevronRight, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Zap, Calendar, TrendingUp, BarChart3, Users } from 'lucide-react';
+import ContentCard from '../components/ContentCard';
+import { Heart, Eye, ListMusic, Crown, Star, Clock, Award, MessageSquare, Film, Tv, Trophy, ChevronRight, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Zap, Calendar, TrendingUp, BarChart3, Users, Sparkles } from 'lucide-react';
 
 function RatingBar({ label, value, onChange }) {
   const getColor = (i) => {
@@ -53,6 +54,10 @@ export default function DashboardPage() {
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
 
+  // Recommendations
+  const [recommendations, setRecommendations] = useState([]);
+  const [recsOpen, setRecsOpen] = useState(true);
+
   // Collapsible states
   const [statsOpen, setStatsOpen] = useState(true);
   const [detailedOpen, setDetailedOpen] = useState(true);
@@ -75,6 +80,7 @@ export default function DashboardPage() {
       API.get('/api/user/favorites').then(({ data }) => setFavorites((data.favorites || []).slice(0, 12))).catch(() => {});
       API.get('/api/user/achievements').then(({ data }) => setAchievements(data.achievements || [])).catch(() => {});
       API.get('/api/staff-messages').then(({ data }) => setMessages((data.messages || []).slice(0, 3))).catch(() => {});
+      API.get('/api/user/recommendations').then(({ data }) => setRecommendations(data.recommendations || [])).catch(() => {});
       API.get('/api/platform-reviews/mine').then(({ data }) => {
         if (data.review) setMyReview({ contenu_score: data.review.contenu_score, fonctionnalites_score: data.review.fonctionnalites_score, design_score: data.review.design_score, message: data.review.message || '' });
       }).catch(() => {});
@@ -138,7 +144,7 @@ export default function DashboardPage() {
           {[
             { to: '/profile', label: 'Profil', icon: <Crown className="w-4 h-4" /> },
             { to: '/playlists', label: 'Mes Playlists', icon: <Film className="w-4 h-4" /> },
-            { to: '/contact-staff', label: 'Messagerie', icon: <MessageSquare className="w-4 h-4" /> },
+            { to: '/messages', label: 'Messagerie', icon: <MessageSquare className="w-4 h-4" /> },
             { to: '/requests', label: 'Demandes', icon: <MessageSquare className="w-4 h-4" /> },
           ].map(l => (
             <Link key={l.to} to={l.to} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm" data-testid={`nav-${l.label.toLowerCase().replace(/\s/g, '-')}`}>
@@ -211,6 +217,17 @@ export default function DashboardPage() {
           ))}
         </div>
       </Section>
+
+      {/* Recommendations */}
+      {recommendations.length > 0 && (
+        <Section title="Recommandations pour vous" icon={<Sparkles className="w-5 h-5 text-pink-400" />} isOpen={recsOpen} setIsOpen={setRecsOpen} gradient="bg-gradient-to-r from-pink-500/5 to-purple-500/5 border-pink-500/20">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {recommendations.map(item => (
+              <ContentCard key={item.id} item={item} type={item.title ? 'movie' : 'tv'} />
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* Votre avis compte */}
       <Section title="Votre avis compte" icon={<Star className="w-5 h-5 text-yellow-400" />} isOpen={feedbackOpen} setIsOpen={setFeedbackOpen}>

@@ -40,7 +40,7 @@ export function useContentStatus() {
   return useContext(StatusContext);
 }
 
-function QuickPlaylistAdd({ contentId, contentType, title, posterPath }) {
+function QuickPlaylistAdd({ contentId, contentType, title, posterPath, inline = false }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -81,8 +81,8 @@ function QuickPlaylistAdd({ contentId, contentType, title, posterPath }) {
   };
 
   return (
-    <div ref={ref} className="absolute bottom-2 right-2 z-10">
-      <button onClick={toggle} className="w-7 h-7 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-green-600 transition-all" data-testid={`quick-add-${contentId}`}>
+    <div ref={ref} className={inline ? 'relative' : 'absolute bottom-2 right-2 z-10'}>
+      <button onClick={toggle} className={`w-8 h-8 rounded-full bg-blue-600/90 hover:bg-blue-500 text-white flex items-center justify-center transition-colors shadow-lg ${inline ? '' : 'opacity-0 group-hover:opacity-100'}`} data-testid={`quick-add-${contentId}`}>
         <Plus className="w-4 h-4" />
       </button>
       {open && (
@@ -123,8 +123,13 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
   const quickMarkWatched = (e) => {
     e.preventDefault(); e.stopPropagation();
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
-    API.post('/api/user/history', { content_id: item.id, content_type: contentType, title, poster_path: item.poster_path })
-      .then(() => toast({ title: 'Marque comme vu !' })).catch(() => {});
+    if (isWatched) {
+      API.delete(`/api/user/history/${item.id}/${contentType}`)
+        .then(() => toast({ title: 'Retire de l\'historique' })).catch(() => {});
+    } else {
+      API.post('/api/user/history', { content_id: item.id, content_type: contentType, title, poster_path: item.poster_path })
+        .then(() => toast({ title: 'Marque comme vu !' })).catch(() => {});
+    }
   };
 
   return (
@@ -152,9 +157,10 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
             </div>
             {/* Hover action buttons (bottom) */}
             <div className="absolute bottom-0 left-0 right-0 p-2 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/80 to-transparent">
-              <button onClick={quickMarkWatched} className="w-8 h-8 rounded-full bg-green-600/90 hover:bg-green-500 text-white flex items-center justify-center transition-colors shadow-lg" title="Marquer comme vu" data-testid={`quick-watched-${item.id}`}>
+              <button onClick={quickMarkWatched} className={`w-8 h-8 rounded-full ${isWatched ? 'bg-green-500 hover:bg-red-500' : 'bg-green-600/90 hover:bg-green-500'} text-white flex items-center justify-center transition-colors shadow-lg`} title={isWatched ? 'Retirer du vu' : 'Marquer comme vu'} data-testid={`quick-watched-${item.id}`}>
                 <Eye className="w-4 h-4" />
               </button>
+              <QuickPlaylistAdd contentId={item.id} contentType={contentType} title={title} posterPath={item.poster_path} inline />
             </div>
           </div>
           <div className="p-3">
@@ -163,7 +169,6 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
           </div>
         </div>
       </Link>
-      <QuickPlaylistAdd contentId={item.id} contentType={contentType} title={title} posterPath={item.poster_path} />
     </div>
   );
 }

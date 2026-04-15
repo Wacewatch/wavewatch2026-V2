@@ -465,6 +465,12 @@ async def batch_upsert_history(request: Request, user: dict = Depends(get_curren
         )
     return {"success": True, "count": len(items)}
 
+@app.delete("/api/user/history/{content_id}/{content_type}")
+async def remove_from_history(content_id: int, content_type: str, user: dict = Depends(get_current_user)):
+    await db.watch_history.delete_one({"user_id": user["_id"], "content_id": content_id, "content_type": content_type})
+    return {"message": "Retire de l'historique"}
+
+
 # ==================== PLAYLISTS ====================
 @app.get("/api/playlists")
 async def get_playlists(user: dict = Depends(get_current_user)):
@@ -1305,6 +1311,54 @@ async def get_user_detailed_stats(user: dict = Depends(get_current_user)):
         "episodes_watched": episodes_watched, "total_watch_time": total_watch_time,
         "total_likes": likes, "total_dislikes": dislikes,
     }
+
+# --- Recommendations based on history ---
+@app.get("/api/user/recommendations")
+async def get_user_recommendations(user: dict = Depends(get_current_user)):
+    import httpx
+    uid = user["_id"]
+    tmdb_key = os.environ.get("TMDB_API_KEY")
+    if not tmdb_key:
+        return {"recommendations": []}
+    # Get user's watch history
+    history = await db.watch_history.find({"user_id": uid}).sort("watched_at", -1).to_list(20)
+    if not history:
+        # Fallback to trending
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"https://api.themoviedb.org/3/trending/movie/week?api_key={tmdb_key}&language=fr-FR", timeout=10.0)
+            data = resp.json()
+            return {"recommendations": data.get("results", [])[:12], "source": "trending"}
+    # Get similar movies based on last watched content
+    watched_ids = set()
+    recommendations = []
+    async with httpx.AsyncClient() as client:
+        for h in history[:5]:
+            cid = h.get("content_id")
+            ctype = h.get("content_type", "movie")
+            watched_ids.add(cid)
+            endpoint = "movie" if ctype == "movie" else "tv"
+            try:
+                resp = await client.get(f"https://api.themoviedb.org/3/{endpoint}/{cid}/similar?api_key={tmdb_key}&language=fr-FR&page=1", timeout=10.0)
+                similar = resp.json().get("results", [])
+                for s in similar[:4]:
+                    if s["id"] not in watched_ids and s["id"] not in [r["id"] for r in recommendations]:
+                        recommendations.append(s)
+                        watched_ids.add(s["id"])
+            except:
+                continue
+    if len(recommendations) < 6:
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(f"https://api.themoviedb.org/3/trending/movie/week?api_key={tmdb_key}&language=fr-FR", timeout=10.0)
+                for r in resp.json().get("results", []):
+                    if r["id"] not in watched_ids and r["id"] not in [x["id"] for x in recommendations]:
+                        recommendations.append(r)
+                        if len(recommendations) >= 12:
+                            break
+        except:
+            pass
+    return {"recommendations": recommendations[:12], "source": "similar"}
+
 
 # --- User Ratings (Like/Dislike) ---
 @app.post("/api/user/ratings")

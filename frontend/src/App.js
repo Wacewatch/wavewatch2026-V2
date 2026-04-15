@@ -49,6 +49,7 @@ import MusicPage from './pages/MusicPage';
 import GamesPage from './pages/GamesPage';
 import AchievementsPage from './pages/AchievementsPage';
 import LeaderboardPage from './pages/LeaderboardPage';
+import MessagesPage from './pages/MessagesPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { StatusProvider } from './components/ContentCard';
 import './App.css';
@@ -96,6 +97,7 @@ export default function App() {
                   <Route path="/faq" element={<FAQPage />} />
                   <Route path="/dns-vpn" element={<DNSVPNPage />} />
                   <Route path="/contact-staff" element={<ContactStaffPage />} />
+                  <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
                   <Route path="/requests" element={<ContentRequestsPage />} />
                   <Route path="/calendar" element={<CalendarPage />} />
