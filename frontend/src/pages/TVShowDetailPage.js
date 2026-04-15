@@ -6,6 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Star, Calendar, Play, Download, Youtube, Heart, Shuffle, CheckCircle } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
+import LikeDislike from '../components/LikeDislike';
 import { LoadingSpinner } from '../components/Loading';
 
 export default function TVShowDetailPage() {
@@ -91,11 +92,14 @@ export default function TVShowDetailPage() {
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 ${isFavorite ? 'bg-yellow-900/20' : ''}`}>
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />Favoris
               </button>
-              <button onClick={markAsWatched} className={`px-5 py-2.5 rounded-lg border border-cyan-600 text-cyan-400 hover:bg-cyan-900/20 flex items-center gap-2 transition-colors ${isWatched ? 'bg-cyan-900/20' : ''}`} data-testid="watched-btn">
-                <CheckCircle className={`w-5 h-5 ${isWatched ? 'fill-cyan-500' : ''}`} />{isWatched ? 'Vu' : 'Marquer vu'}
+              <button onClick={markAsWatched} className={`px-5 py-2.5 rounded-lg border flex items-center gap-2 transition-all duration-300 ${isWatched ? 'border-green-500 bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20' : 'border-cyan-600 text-cyan-400 hover:bg-cyan-900/20'}`} data-testid="watched-btn">
+                <CheckCircle className={`w-5 h-5 transition-all ${isWatched ? 'fill-green-500 text-green-500 scale-110' : ''}`} />{isWatched ? 'Deja vu' : 'Marquer vu'}
               </button>
               <AddToPlaylistButton contentId={parseInt(id)} contentType="tv" title={show.name} posterPath={show.poster_path} />
             </div>
+            {/* Like/Dislike */}
+            <LikeDislike contentId={parseInt(id)} contentType="tv" />
+            
             {/* Seasons */}
             <div className="space-y-4">
               <h2 className="text-2xl font-bold text-white">Saisons</h2>

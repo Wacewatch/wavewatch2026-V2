@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import API, { TMDB_IMG } from '../lib/api';
 import { LoadingSpinner } from '../components/Loading';
-import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen } from 'lucide-react';
+import LikeDislike from '../components/LikeDislike';
+import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 const typeConfig = {
   movie: { icon: Film, label: 'Film', color: 'text-red-400', path: 'movies' },
@@ -60,6 +61,7 @@ export default function PlaylistDetailPage() {
             </div>
           </div>
         </div>
+        <LikeDislike contentId={parseInt(id) || id.hashCode?.()} contentType="playlist" />
       </div>
 
       {(!playlist.items || playlist.items.length === 0) ? (

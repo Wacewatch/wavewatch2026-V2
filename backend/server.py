@@ -713,18 +713,106 @@ async def update_site_setting(req: SiteSettingUpdate, user: dict = Depends(get_c
 @app.put("/api/user/profile")
 async def update_profile(request: Request, user: dict = Depends(get_current_user)):
     body = await request.json()
-    update = {}
-    if "username" in body:
-        update["username"] = body["username"]
-    if "show_adult_content" in body:
-        update["show_adult_content"] = body["show_adult_content"]
-    if "avatar_url" in body:
-        update["avatar_url"] = body["avatar_url"]
+    allowed_fields = ["username", "show_adult_content", "avatar_url", "bio", "location",
+                      "birth_date", "auto_mark_watched", "hide_spoilers", "hide_watched_content",
+                      "allow_messages"]
+    update = {k: body[k] for k in allowed_fields if k in body}
     if update:
         await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": update})
     updated = await db.users.find_one({"_id": ObjectId(user["_id"])}, {"password_hash": 0})
     updated["_id"] = str(updated["_id"])
     return {"user": updated}
+
+@app.put("/api/user/change-password")
+async def change_password(request: Request, user: dict = Depends(get_current_user)):
+    body = await request.json()
+    new_password = body.get("new_password", "")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caracteres")
+    full_user = await db.users.find_one({"_id": ObjectId(user["_id"])})
+    current = body.get("current_password", "")
+    if current and not verify_password(current, full_user.get("password_hash", "")):
+        raise HTTPException(status_code=400, detail="Mot de passe actuel incorrect")
+    await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": {"password_hash": hash_password(new_password)}})
+    return {"message": "Mot de passe modifie"}
+
+@app.post("/api/user/activate-code")
+async def activate_code(request: Request, user: dict = Depends(get_current_user)):
+    body = await request.json()
+    code = body.get("code", "").strip()
+    codes = {
+        "vip2025": {"is_vip": True},
+        "vipplus2025": {"is_vip": True, "is_vip_plus": True},
+        "uplo2025#": {"is_uploader": True, "is_vip": True},
+        "45684568": {"is_admin": True},
+        "wavebetawatch2025": {"is_beta": True},
+    }
+    if code not in codes:
+        raise HTTPException(status_code=400, detail="Code invalide")
+    await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": codes[code]})
+    updated = await db.users.find_one({"_id": ObjectId(user["_id"])}, {"password_hash": 0})
+    updated["_id"] = str(updated["_id"])
+    return {"message": "Code active", "user": updated}
+
+@app.post("/api/user/remove-privileges")
+async def remove_privileges(request: Request, user: dict = Depends(get_current_user)):
+    await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": {
+        "is_vip": False, "is_vip_plus": False, "is_admin": False, "is_uploader": False, "is_beta": False
+    }})
+    return {"message": "Privileges supprimes"}
+
+@app.delete("/api/user/account")
+async def delete_account(user: dict = Depends(get_current_user)):
+    uid = user["_id"]
+    await db.favorites.delete_many({"user_id": uid})
+    await db.watch_history.delete_many({"user_id": uid})
+    await db.playlists.delete_many({"user_id": uid})
+    await db.user_ratings.delete_many({"user_id": uid})
+    await db.users.delete_one({"_id": ObjectId(uid)})
+    return {"message": "Compte supprime"}
+
+# --- Online users tracking ---
+@app.post("/api/user/heartbeat")
+async def user_heartbeat(user: dict = Depends(get_current_user)):
+    await db.online_users.update_one(
+        {"user_id": user["_id"]},
+        {"$set": {"user_id": user["_id"], "username": user.get("username"), "last_seen": datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    return {"ok": True}
+
+@app.get("/api/admin/online-users")
+async def get_online_users(user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin requis")
+    cutoff_5min = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
+    cutoff_1h = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    online_now = await db.online_users.count_documents({"last_seen": {"$gte": cutoff_5min}})
+    last_hour = await db.online_users.count_documents({"last_seen": {"$gte": cutoff_1h}})
+    last_24h = await db.online_users.count_documents({"last_seen": {"$gte": cutoff_24h}})
+    return {"online_now": online_now, "last_hour": last_hour, "last_24h": last_24h}
+
+# --- Admin edit user full form ---
+@app.get("/api/admin/users/{user_id}")
+async def get_single_user(user_id: str, admin: dict = Depends(get_current_user)):
+    if not admin.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin requis")
+    u = await db.users.find_one({"_id": ObjectId(user_id)}, {"password_hash": 0})
+    if not u:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    u["_id"] = str(u["_id"])
+    return u
+
+# --- User favorites and history batch check for ContentCard overlays ---
+@app.get("/api/user/status-batch")
+async def get_user_status_batch(user: dict = Depends(get_current_user)):
+    uid = user["_id"]
+    favorites = await db.favorites.find({"user_id": uid}, {"content_id": 1, "content_type": 1, "_id": 0}).to_list(5000)
+    history = await db.watch_history.find({"user_id": uid}, {"content_id": 1, "content_type": 1, "_id": 0}).to_list(5000)
+    fav_set = [{"id": f["content_id"], "type": f["content_type"]} for f in favorites]
+    watched_set = [{"id": h["content_id"], "type": h["content_type"]} for h in history]
+    return {"favorites": fav_set, "watched": watched_set}
 
 @app.get("/api/user/stats")
 async def get_user_stats(user: dict = Depends(get_current_user)):

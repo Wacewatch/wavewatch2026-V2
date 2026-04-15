@@ -23,6 +23,15 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
+  // Heartbeat for online user tracking
+  useEffect(() => {
+    if (!user) return;
+    const sendHeartbeat = () => API.post('/api/user/heartbeat').catch(() => {});
+    sendHeartbeat();
+    const iv = setInterval(sendHeartbeat, 60000);
+    return () => clearInterval(iv);
+  }, [user]);
+
   const signIn = async (email, password) => {
     const { data } = await API.post('/api/auth/login', { email, password });
     if (data.token) localStorage.setItem('ww_token', data.token);

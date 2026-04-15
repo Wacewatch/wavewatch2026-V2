@@ -50,6 +50,7 @@ import GamesPage from './pages/GamesPage';
 import AchievementsPage from './pages/AchievementsPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { StatusProvider } from './components/ContentCard';
 import './App.css';
 
 export default function App() {
@@ -57,6 +58,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <ToastProvider>
+          <StatusProvider>
           <BrowserRouter>
             <div className="min-h-screen bg-background text-foreground flex flex-col">
               <Navigation />
@@ -113,6 +115,7 @@ export default function App() {
               <Footer />
             </div>
           </BrowserRouter>
+          </StatusProvider>
         </ToastProvider>
       </AuthProvider>
     </ThemeProvider>

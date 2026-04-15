@@ -1,10 +1,44 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, createContext, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { Star, Plus, Check, ListMusic } from 'lucide-react';
+import { Star, Plus, Check, ListMusic, Heart, Eye } from 'lucide-react';
 import { TMDB_IMG } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import API from '../lib/api';
+
+// Global context for user content status (favorites + watched)
+const StatusContext = createContext({ favorites: new Set(), watched: new Set(), loaded: false });
+
+export function StatusProvider({ children }) {
+  const { user } = useAuth();
+  const [favorites, setFavorites] = useState(new Set());
+  const [watched, setWatched] = useState(new Set());
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      API.get('/api/user/status-batch').then(({ data }) => {
+        setFavorites(new Set((data.favorites || []).map(f => `${f.type}-${f.id}`)));
+        setWatched(new Set((data.watched || []).map(w => `${w.type}-${w.id}`)));
+        setLoaded(true);
+      }).catch(() => setLoaded(true));
+    } else {
+      setFavorites(new Set());
+      setWatched(new Set());
+      setLoaded(true);
+    }
+  }, [user]);
+
+  return (
+    <StatusContext.Provider value={{ favorites, watched, loaded }}>
+      {children}
+    </StatusContext.Provider>
+  );
+}
+
+export function useContentStatus() {
+  return useContext(StatusContext);
+}
 
 function QuickPlaylistAdd({ contentId, contentType, title, posterPath }) {
   const { user } = useAuth();
@@ -71,6 +105,7 @@ function QuickPlaylistAdd({ contentId, contentType, title, posterPath }) {
 }
 
 export default function ContentCard({ item, type = 'movie', isAnime = false }) {
+  const { favorites, watched } = useContentStatus();
   const title = item.title || item.name;
   const date = item.release_date || item.first_air_date;
   const year = date ? new Date(date).getFullYear() : 'N/A';
@@ -78,6 +113,10 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
   const rating = item.vote_average?.toFixed(1) || '0.0';
   const basePath = type === 'movie' ? '/movies' : isAnime ? '/anime' : '/tv-shows';
   const contentType = type === 'movie' ? 'movie' : 'tv';
+
+  const key = `${contentType}-${item.id}`;
+  const isFav = favorites.has(key);
+  const isWatched = watched.has(key);
 
   return (
     <div className="relative group" data-testid={`content-card-${item.id}`}>
@@ -88,6 +127,19 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
             <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
               <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />{rating}
+            </div>
+            {/* Favorite & Watched overlay icons */}
+            <div className="absolute top-2 left-2 flex flex-col gap-1">
+              {isFav && (
+                <span className="w-6 h-6 rounded-full bg-red-500/90 flex items-center justify-center shadow-lg" data-testid={`fav-badge-${item.id}`}>
+                  <Heart className="w-3.5 h-3.5 text-white fill-white" />
+                </span>
+              )}
+              {isWatched && (
+                <span className="w-6 h-6 rounded-full bg-green-500/90 flex items-center justify-center shadow-lg" data-testid={`watched-badge-${item.id}`}>
+                  <Eye className="w-3.5 h-3.5 text-white" />
+                </span>
+              )}
             </div>
           </div>
           <div className="p-3">

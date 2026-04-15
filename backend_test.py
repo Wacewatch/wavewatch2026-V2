@@ -255,6 +255,71 @@ class WaveWatchAPITester:
         """Test retrogaming endpoint"""
         self.run_test("Get Retrogaming", "GET", "/api/retrogaming", 200)
 
+    def test_new_endpoints(self):
+        """Test new endpoints added in this iteration"""
+        if not self.token:
+            self.log_test("New Endpoints Test", False, "No auth token available")
+            return
+
+        # Test heartbeat endpoint
+        self.run_test("User Heartbeat", "POST", "/api/user/heartbeat", 200)
+        
+        # Test status batch endpoint
+        self.run_test("User Status Batch", "GET", "/api/user/status-batch", 200)
+        
+        # Test change password endpoint (with dummy data)
+        password_data = {
+            "current_password": "wrongpassword",
+            "new_password": "newpassword123"
+        }
+        # This should fail with wrong current password, but endpoint should exist
+        self.run_test("Change Password Endpoint", "PUT", "/api/user/change-password", 400, data=password_data)
+        
+        # Test activation code endpoint (with dummy code)
+        activation_data = {"code": "DUMMY_CODE"}
+        # This should fail with invalid code, but endpoint should exist
+        self.run_test("Activate Code Endpoint", "POST", "/api/user/activate-code", 400, data=activation_data)
+
+    def test_admin_new_endpoints(self):
+        """Test new admin endpoints"""
+        if not self.admin_token:
+            self.log_test("Admin New Endpoints Test", False, "No admin token available")
+            return
+
+        # Use admin token for these tests
+        old_token = self.token
+        self.token = self.admin_token
+        
+        # Test online users endpoint
+        self.run_test("Admin - Online Users", "GET", "/api/admin/online-users", 200)
+        
+        # Test enhanced stats endpoint
+        self.run_test("Admin - Enhanced Stats", "GET", "/api/admin/enhanced-stats", 200)
+        
+        # Restore original token
+        self.token = old_token
+
+    def test_ratings_endpoints(self):
+        """Test like/dislike ratings functionality"""
+        if not self.token:
+            self.log_test("Ratings Test", False, "No auth token available")
+            return
+
+        # Test rating a movie
+        rating_data = {
+            "content_id": 299534,
+            "content_type": "movie",
+            "rating": "like"
+        }
+        self.run_test("Rate Content (Like)", "POST", "/api/user/ratings", 200, data=rating_data)
+        
+        # Check rating
+        self.run_test("Check Rating", "GET", "/api/user/ratings/check?content_id=299534&content_type=movie", 200)
+        
+        # Test dislike
+        rating_data["rating"] = "dislike"
+        self.run_test("Rate Content (Dislike)", "POST", "/api/user/ratings", 200, data=rating_data)
+
     def run_all_tests(self):
         """Run all tests"""
         print("🚀 Starting WaveWatch API Tests...")
@@ -286,6 +351,11 @@ class WaveWatchAPITester:
         self.test_tv_channels_and_radio()
         self.test_ebooks_and_software()
         self.test_retrogaming()
+        
+        # New feature tests
+        self.test_new_endpoints()
+        self.test_admin_new_endpoints()
+        self.test_ratings_endpoints()
 
         # Print summary
         print("=" * 60)

@@ -106,6 +106,14 @@ export default function AdminPage() {
   const [cinemaRooms, setCinemaRooms] = useState([]);
   const [newRoom, setNewRoom] = useState({ name: '', movie_title: '', date: '', time: '', capacity: 50 });
 
+  // Online users
+  const [onlineStats, setOnlineStats] = useState({ online_now: 0, last_hour: 0, last_24h: 0 });
+
+  // User edit dialog
+  const [editingUser, setEditingUser] = useState(null);
+  const [userEditForm, setUserEditForm] = useState({});
+  const [newPassword, setNewPassword] = useState('');
+
   // Content states
   const [tvChannels, setTvChannels] = useState([]);
   const [radioStations, setRadioStations] = useState([]);
@@ -158,7 +166,34 @@ export default function AdminPage() {
 
   useEffect(() => { if (user?.is_admin) loadData(tab); }, [user, tab, loadData]);
 
+  // Load online stats and refresh periodically
+  useEffect(() => {
+    if (!user?.is_admin) return;
+    const loadOnline = () => API.get('/api/admin/online-users').then(({ data }) => setOnlineStats(data)).catch(() => {});
+    loadOnline();
+    const iv = setInterval(loadOnline, 15000);
+    return () => clearInterval(iv);
+  }, [user]);
+
   if (authLoading || !user?.is_admin) return null;
+
+  // User edit handlers
+  const openUserEdit = (u) => {
+    setEditingUser(u);
+    setUserEditForm({ username: u.username, email: u.email, is_admin: u.is_admin, is_vip: u.is_vip, is_vip_plus: u.is_vip_plus, is_uploader: u.is_uploader, is_beta: u.is_beta });
+    setNewPassword('');
+  };
+
+  const saveUserEdit = async () => {
+    try {
+      const updates = { ...userEditForm };
+      if (newPassword.trim()) updates.password = newPassword;
+      await API.put(`/api/admin/users/${editingUser._id}`, updates);
+      toast({ title: 'Utilisateur mis a jour' });
+      setEditingUser(null);
+      loadData('users');
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
 
   // ---- CRUD Helpers ----
   const handleAdd = (type, fields) => {
@@ -321,6 +356,22 @@ export default function AdminPage() {
       {/* Dashboard Stats */}
       {tab === 'stats' && stats && (
         <div className="space-y-6" data-testid="admin-stats">
+          {/* Online Users Counter */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2 animate-pulse" />
+              <p className="text-3xl font-bold text-green-400">{onlineStats.online_now}</p>
+              <p className="text-sm text-green-400/70">En ligne maintenant</p>
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-blue-400">{onlineStats.last_hour}</p>
+              <p className="text-sm text-blue-400/70">Derniere heure</p>
+            </div>
+            <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-purple-400">{onlineStats.last_24h}</p>
+              <p className="text-sm text-purple-400/70">Dernieres 24h</p>
+            </div>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: 'Utilisateurs', val: stats.total_users, color: 'text-blue-400' },
@@ -506,6 +557,7 @@ export default function AdminPage() {
                       <td className="px-4 py-3"><button onClick={() => updateUserRole(u._id, 'is_vip', !u.is_vip)} className={`px-2 py-0.5 rounded-full text-xs ${u.is_vip ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400 hover:bg-yellow-500/10'}`}>{u.is_vip ? 'VIP' : '-'}</button></td>
                       <td className="px-4 py-3"><button onClick={() => updateUserRole(u._id, 'is_vip_plus', !u.is_vip_plus)} className={`px-2 py-0.5 rounded-full text-xs ${u.is_vip_plus ? 'bg-purple-500/20 text-purple-400' : 'bg-gray-500/20 text-gray-400 hover:bg-purple-500/10'}`}>{u.is_vip_plus ? 'VIP+' : '-'}</button></td>
                       <td className="px-4 py-3 flex gap-1">
+                        <button onClick={() => openUserEdit(u)} className="p-1 text-muted-foreground hover:text-blue-400" title="Modifier"><Edit className="w-4 h-4" /></button>
                         <button onClick={() => updateUserRole(u._id, 'is_uploader', !u.is_uploader)} className="text-xs text-muted-foreground hover:text-blue-400 px-1">UP</button>
                         <button onClick={() => deleteUser(u._id)} className="text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></button>
                       </td>
@@ -525,6 +577,37 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+          {/* User Edit Modal */}
+          {editingUser && (
+            <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setEditingUser(null)}>
+              <div className="bg-card border border-border rounded-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold">Modifier l'utilisateur</h3>
+                  <button onClick={() => setEditingUser(null)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="space-y-3">
+                  <div><label className="text-sm font-medium">Nom d'utilisateur</label>
+                    <input type="text" value={userEditForm.username || ''} onChange={e => setUserEditForm(p => ({ ...p, username: e.target.value }))} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" /></div>
+                  <div><label className="text-sm font-medium">Email</label>
+                    <input type="email" value={userEditForm.email || ''} onChange={e => setUserEditForm(p => ({ ...p, email: e.target.value }))} className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" /></div>
+                  <div><label className="text-sm font-medium">Nouveau mot de passe (optionnel)</label>
+                    <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Laisser vide pour ne pas changer" className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[{ key: 'is_admin', label: 'Admin', color: 'text-red-400' }, { key: 'is_vip', label: 'VIP', color: 'text-yellow-400' }, { key: 'is_vip_plus', label: 'VIP+', color: 'text-purple-400' }, { key: 'is_uploader', label: 'Uploader', color: 'text-blue-400' }].map(r => (
+                      <label key={r.key} className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-secondary cursor-pointer">
+                        <input type="checkbox" checked={userEditForm[r.key] || false} onChange={e => setUserEditForm(p => ({ ...p, [r.key]: e.target.checked }))} className="w-4 h-4" />
+                        <span className={`text-sm font-medium ${r.color}`}>{r.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-5">
+                  <button onClick={saveUserEdit} className="flex-1 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium text-sm"><Save className="w-4 h-4 inline mr-1" />Sauvegarder</button>
+                  <button onClick={() => setEditingUser(null)} className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary">Annuler</button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
