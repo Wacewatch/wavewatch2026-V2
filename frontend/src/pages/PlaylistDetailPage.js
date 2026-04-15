@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import API, { TMDB_IMG } from '../lib/api';
 import { LoadingSpinner } from '../components/Loading';
 import LikeDislike from '../components/LikeDislike';
-import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen, Crown, Upload, Sparkles, Image, Settings } from 'lucide-react';
+import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen, Crown, Upload, Sparkles, Image, Settings, Edit3, Check, Share2, Copy } from 'lucide-react';
 
 const typeConfig = {
   movie: { icon: Film, label: 'Film', color: 'text-red-400', path: 'movies' },
@@ -103,6 +103,36 @@ const playlistAnimations = `
   .playlist-pulse { animation: pulse 2s ease-in-out infinite; }
 `;
 
+// Icones de playlist
+const PLAYLIST_ICONS = [
+  { id: 'music', label: 'Musique', icon: '🎵' },
+  { id: 'movie', label: 'Film', icon: '🎬' },
+  { id: 'fire', label: 'Feu', icon: '🔥' },
+  { id: 'star', label: 'Etoile', icon: '⭐' },
+  { id: 'heart', label: 'Coeur', icon: '❤️' },
+  { id: 'thunder', label: 'Eclair', icon: '⚡' },
+  { id: 'skull', label: 'Crane', icon: '💀' },
+  { id: 'gem', label: 'Diamant', icon: '💎' },
+  { id: 'crown', label: 'Couronne', icon: '👑' },
+  { id: 'rocket', label: 'Fusee', icon: '🚀' },
+  { id: 'ghost', label: 'Fantome', icon: '👻' },
+  { id: 'alien', label: 'Alien', icon: '👽' },
+  { id: 'popcorn', label: 'Popcorn', icon: '🍿' },
+  { id: 'tv', label: 'TV', icon: '📺' },
+  { id: 'game', label: 'Jeu', icon: '🎮' },
+  { id: 'rainbow', label: 'Arc-en-ciel', icon: '🌈' },
+];
+
+// Images de couverture predefinies
+const COVER_PRESETS = [
+  { id: 'action', label: 'Action', url: 'https://image.tmdb.org/t/p/w780/8YFL5QQVPy3AgrEQxNYVSgiPEbe.jpg' },
+  { id: 'scifi', label: 'Sci-Fi', url: 'https://image.tmdb.org/t/p/w780/rAiYTfKGqDCRIIqo664sY9XZIvQ.jpg' },
+  { id: 'horror', label: 'Horreur', url: 'https://image.tmdb.org/t/p/w780/bckxSN9T9A5KDoeOLOR1FUblDYN.jpg' },
+  { id: 'romance', label: 'Romance', url: 'https://image.tmdb.org/t/p/w780/5wDBVictqfBGCTgJBEuJLnTPuv6.jpg' },
+  { id: 'anime', label: 'Anime', url: 'https://image.tmdb.org/t/p/w780/jBJWaqoSCiARWtfV0GlqHrcdiJq.jpg' },
+  { id: 'comedy', label: 'Comedie', url: 'https://image.tmdb.org/t/p/w780/cyecB7godJ6kNHGONFjUyVN9OX5.jpg' },
+];
+
 export default function PlaylistDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -112,6 +142,11 @@ export default function PlaylistDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showCustomize, setShowCustomize] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [customizeTab, setCustomizeTab] = useState('colors');
 
   useEffect(() => {
     // Inject animations CSS
@@ -166,6 +201,50 @@ export default function PlaylistDetailPage() {
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
+  const saveNameDesc = async () => {
+    try {
+      await API.put(`/api/playlists/${id}/customize`, { name: editName || playlist.name, description: editDesc });
+      setPlaylist(prev => ({ ...prev, name: editName || prev.name, description: editDesc }));
+      setEditingName(false);
+      setEditingDesc(false);
+      toast({ title: 'Playlist mise a jour' });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  const changeIcon = async (iconId) => {
+    try {
+      await API.put(`/api/playlists/${id}/customize`, { icon: iconId });
+      setPlaylist(prev => ({ ...prev, icon: iconId }));
+      toast({ title: 'Icone mise a jour' });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  const togglePublic = async () => {
+    try {
+      await API.put(`/api/playlists/${id}/customize`, { is_public: !playlist.is_public });
+      setPlaylist(prev => ({ ...prev, is_public: !prev.is_public }));
+      toast({ title: playlist.is_public ? 'Playlist passee en prive' : 'Playlist passee en public' });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
+  const copyShareLink = () => {
+    const url = `${window.location.origin}/playlists/${id}`;
+    navigator.clipboard.writeText(url).then(() => toast({ title: 'Lien copie !' })).catch(() => {});
+  };
+
+  const applyPresetCover = async (url) => {
+    if (!user?.is_vip && !user?.is_vip_plus && !user?.is_admin) {
+      toast({ title: 'Fonctionnalite VIP', variant: 'destructive' });
+      return;
+    }
+    try {
+      await API.put(`/api/playlists/${id}/customize`, { cover_url: url });
+      setPlaylist(prev => ({ ...prev, cover_url: url }));
+      setCoverUrl(url);
+      toast({ title: 'Couverture appliquee !' });
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
   const isOwner = user && playlist && playlist.user_id === user._id;
   const colorConfig = PLAYLIST_COLORS.find(c => c.id === playlist?.color) || PLAYLIST_COLORS[0];
   const animationClass = colorConfig.animation ? `playlist-${colorConfig.animation}` : '';
@@ -197,26 +276,49 @@ export default function PlaylistDetailPage() {
         )}
 
         <div className="flex items-start justify-between relative z-10">
-          <div>
+          <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold flex items-center gap-3" data-testid="playlist-title">
-                <ListMusic className="w-8 h-8" />{playlist.name}
-              </h1>
-              {/* Badge animation VIP */}
+              {/* Icon de playlist */}
+              {playlist.icon && (
+                <span className="text-3xl">{PLAYLIST_ICONS.find(i => i.id === playlist.icon)?.icon || '🎵'}</span>
+              )}
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                  <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="text-3xl font-bold bg-transparent border-b-2 border-white/50 outline-none text-white" autoFocus onKeyDown={e => { if (e.key === 'Enter') saveNameDesc(); }} />
+                  <button onClick={saveNameDesc} className="p-1 rounded bg-green-500/30 text-green-400 hover:bg-green-500/50"><Check className="w-5 h-5" /></button>
+                </div>
+              ) : (
+                <h1 className="text-3xl font-bold flex items-center gap-3" data-testid="playlist-title">
+                  {!playlist.icon && <ListMusic className="w-8 h-8" />}{playlist.name}
+                  {isOwner && <button onClick={() => { setEditName(playlist.name); setEditingName(true); }} className="p-1 rounded-full hover:bg-white/20 transition-colors"><Edit3 className="w-4 h-4 text-white/60" /></button>}
+                </h1>
+              )}
               {colorConfig.vipplus && (
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-gradient-to-r from-purple-500 to-pink-500 text-white animate-pulse">
-                  EXCLUSIVE
-                </span>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-gradient-to-r from-purple-500 to-pink-500 text-white animate-pulse">EXCLUSIVE</span>
               )}
               {colorConfig.vip && !colorConfig.vipplus && (
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-500/80 text-black">
-                  VIP
-                </span>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-yellow-500/80 text-black">VIP</span>
               )}
             </div>
-            {playlist.description && <p className="text-white/80 mt-2">{playlist.description}</p>}
+            {editingDesc ? (
+              <div className="flex items-center gap-2 mt-2">
+                <input type="text" value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Description..." className="flex-1 bg-transparent border-b border-white/30 outline-none text-white/80 text-sm" autoFocus onKeyDown={e => { if (e.key === 'Enter') saveNameDesc(); }} />
+                <button onClick={saveNameDesc} className="p-1 rounded bg-green-500/30 text-green-400"><Check className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <p className="text-white/80 mt-2 flex items-center gap-2">
+                {playlist.description || (isOwner ? 'Ajouter une description...' : '')}
+                {isOwner && <button onClick={() => { setEditDesc(playlist.description || ''); setEditingDesc(true); }} className="p-0.5 rounded-full hover:bg-white/20"><Edit3 className="w-3 h-3 text-white/40" /></button>}
+              </p>
+            )}
             <div className="flex items-center gap-4 mt-3 text-sm text-white/70">
-              {playlist.is_public ? <span className="flex items-center gap-1"><Globe className="w-4 h-4 text-green-400" />Public</span> : <span className="flex items-center gap-1"><Lock className="w-4 h-4" />Prive</span>}
+              {isOwner ? (
+                <button onClick={togglePublic} className="flex items-center gap-1 hover:text-white transition-colors" data-testid="toggle-public">
+                  {playlist.is_public ? <><Globe className="w-4 h-4 text-green-400" />Public</> : <><Lock className="w-4 h-4" />Prive</>}
+                </button>
+              ) : (
+                <span className="flex items-center gap-1">{playlist.is_public ? <Globe className="w-4 h-4 text-green-400" /> : <Lock className="w-4 h-4" />}{playlist.is_public ? 'Public' : 'Prive'}</span>
+              )}
               <span>{playlist.items?.length || 0} element{(playlist.items?.length || 0) !== 1 ? 's' : ''}</span>
               <span className="flex items-center gap-1">
                 par {playlist.username || 'Anonyme'}
@@ -224,91 +326,139 @@ export default function PlaylistDetailPage() {
               </span>
             </div>
           </div>
-          {isOwner && (
-            <button onClick={() => setShowCustomize(!showCustomize)} className="px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-sm hover:bg-white/20 flex items-center gap-2" data-testid="customize-btn">
-              <Settings className="w-4 h-4" />Personnaliser
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {playlist.is_public && (
+              <button onClick={copyShareLink} className="px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-sm hover:bg-white/20 flex items-center gap-2" data-testid="share-btn">
+                <Share2 className="w-4 h-4" />Partager
+              </button>
+            )}
+            {isOwner && (
+              <button onClick={() => setShowCustomize(!showCustomize)} className="px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-sm hover:bg-white/20 flex items-center gap-2" data-testid="customize-btn">
+                <Settings className="w-4 h-4" />Personnaliser
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Panel de personnalisation */}
+        {/* Panel de personnalisation avec onglets */}
         {showCustomize && isOwner && (
           <div className="mt-6 pt-6 border-t border-white/20 relative z-10">
-            <h3 className="text-sm font-bold mb-4 flex items-center gap-2"><Sparkles className="w-4 h-4" />Personnalisation</h3>
-            
-            {/* Couleurs standard */}
-            <div className="mb-4">
-              <p className="text-xs text-white/60 mb-2">Couleurs standard</p>
-              <div className="flex flex-wrap gap-2">
-                {PLAYLIST_COLORS.filter(c => c.category === 'standard').map(c => (
-                  <button key={c.id} onClick={() => changeColor(c.id)}
-                    className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 ${playlist.color === c.id ? 'border-white ring-2 ring-white/50' : 'border-transparent'}`}
-                    style={c.gradient ? { background: c.gradient } : { background: '#333' }}
-                    title={c.label} data-testid={`color-${c.id}`} />
-                ))}
-              </div>
-            </div>
-
-            {/* Couleurs VIP */}
-            <div className="mb-4">
-              <p className="text-xs text-white/60 mb-2 flex items-center gap-1">
-                <Crown className="w-3 h-3 text-yellow-400" />Couleurs VIP
-                {!user?.is_vip && !user?.is_admin && <span className="text-yellow-400">(Devenez VIP)</span>}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {PLAYLIST_COLORS.filter(c => c.category === 'vip').map(c => (
-                  <button key={c.id} onClick={() => changeColor(c.id)}
-                    className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 relative ${playlist.color === c.id ? 'border-white ring-2 ring-yellow-500/50' : 'border-yellow-500/30'} ${!user?.is_vip && !user?.is_admin ? 'opacity-50' : ''}`}
-                    style={{ background: c.gradient }}
-                    title={c.label} data-testid={`color-${c.id}`}>
-                    {c.animation && <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-ping" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Couleurs VIP+ */}
-            <div className="mb-4">
-              <p className="text-xs text-white/60 mb-2 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-purple-400" />Couleurs VIP+ Exclusives
-                {!user?.is_vip_plus && !user?.is_admin && <span className="text-purple-400">(Devenez VIP+)</span>}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {PLAYLIST_COLORS.filter(c => c.category === 'vip+').map(c => (
-                  <button key={c.id} onClick={() => changeColor(c.id)}
-                    className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 relative ${playlist.color === c.id ? 'border-white ring-2 ring-purple-500/50' : 'border-purple-500/30'} ${!user?.is_vip_plus && !user?.is_admin ? 'opacity-50' : ''}`}
-                    style={{ background: c.gradient }}
-                    title={c.label} data-testid={`color-${c.id}`}>
-                    {c.animation && <span className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full animate-pulse" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Image de couverture (VIP only) */}
-            <div className="mb-4">
-              <p className="text-xs text-white/60 mb-2 flex items-center gap-1">
-                <Image className="w-3 h-3" />Image de couverture
-                {!user?.is_vip && !user?.is_admin && <span className="text-yellow-400">(VIP requis)</span>}
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="url"
-                  value={coverUrl}
-                  onChange={(e) => setCoverUrl(e.target.value)}
-                  placeholder="URL de l'image..."
-                  disabled={!user?.is_vip && !user?.is_admin}
-                  className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-white/20 text-sm outline-none disabled:opacity-50"
-                />
-                <button
-                  onClick={saveCoverUrl}
-                  disabled={!user?.is_vip && !user?.is_admin}
-                  className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-sm font-medium disabled:opacity-50"
-                >
-                  Appliquer
+            <div className="flex items-center gap-2 mb-4">
+              {[
+                { id: 'colors', label: 'Couleurs', icon: <Sparkles className="w-3.5 h-3.5" /> },
+                { id: 'icons', label: 'Icones', icon: <ListMusic className="w-3.5 h-3.5" /> },
+                { id: 'cover', label: 'Couverture', icon: <Image className="w-3.5 h-3.5" /> },
+              ].map(t => (
+                <button key={t.id} onClick={() => setCustomizeTab(t.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${customizeTab === t.id ? 'bg-white/20 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
+                  {t.icon}{t.label}
                 </button>
-              </div>
+              ))}
             </div>
+            
+            {/* Tab: Couleurs */}
+            {customizeTab === 'colors' && (
+              <>
+                <div className="mb-4">
+                  <p className="text-xs text-white/60 mb-2">Standard</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PLAYLIST_COLORS.filter(c => c.category === 'standard').map(c => (
+                      <button key={c.id} onClick={() => changeColor(c.id)}
+                        className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 ${playlist.color === c.id ? 'border-white ring-2 ring-white/50' : 'border-transparent'}`}
+                        style={c.gradient ? { background: c.gradient } : { background: '#333' }}
+                        title={c.label} data-testid={`color-${c.id}`} />
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <p className="text-xs text-white/60 mb-2 flex items-center gap-1">
+                    <Crown className="w-3 h-3 text-yellow-400" />VIP
+                    {!user?.is_vip && !user?.is_admin && <span className="text-yellow-400 ml-1">(Devenez VIP)</span>}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {PLAYLIST_COLORS.filter(c => c.category === 'vip').map(c => (
+                      <button key={c.id} onClick={() => changeColor(c.id)}
+                        className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 relative ${playlist.color === c.id ? 'border-white ring-2 ring-yellow-500/50' : 'border-yellow-500/30'} ${!user?.is_vip && !user?.is_admin ? 'opacity-50' : ''}`}
+                        style={{ background: c.gradient }} title={c.label} data-testid={`color-${c.id}`}>
+                        {c.animation && <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-ping" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-4">
+                  <p className="text-xs text-white/60 mb-2 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-purple-400" />VIP+ Exclusives
+                    {!user?.is_vip_plus && !user?.is_admin && <span className="text-purple-400 ml-1">(Devenez VIP+)</span>}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {PLAYLIST_COLORS.filter(c => c.category === 'vip+').map(c => (
+                      <button key={c.id} onClick={() => changeColor(c.id)}
+                        className={`w-10 h-10 rounded-lg border-2 transition-all hover:scale-110 relative ${playlist.color === c.id ? 'border-white ring-2 ring-purple-500/50' : 'border-purple-500/30'} ${!user?.is_vip_plus && !user?.is_admin ? 'opacity-50' : ''}`}
+                        style={{ background: c.gradient }} title={c.label} data-testid={`color-${c.id}`}>
+                        {c.animation && <span className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full animate-pulse" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Tab: Icones */}
+            {customizeTab === 'icons' && (
+              <div>
+                <p className="text-xs text-white/60 mb-3">Choisissez une icone pour votre playlist</p>
+                <div className="grid grid-cols-8 gap-2">
+                  {PLAYLIST_ICONS.map(ic => (
+                    <button key={ic.id} onClick={() => changeIcon(ic.id)}
+                      className={`p-2.5 rounded-lg text-xl text-center transition-all hover:scale-110 ${playlist.icon === ic.id ? 'bg-white/20 ring-2 ring-white/50' : 'bg-white/5 hover:bg-white/10'}`}
+                      title={ic.label} data-testid={`icon-${ic.id}`}>
+                      {ic.icon}
+                    </button>
+                  ))}
+                  <button onClick={() => changeIcon(null)}
+                    className={`p-2.5 rounded-lg text-xs text-center transition-all hover:scale-110 text-white/60 ${!playlist.icon ? 'bg-white/20 ring-2 ring-white/50' : 'bg-white/5 hover:bg-white/10'}`}
+                    title="Aucune">
+                    <ListMusic className="w-5 h-5 mx-auto" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Couverture */}
+            {customizeTab === 'cover' && (
+              <div>
+                <p className="text-xs text-white/60 mb-3 flex items-center gap-1">
+                  <Image className="w-3 h-3" />Image de couverture
+                  {!user?.is_vip && !user?.is_admin && <span className="text-yellow-400 ml-1">(VIP requis)</span>}
+                </p>
+                {/* Presets */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-4">
+                  {COVER_PRESETS.map(p => (
+                    <button key={p.id} onClick={() => applyPresetCover(p.url)}
+                      className={`rounded-lg overflow-hidden border-2 transition-all hover:scale-105 ${playlist.cover_url === p.url ? 'border-white' : 'border-transparent'} ${!user?.is_vip && !user?.is_admin ? 'opacity-50' : ''}`}
+                      data-testid={`cover-${p.id}`}>
+                      <div className="aspect-video relative">
+                        <img src={p.url} alt={p.label} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <span className="text-[10px] font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">{p.label}</span>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                {/* Custom URL */}
+                <div className="flex gap-2">
+                  <input type="url" value={coverUrl} onChange={(e) => setCoverUrl(e.target.value)} placeholder="Ou entrez une URL personnalisee..."
+                    disabled={!user?.is_vip && !user?.is_admin}
+                    className="flex-1 px-3 py-2 rounded-lg bg-black/30 border border-white/20 text-sm outline-none disabled:opacity-50" />
+                  <button onClick={saveCoverUrl} disabled={!user?.is_vip && !user?.is_admin}
+                    className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-sm font-medium disabled:opacity-50">Appliquer</button>
+                </div>
+                {playlist.cover_url && (
+                  <button onClick={() => applyPresetCover('')} className="mt-2 text-xs text-red-400 hover:underline">Supprimer la couverture</button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

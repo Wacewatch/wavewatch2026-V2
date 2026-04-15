@@ -584,7 +584,7 @@ async def get_playlist(playlist_id: str):
 
 @app.put("/api/playlists/{playlist_id}/customize")
 async def customize_playlist(playlist_id: str, request: Request, user: dict = Depends(get_current_user)):
-    """Personnaliser une playlist (couleurs, animations, couverture)"""
+    """Personnaliser une playlist (couleurs, animations, couverture, icone, nom, description)"""
     playlist = await db.playlists.find_one({"_id": ObjectId(playlist_id), "user_id": user["_id"]})
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist non trouvee ou non autorisee")
@@ -592,17 +592,24 @@ async def customize_playlist(playlist_id: str, request: Request, user: dict = De
     data = await request.json()
     updates = {"updated_at": datetime.now(timezone.utc).isoformat()}
     
-    # Couleur et gradient
     if "color" in data:
         updates["color"] = data["color"]
     if "gradient" in data:
         updates["gradient"] = data["gradient"]
     if "animation" in data:
         updates["animation"] = data["animation"]
+    if "icon" in data:
+        updates["icon"] = data["icon"]
+    if "name" in data and data["name"]:
+        updates["name"] = data["name"]
+    if "description" in data:
+        updates["description"] = data["description"]
+    if "is_public" in data:
+        updates["is_public"] = data["is_public"]
     
     # Image de couverture (VIP uniquement)
     if "cover_url" in data:
-        if not user.get("is_vip") and not user.get("is_vip_plus") and not user.get("is_admin"):
+        if data["cover_url"] and not user.get("is_vip") and not user.get("is_vip_plus") and not user.get("is_admin"):
             raise HTTPException(status_code=403, detail="Fonctionnalite reservee aux VIP")
         updates["cover_url"] = data["cover_url"]
     
