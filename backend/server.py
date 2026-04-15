@@ -2195,6 +2195,23 @@ async def check_new_episodes(user: dict = Depends(get_current_user)):
 
 # =================== WATCH PARTY (SOIREE CINE) ===================
 
+def is_valid_objectid(s: str) -> bool:
+    try:
+        ObjectId(s)
+        return True
+    except:
+        return False
+
+async def resolve_party(party_id: str):
+    """Resolve a party by ObjectId or room_code"""
+    if is_valid_objectid(party_id):
+        party = await db.watch_parties.find_one({"_id": ObjectId(party_id)})
+        if party:
+            return party
+    # Try room_code
+    party = await db.watch_parties.find_one({"room_code": party_id.upper()})
+    return party
+
 class WatchPartyCreate(BaseModel):
     title: str
     content_id: int
@@ -2271,10 +2288,7 @@ async def get_my_watch_parties(user: dict = Depends(get_current_user)):
 @app.get("/api/watch-party/{party_id}")
 async def get_watch_party(party_id: str, user: dict = Depends(get_optional_user)):
     """Get single watch party details"""
-    party = await db.watch_parties.find_one({"_id": ObjectId(party_id)})
-    if not party:
-        # Try finding by room_code
-        party = await db.watch_parties.find_one({"room_code": party_id.upper()})
+    party = await resolve_party(party_id)
     if not party:
         raise HTTPException(status_code=404, detail="Soiree non trouvee")
     party["_id"] = str(party["_id"])
@@ -2286,9 +2300,7 @@ async def get_watch_party(party_id: str, user: dict = Depends(get_optional_user)
 @app.post("/api/watch-party/{party_id}/join")
 async def join_watch_party(party_id: str, user: dict = Depends(get_current_user)):
     """Join a watch party"""
-    party = await db.watch_parties.find_one({"_id": ObjectId(party_id)})
-    if not party:
-        party = await db.watch_parties.find_one({"room_code": party_id.upper()})
+    party = await resolve_party(party_id)
     if not party:
         raise HTTPException(status_code=404, detail="Soiree non trouvee")
     
@@ -2329,7 +2341,7 @@ async def join_watch_party(party_id: str, user: dict = Depends(get_current_user)
 @app.post("/api/watch-party/{party_id}/leave")
 async def leave_watch_party(party_id: str, user: dict = Depends(get_current_user)):
     """Leave a watch party"""
-    party = await db.watch_parties.find_one({"_id": ObjectId(party_id)})
+    party = await resolve_party(party_id)
     if not party:
         raise HTTPException(status_code=404, detail="Soiree non trouvee")
     
@@ -2340,7 +2352,7 @@ async def leave_watch_party(party_id: str, user: dict = Depends(get_current_user
     }
     
     await db.watch_parties.update_one(
-        {"_id": ObjectId(party_id)},
+        {"_id": party["_id"]},
         {"$pull": {"guests": {"user_id": user["_id"]}}, "$push": {"messages": sys_msg}}
     )
     return {"message": "Vous avez quitte la soiree"}
@@ -2348,7 +2360,7 @@ async def leave_watch_party(party_id: str, user: dict = Depends(get_current_user
 @app.post("/api/watch-party/{party_id}/message")
 async def send_watch_party_message(party_id: str, req: WatchPartyMessage, user: dict = Depends(get_current_user)):
     """Send a chat message in the watch party"""
-    party = await db.watch_parties.find_one({"_id": ObjectId(party_id)})
+    party = await resolve_party(party_id)
     if not party:
         raise HTTPException(status_code=404, detail="Soiree non trouvee")
     
@@ -2363,7 +2375,7 @@ async def send_watch_party_message(party_id: str, req: WatchPartyMessage, user: 
     }
     
     await db.watch_parties.update_one(
-        {"_id": ObjectId(party_id)},
+        {"_id": party["_id"]},
         {"$push": {"messages": msg}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
     )
     return {"success": True, "message": msg}
@@ -2371,7 +2383,7 @@ async def send_watch_party_message(party_id: str, req: WatchPartyMessage, user: 
 @app.put("/api/watch-party/{party_id}/status")
 async def update_watch_party_status(party_id: str, request: Request, user: dict = Depends(get_current_user)):
     """Update watch party status (host only)"""
-    party = await db.watch_parties.find_one({"_id": ObjectId(party_id)})
+    party = await resolve_party(party_id)
     if not party:
         raise HTTPException(status_code=404, detail="Soiree non trouvee")
     if party["host_id"] != user["_id"]:
@@ -2388,30 +2400,30 @@ async def update_watch_party_status(party_id: str, request: Request, user: dict 
             "message": f"La soiree est maintenant {status_msg.get(data['status'], data['status'])}",
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
-        await db.watch_parties.update_one({"_id": ObjectId(party_id)}, {"$push": {"messages": sys_msg}})
+        await db.watch_parties.update_one({"_id": party["_id"]}, {"$push": {"messages": sys_msg}})
     
     if "current_time" in data:
         updates["current_time"] = data["current_time"]
     
-    await db.watch_parties.update_one({"_id": ObjectId(party_id)}, {"$set": updates})
+    await db.watch_parties.update_one({"_id": party["_id"]}, {"$set": updates})
     return {"success": True}
 
 @app.delete("/api/watch-party/{party_id}")
 async def delete_watch_party(party_id: str, user: dict = Depends(get_current_user)):
     """Delete/end a watch party (host only)"""
-    party = await db.watch_parties.find_one({"_id": ObjectId(party_id)})
+    party = await resolve_party(party_id)
     if not party:
         raise HTTPException(status_code=404, detail="Soiree non trouvee")
     if party["host_id"] != user["_id"] and not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Non autorise")
     
-    await db.watch_parties.update_one({"_id": ObjectId(party_id)}, {"$set": {"status": "ended", "updated_at": datetime.now(timezone.utc).isoformat()}})
+    await db.watch_parties.update_one({"_id": party["_id"]}, {"$set": {"status": "ended", "updated_at": datetime.now(timezone.utc).isoformat()}})
     return {"message": "Soiree terminee"}
 
 @app.get("/api/watch-party/{party_id}/messages")
 async def get_watch_party_messages(party_id: str, since: Optional[str] = None, user: dict = Depends(get_optional_user)):
     """Get chat messages for a watch party (polling)"""
-    party = await db.watch_parties.find_one({"_id": ObjectId(party_id)}, {"messages": 1, "status": 1, "current_time": 1})
+    party = await resolve_party(party_id)
     if not party:
         raise HTTPException(status_code=404, detail="Soiree non trouvee")
     
