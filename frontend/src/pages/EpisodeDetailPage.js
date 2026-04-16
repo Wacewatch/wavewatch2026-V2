@@ -89,7 +89,8 @@ export default function EpisodeDetailPage({ isAnime = false }) {
         <button onClick={markAsWatched} className={`px-5 py-2.5 rounded-lg border flex items-center gap-2 transition-all duration-300 ${isWatched ? 'border-green-500 bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20' : 'border-cyan-600 text-cyan-400 hover:bg-cyan-900/20'}`} data-testid="watched-btn">
           <CheckCircle className={`w-5 h-5 transition-all ${isWatched ? 'fill-green-500 text-green-500 scale-110' : ''}`} />{isWatched ? 'Deja vu' : 'Marquer vu'}
         </button>
-        <AddToPlaylistButton contentId={epContentId} contentType="episode" title={`${episode.name} - S${seasonNumber}E${episodeNumber}`} posterPath={episode.still_path} />
+        <AddToPlaylistButton contentId={epContentId} contentType="episode" title={`${episode.name} - S${seasonNumber}E${episodeNumber}`} posterPath={episode.still_path}
+          metadata={{ series_id: id, series_name: episode.series_name || '', season_number: seasonNumber, episode_number: episodeNumber, is_anime: isAnime }} />
       </div>
       <LikeDislike contentId={epContentId} contentType="episode" />
       {episode.guest_stars?.length > 0 && (

@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import API from '../lib/api';
 import { Plus, Check, ListMusic, Lock } from 'lucide-react';
 
-export default function AddToPlaylistButton({ contentId, contentType, title, posterPath }) {
+export default function AddToPlaylistButton({ contentId, contentType, title, posterPath, metadata }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -53,7 +53,7 @@ export default function AddToPlaylistButton({ contentId, contentType, title, pos
       return;
     }
     try {
-      await API.post(`/api/playlists/${playlistId}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath });
+      await API.post(`/api/playlists/${playlistId}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath, metadata: metadata || {} });
       setAddedTo(prev => new Set(prev).add(playlistId));
       toast({ title: 'Ajoute a la playlist' });
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
@@ -66,7 +66,7 @@ export default function AddToPlaylistButton({ contentId, contentType, title, pos
       const { data } = await API.post('/api/playlists', { name: newName.trim(), description: '', is_public: false });
       const pid = data.playlist?._id;
       if (pid) {
-        await API.post(`/api/playlists/${pid}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath });
+        await API.post(`/api/playlists/${pid}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath, metadata: metadata || {} });
         toast({ title: `Playlist "${newName}" creee et contenu ajoute` });
         setAddedTo(prev => new Set(prev).add(pid));
       }

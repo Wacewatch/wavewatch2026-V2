@@ -405,6 +405,141 @@ class WaveWatchAPITester:
             except Exception as e:
                 self.log_test("Playlist Like/Dislike String ID", False, f"Failed to parse response: {str(e)}")
 
+    def test_notification_endpoints(self):
+        """Test notification endpoints for series subscriptions"""
+        if not self.admin_token:
+            print("❌ Skipping notification tests - no admin token")
+            return
+
+        print("\n🔔 Testing Notification Endpoints...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+
+        # Test series subscription toggle
+        test_series_id = 1399  # Game of Thrones
+        subscription_data = {
+            "series_id": test_series_id,
+            "series_name": "Game of Thrones"
+        }
+        self.test_api_call("POST", "/api/notifications/subscribe-series", 200, 
+                         subscription_data, headers=auth_headers, 
+                         description="(Subscribe to Series Notifications)")
+        
+        # Test checking subscription status
+        self.test_api_call("GET", f"/api/notifications/check-series/{test_series_id}", 200, 
+                         headers=auth_headers, description="(Check Series Subscription Status)")
+        
+        # Test getting all subscribed series
+        self.test_api_call("GET", "/api/notifications/subscribed-series", 200, 
+                         headers=auth_headers, description="(Get Subscribed Series)")
+        
+        # Test checking for new episodes
+        self.test_api_call("POST", "/api/notifications/check-new-episodes", 200, 
+                         headers=auth_headers, description="(Check New Episodes)")
+        
+        # Test unsubscribing (toggle again)
+        self.test_api_call("POST", "/api/notifications/subscribe-series", 200, 
+                         subscription_data, headers=auth_headers, 
+                         description="(Unsubscribe from Series Notifications)")
+
+    def test_playlist_metadata_support(self):
+        """Test playlist items with metadata field for embed content"""
+        if not self.admin_token:
+            print("❌ Skipping playlist metadata tests - no admin token")
+            return
+
+        print("\n📋 Testing Playlist Metadata Support...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+
+        # First create a test playlist
+        success, response = self.test_api_call("POST", "/api/playlists", 200, 
+                                             {"name": "Test Metadata Playlist", "description": "Testing metadata support", "is_public": False}, 
+                                             headers=auth_headers, description="(Create Test Metadata Playlist)")
+        
+        if success and response:
+            try:
+                playlist_data = response.json()
+                playlist_id = playlist_data.get("playlist", {}).get("_id")
+                
+                if playlist_id:
+                    # Test adding TV channel with metadata
+                    tv_channel_data = {
+                        "content_id": "test_channel_123",
+                        "content_type": "tv_channel",
+                        "title": "Test TV Channel",
+                        "poster_path": "/test_logo.png",
+                        "metadata": {
+                            "stream_url": "https://example.com/stream",
+                            "category": "News",
+                            "country": "FR"
+                        }
+                    }
+                    self.test_api_call("POST", f"/api/playlists/{playlist_id}/items", 200, 
+                                     tv_channel_data, headers=auth_headers, 
+                                     description="(Add TV Channel with Metadata)")
+                    
+                    # Test adding radio station with metadata
+                    radio_data = {
+                        "content_id": "test_radio_456",
+                        "content_type": "radio",
+                        "title": "Test Radio Station",
+                        "poster_path": "/test_radio_logo.png",
+                        "metadata": {
+                            "stream_url": "https://example.com/radio_stream",
+                            "genre": "Pop",
+                            "frequency": "101.5 FM"
+                        }
+                    }
+                    self.test_api_call("POST", f"/api/playlists/{playlist_id}/items", 200, 
+                                     radio_data, headers=auth_headers, 
+                                     description="(Add Radio Station with Metadata)")
+                    
+                    # Test adding retrogaming with metadata
+                    retrogaming_data = {
+                        "content_id": "test_game_789",
+                        "content_type": "retrogaming",
+                        "title": "Test Retro Game",
+                        "poster_path": "/test_game_cover.png",
+                        "metadata": {
+                            "game_url": "https://example.com/game_embed",
+                            "platform": "NES",
+                            "year": "1985"
+                        }
+                    }
+                    self.test_api_call("POST", f"/api/playlists/{playlist_id}/items", 200, 
+                                     retrogaming_data, headers=auth_headers, 
+                                     description="(Add Retrogaming with Metadata)")
+                    
+                    # Test getting playlist to verify metadata is stored
+                    success_get, response_get = self.test_api_call("GET", f"/api/playlists/{playlist_id}", 200, 
+                                                                 headers=auth_headers, description="(Get Playlist with Metadata)")
+                    
+                    if success_get and response_get:
+                        try:
+                            playlist_get_data = response_get.json()
+                            items = playlist_get_data.get("playlist", {}).get("items", [])
+                            
+                            # Check if metadata is preserved
+                            metadata_found = False
+                            for item in items:
+                                if item.get("metadata") and item.get("content_type") in ["tv_channel", "radio", "retrogaming"]:
+                                    metadata_found = True
+                                    break
+                            
+                            if metadata_found:
+                                self.log_test("Playlist Metadata Preservation", True)
+                            else:
+                                self.log_test("Playlist Metadata Preservation", False, "Metadata not found in playlist items")
+                                
+                        except Exception as e:
+                            self.log_test("Playlist Metadata Verification", False, f"Failed to parse playlist data: {str(e)}")
+                    
+                    # Clean up - delete test playlist
+                    self.test_api_call("DELETE", f"/api/playlists/{playlist_id}", 200, 
+                                     headers=auth_headers, description="(Delete Test Metadata Playlist)")
+                    
+            except Exception as e:
+                self.log_test("Playlist Metadata Support", False, f"Failed to parse response: {str(e)}")
+
     def run_all_tests(self):
         """Run comprehensive API tests"""
         print("🚀 Starting WaveWatch API Tests...")
@@ -449,6 +584,12 @@ class WaveWatchAPITester:
         
         # Test playlist like/dislike with string ID
         self.test_playlist_like_dislike_string_id()
+        
+        # Test notification endpoints
+        self.test_notification_endpoints()
+        
+        # Test playlist metadata support
+        self.test_playlist_metadata_support()
         
         # Print summary
         print(f"\n📊 Test Summary:")

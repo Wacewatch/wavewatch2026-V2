@@ -2280,3 +2280,127 @@ async def check_new_episodes(user: dict = Depends(get_current_user)):
     return {"new_content": new_content, "count": len(new_content)}
 
 
+
+
+# =================== EPISODE & MOVIE NOTIFICATIONS ===================
+
+@app.post("/api/notifications/subscribe-series")
+async def subscribe_series_notifications(request: Request, user: dict = Depends(get_current_user)):
+    """Subscribe to notifications for a TV series (new episodes)"""
+    data = await request.json()
+    series_id = data.get("series_id")
+    series_name = data.get("series_name", "Serie")
+    if not series_id:
+        raise HTTPException(status_code=400, detail="series_id required")
+    existing = await db.series_subscriptions.find_one({"user_id": user["_id"], "series_id": series_id})
+    if existing:
+        await db.series_subscriptions.delete_one({"_id": existing["_id"]})
+        return {"subscribed": False, "message": f"Notifications desactivees pour {series_name}"}
+    await db.series_subscriptions.insert_one({
+        "user_id": user["_id"], "series_id": series_id, "series_name": series_name,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"subscribed": True, "message": f"Notifications activees pour {series_name}"}
+
+@app.get("/api/notifications/subscribed-series")
+async def get_subscribed_series(user: dict = Depends(get_current_user)):
+    subs = await db.series_subscriptions.find({"user_id": user["_id"]}).to_list(100)
+    for s in subs:
+        s["_id"] = str(s["_id"])
+    return {"subscriptions": subs}
+
+@app.get("/api/notifications/check-series/{series_id}")
+async def check_series_subscription(series_id: int, user: dict = Depends(get_current_user)):
+    existing = await db.series_subscriptions.find_one({"user_id": user["_id"], "series_id": series_id})
+    return {"subscribed": existing is not None}
+
+@app.post("/api/notifications/check-new-episodes")
+async def check_new_episodes(user: dict = Depends(get_optional_user)):
+    """Check for new episodes of subscribed series and upcoming movies, send notifications"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    results = {"episodes_notified": 0, "movies_notified": 0}
+
+    # Check new episodes for all users with subscriptions
+    subs = await db.series_subscriptions.find().to_list(1000)
+    series_ids = list(set(s["series_id"] for s in subs))
+
+    for sid in series_ids:
+        try:
+            data = await tmdb_fetch(f"/tv/{sid}", {"append_to_response": "season/1"})
+            last_ep = data.get("last_episode_to_air")
+            next_ep = data.get("next_episode_to_air")
+
+            target_ep = next_ep if next_ep and next_ep.get("air_date") == today else (last_ep if last_ep and last_ep.get("air_date") == today else None)
+            if not target_ep:
+                continue
+
+            ep_name = target_ep.get("name", "")
+            season = target_ep.get("season_number", 1)
+            episode = target_ep.get("episode_number", 1)
+            series_name = data.get("name", "Serie")
+
+            # Notify all subscribers
+            subscribers = [s for s in subs if s["series_id"] == sid]
+            for sub in subscribers:
+                # Check if already notified today
+                already = await db.notifications.find_one({
+                    "user_id": sub["user_id"],
+                    "type": "new_episode",
+                    "link": f"/tv-shows/{sid}/season/{season}/episode/{episode}",
+                    "created_at": {"$regex": f"^{today}"}
+                })
+                if already:
+                    continue
+                await create_notification(
+                    sub["user_id"],
+                    f"Nouvel episode : {series_name}",
+                    f"S{season}E{episode} - {ep_name} est disponible !",
+                    "new_episode",
+                    f"/tv-shows/{sid}/season/{season}/episode/{episode}"
+                )
+                results["episodes_notified"] += 1
+        except:
+            continue
+
+    # Check upcoming movies (notify users who have them in favorites)
+    try:
+        upcoming = await tmdb_fetch("/movie/upcoming", {"region": "FR"})
+        for movie in (upcoming.get("results") or [])[:10]:
+            if movie.get("release_date") == today:
+                # Find users who have this movie in favorites
+                fav_users = await db.favorites.find({"tmdb_id": movie["id"], "media_type": "movie"}).to_list(500)
+                for fav in fav_users:
+                    already = await db.notifications.find_one({
+                        "user_id": fav["user_id"],
+                        "type": "movie_release",
+                        "link": f"/movies/{movie['id']}",
+                        "created_at": {"$regex": f"^{today}"}
+                    })
+                    if already:
+                        continue
+                    await create_notification(
+                        fav["user_id"],
+                        f"Sortie : {movie.get('title', 'Film')}",
+                        f"{movie.get('title')} est sorti aujourd'hui !",
+                        "movie_release",
+                        f"/movies/{movie['id']}"
+                    )
+                    results["movies_notified"] += 1
+    except:
+        pass
+
+    return results
+
+# Background task: check new episodes periodically
+@app.on_event("startup")
+async def start_episode_checker():
+    import asyncio
+    async def episode_check_loop():
+        while True:
+            try:
+                await asyncio.sleep(3600 * 6)  # Check every 6 hours
+                # Trigger check
+                await check_new_episodes(user=None)
+            except:
+                pass
+    asyncio.create_task(episode_check_loop())

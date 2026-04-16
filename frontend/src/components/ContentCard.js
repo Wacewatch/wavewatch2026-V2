@@ -42,7 +42,7 @@ export function useContentStatus() {
 }
 
 // Universal Quick-Add to Playlist - works with any content type
-export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, inline = false }) {
+export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, inline = false, metadata }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -61,7 +61,7 @@ export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, in
       const { data } = await API.post('/api/playlists', { name: newName.trim(), description: '', is_public: false });
       const pid = data.playlist?._id;
       if (pid) {
-        await API.post(`/api/playlists/${pid}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath });
+        await API.post(`/api/playlists/${pid}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath, metadata: metadata || {} });
         toast({ title: `"${newName}" creee et contenu ajoute` });
         setAddedTo(p => new Set(p).add(pid));
       }
@@ -106,7 +106,7 @@ export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, in
     }
     try {
       await API.post(`/api/playlists/${pid}/items`, {
-        content_id: contentId, content_type: contentType, title, poster_path: posterPath
+        content_id: contentId, content_type: contentType, title, poster_path: posterPath, metadata: metadata || {}
       });
       setAddedTo(p => new Set(p).add(pid));
       toast({ title: 'Ajoute !' });

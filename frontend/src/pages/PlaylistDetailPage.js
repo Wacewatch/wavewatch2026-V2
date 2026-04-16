@@ -5,15 +5,21 @@ import { useToast } from '../contexts/ToastContext';
 import API, { TMDB_IMG } from '../lib/api';
 import { LoadingSpinner } from '../components/Loading';
 import LikeDislike from '../components/LikeDislike';
-import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen, Crown, Upload, Sparkles, Image, Settings, Edit3, Check, Share2, Copy } from 'lucide-react';
+import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen, Crown, Upload, Sparkles, Image, Settings, Edit3, Check, Share2, Copy, Monitor, Radio, User, X } from 'lucide-react';
 
 const typeConfig = {
   movie: { icon: Film, label: 'Film', color: 'text-red-400', path: 'movies' },
   tv: { icon: Tv, label: 'Serie', color: 'text-blue-400', path: 'tv-shows' },
   anime: { icon: Tv, label: 'Anime', color: 'text-purple-400', path: 'anime' },
-  music: { icon: Music, label: 'Musique', color: 'text-pink-400', path: null },
-  game: { icon: Gamepad2, label: 'Jeu', color: 'text-green-400', path: null },
-  ebook: { icon: BookOpen, label: 'Ebook', color: 'text-orange-400', path: null },
+  episode: { icon: Play, label: 'Episode', color: 'text-cyan-400', path: null, isEpisode: true },
+  actor: { icon: User, label: 'Acteur', color: 'text-yellow-400', path: 'actors' },
+  music: { icon: Music, label: 'Musique', color: 'text-pink-400', path: 'music' },
+  game: { icon: Gamepad2, label: 'Jeu', color: 'text-green-400', path: 'games' },
+  ebook: { icon: BookOpen, label: 'Ebook', color: 'text-orange-400', path: 'ebooks' },
+  software: { icon: Monitor, label: 'Logiciel', color: 'text-teal-400', path: 'software' },
+  tv_channel: { icon: Tv, label: 'Chaine TV', color: 'text-indigo-400', path: null, isEmbed: true },
+  radio: { icon: Radio, label: 'Radio', color: 'text-amber-400', path: null, isEmbed: true },
+  retrogaming: { icon: Gamepad2, label: 'Retrogaming', color: 'text-lime-400', path: null, isEmbed: true },
 };
 
 // Badge de type de playlist
@@ -147,6 +153,7 @@ export default function PlaylistDetailPage() {
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [customizeTab, setCustomizeTab] = useState('colors');
+  const [embedModal, setEmbedModal] = useState(null);
 
   useEffect(() => {
     // Inject animations CSS
@@ -475,24 +482,87 @@ export default function PlaylistDetailPage() {
           <p className="text-sm text-muted-foreground">Ajoutez du contenu depuis les pages de films, series ou anime</p>
         </div>
       ) : (
+        <>
+        {embedModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setEmbedModal(null)}>
+            <div className="w-full max-w-4xl bg-card rounded-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between p-3 border-b border-border">
+                <h3 className="font-bold">{embedModal.title}</h3>
+                <button onClick={() => setEmbedModal(null)} className="p-1 rounded-lg hover:bg-secondary"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="p-4">
+                {embedModal.content_type === 'radio' ? (
+                  <div className="flex flex-col items-center gap-4 py-8">
+                    <Radio className="w-16 h-16 text-amber-400" />
+                    <p className="text-lg font-medium">{embedModal.title}</p>
+                    {embedModal.metadata?.stream_url ? (
+                      <audio controls autoPlay src={embedModal.metadata.stream_url} className="w-full max-w-md" />
+                    ) : (
+                      <p className="text-muted-foreground">Aucun flux disponible</p>
+                    )}
+                  </div>
+                ) : embedModal.metadata?.stream_url ? (
+                  <div className="aspect-video">
+                    <iframe src={embedModal.metadata.stream_url} className="w-full h-full rounded-lg" allowFullScreen allow="autoplay; encrypted-media" title={embedModal.title} />
+                  </div>
+                ) : embedModal.metadata?.game_url ? (
+                  <div className="aspect-video">
+                    <iframe src={embedModal.metadata.game_url} className="w-full h-full rounded-lg" allowFullScreen title={embedModal.title} />
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">Contenu non disponible</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {playlist.items.map((item, idx) => {
             const cfg = typeConfig[item.content_type] || typeConfig.movie;
             const Icon = cfg.icon;
-            const linkTo = cfg.path ? `/${cfg.path}/${item.content_id}` : null;
+
+            // Build the correct link
+            let linkTo = null;
+            if (cfg.isEpisode && item.metadata) {
+              const m = item.metadata;
+              const base = m.is_anime ? 'anime' : 'tv-shows';
+              linkTo = `/${base}/${m.series_id}/season/${m.season_number}/episode/${m.episode_number}`;
+            } else if (cfg.isEmbed) {
+              linkTo = null; // Will use onClick modal
+            } else if (cfg.path) {
+              linkTo = `/${cfg.path}/${item.content_id}`;
+            }
+
+            const handleClick = (e) => {
+              if (cfg.isEmbed) {
+                e.preventDefault();
+                setEmbedModal(item);
+              }
+            };
+
+            // Build subtitle
+            let subtitle = '';
+            if (item.content_type === 'episode' && item.metadata) {
+              subtitle = `${item.metadata.series_name || ''} S${item.metadata.season_number || '?'}E${item.metadata.episode_number || '?'}`;
+            }
+
+            // Poster: TMDB or fallback
+            const posterSrc = item.poster_path 
+              ? (item.poster_path.startsWith('http') ? item.poster_path : `${TMDB_IMG}/w300${item.poster_path}`)
+              : null;
 
             const card = (
               <div className="group relative" data-testid={`playlist-item-${item.content_id}`}>
                 <div className="aspect-[2/3] rounded-xl overflow-hidden bg-muted relative">
-                  {item.poster_path ? (
-                    <img src={`${TMDB_IMG}/w300${item.poster_path}`} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  {posterSrc ? (
+                    <img src={posterSrc} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
                       <Icon className={`w-12 h-12 ${cfg.color} opacity-30`} />
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    {linkTo && <Play className="w-10 h-10 text-white" />}
+                    <Play className="w-10 h-10 text-white" />
                   </div>
                   <div className="absolute top-2 left-2">
                     <span className={`px-2 py-0.5 text-xs rounded-full bg-black/60 ${cfg.color} flex items-center gap-1`}>
@@ -508,12 +578,16 @@ export default function PlaylistDetailPage() {
                   )}
                 </div>
                 <p className="text-sm font-medium mt-2 line-clamp-2 group-hover:text-blue-400 transition-colors">{item.title}</p>
+                {subtitle && <p className="text-xs text-muted-foreground line-clamp-1">{subtitle}</p>}
               </div>
             );
 
-            return linkTo ? <Link key={`${item.content_type}-${item.content_id}-${idx}`} to={linkTo}>{card}</Link> : <div key={`${item.content_type}-${item.content_id}-${idx}`}>{card}</div>;
+            if (linkTo) return <Link key={`${item.content_type}-${item.content_id}-${idx}`} to={linkTo}>{card}</Link>;
+            if (cfg.isEmbed) return <div key={`${item.content_type}-${item.content_id}-${idx}`} className="cursor-pointer" onClick={handleClick}>{card}</div>;
+            return <div key={`${item.content_type}-${item.content_id}-${idx}`}>{card}</div>;
           })}
         </div>
+        </>
       )}
     </div>
   );

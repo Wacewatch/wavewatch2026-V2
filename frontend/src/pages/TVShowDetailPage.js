@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv } from 'lucide-react';
+import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
@@ -24,6 +24,7 @@ export default function TVShowDetailPage() {
   const [watchedEpisodes, setWatchedEpisodes] = useState({});
   const [continueInfo, setContinueInfo] = useState(null);
   const [markingAll, setMarkingAll] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -37,6 +38,7 @@ export default function TVShowDetailPage() {
     if (user) {
       API.get(`/api/user/favorites/check?content_id=${id}&content_type=tv`).then(({ data }) => setIsFavorite(data.is_favorite)).catch(() => {});
       API.get('/api/user/history').then(({ data }) => { setIsWatched((data.history || []).some(h => h.content_id === parseInt(id) && h.content_type === 'tv')); }).catch(() => {});
+      API.get(`/api/notifications/check-series/${id}`).then(({ data }) => setSubscribed(data.subscribed)).catch(() => {});
       // Get watched episodes for this show
       API.get(`/api/user/tv-progress/${id}`).then(({ data }) => {
         setWatchedEpisodes(data.watched_episodes || {});
@@ -168,6 +170,18 @@ export default function TVShowDetailPage() {
                 <CheckCircle className={`w-5 h-5 transition-all ${isWatched ? 'fill-green-500 text-green-500 scale-110' : ''}`} />{isWatched ? 'Deja vu' : 'Marquer vu'}
               </button>
               <AddToPlaylistButton contentId={parseInt(id)} contentType="tv" title={show.name} posterPath={show.poster_path} />
+              {user && (
+                <button onClick={async () => {
+                  try {
+                    const { data } = await API.post('/api/notifications/subscribe-series', { series_id: parseInt(id), series_name: show.name });
+                    setSubscribed(data.subscribed);
+                    toast({ title: data.message });
+                  } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+                }} className={`px-5 py-2.5 rounded-lg border flex items-center gap-2 transition-colors ${subscribed ? 'border-amber-500 bg-amber-500/20 text-amber-400' : 'border-gray-600 text-gray-400 hover:border-amber-500/50 hover:text-amber-400'}`} data-testid="subscribe-btn">
+                  {subscribed ? <BellOff className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                  {subscribed ? 'Notifications ON' : 'Notifier'}
+                </button>
+              )}
             </div>
             
             {/* Marquer TOUTE la série comme vue */}

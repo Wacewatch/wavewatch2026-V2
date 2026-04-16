@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API from '../lib/api';
-import { Tv, X, Play, Search } from 'lucide-react';
+import { Tv, X, Play, Search, Plus } from 'lucide-react';
+import { QuickPlaylistAdd } from '../components/ContentCard';
 
 export default function TVChannelsPage() {
   const [channels, setChannels] = useState([]);
@@ -46,6 +47,9 @@ export default function TVChannelsPage() {
               </div>
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                 <Play className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <QuickPlaylistAdd contentId={ch._id || ch.name} contentType="tv_channel" title={ch.name} posterPath={ch.logo || ch.logo_url} inline metadata={{ stream_url: ch.stream_url }} />
               </div>
             </div>
             <div className="p-3 text-center">

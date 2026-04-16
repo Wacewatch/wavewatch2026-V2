@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API from '../lib/api';
-import { Radio as RadioIcon, Play, Pause } from 'lucide-react';
+import { Radio as RadioIcon, Play, Pause, Plus } from 'lucide-react';
+import { QuickPlaylistAdd } from '../components/ContentCard';
 
 export default function RadioPage() {
   const [stations, setStations] = useState([]);
@@ -31,6 +32,7 @@ export default function RadioPage() {
                   {playing === s.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
                 </button>
               )}
+              <QuickPlaylistAdd contentId={s._id || s.id || s.name} contentType="radio" title={s.name} posterPath={s.logo} inline metadata={{ stream_url: s.stream_url }} />
             </div>
           </div>
         ))}
