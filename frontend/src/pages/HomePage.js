@@ -553,33 +553,52 @@ function RecommendationsRow() {
 
 export default function HomePage() {
   const [modules, setModules] = useState(null);
+  const [moduleOrder, setModuleOrder] = useState(null);
   useEffect(() => {
     API.get('/api/admin/site-settings/home_modules').then(({ data }) => {
       if (data.setting_value) setModules(data.setting_value);
+    }).catch(() => {});
+    API.get('/api/admin/site-settings/module_order').then(({ data }) => {
+      if (data.setting_value && Array.isArray(data.setting_value) && data.setting_value.length > 0) setModuleOrder(data.setting_value);
     }).catch(() => {});
   }, []);
 
   const show = (key) => !modules || modules[key] !== false;
 
+  // Map of module keys to their components
+  const moduleComponents = {
+    hero: show('hero') ? <Hero key="hero" /> : null,
+    trending_movies: show('trending_movies') ? <ContentRow key="trending_movies" title="Films Tendance" endpoint="/api/tmdb/trending/movies" type="movie" link="/movies" /> : null,
+    recommendations: show('recommendations') ? <RecommendationsRow key="recommendations" /> : null,
+    trending_tv_shows: show('trending_tv_shows') ? <ContentRow key="trending_tv_shows" title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" link="/tv-shows" /> : null,
+    popular_anime: show('popular_anime') ? <ContentRow key="popular_anime" title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime link="/anime" /> : null,
+    popular_collections: show('popular_collections') ? <PopularCollectionsRow key="popular_collections" /> : null,
+    public_playlists: show('public_playlists') ? <PublicPlaylistsRow key="public_playlists" /> : null,
+    trending_actors: show('trending_actors') ? <TrendingActorsRow key="trending_actors" /> : null,
+    trending_tv_channels: show('trending_tv_channels') ? <TrendingTVChannelsRow key="trending_tv_channels" /> : null,
+    sports_promo: show('sports_promo') ? <SportsStreamPromo key="sports_promo" /> : null,
+    livewatch_promo: show('livewatch_promo') ? <LiveWatchPromo key="livewatch_promo" /> : null,
+    vip_game_promo: show('vip_game_promo') ? <VIPGamePromo key="vip_game_promo" /> : null,
+    subscription_offer: show('subscription_offer') ? <SubscriptionOffer key="subscription_offer" /> : null,
+    random_content: show('random_content') ? <RandomContent key="random_content" /> : null,
+    football_calendar: show('football_calendar') ? <FootballCalendarWidget key="football_calendar" /> : null,
+    calendar_widget: show('calendar_widget') ? <CalendarWidgetHome key="calendar_widget" /> : null,
+  };
+
+  // Default order
+  const defaultOrder = ['hero', 'trending_movies', 'recommendations', 'trending_tv_shows', 'popular_anime', 'popular_collections', 'public_playlists', 'trending_actors', 'trending_tv_channels', 'sports_promo', 'livewatch_promo', 'vip_game_promo', 'subscription_offer', 'random_content', 'football_calendar', 'calendar_widget'];
+  const order = moduleOrder || defaultOrder;
+  // Include any modules not in the saved order (fallback)
+  const allKeys = [...new Set([...order, ...defaultOrder])];
+
   return (
     <div className="space-y-8" data-testid="home-page">
-      {show('hero') && <Hero />}
+      {allKeys.map(key => {
+        if (key === 'hero') return moduleComponents[key];
+        return null;
+      })}
       <div className="container mx-auto px-4 space-y-12">
-        {show('trending_movies') && <ContentRow title="Films Tendance" endpoint="/api/tmdb/trending/movies" type="movie" link="/movies" />}
-        {show('recommendations') && <RecommendationsRow />}
-        {show('trending_tv_shows') && <ContentRow title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" link="/tv-shows" />}
-        {show('popular_anime') && <ContentRow title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime link="/anime" />}
-        {show('popular_collections') && <PopularCollectionsRow />}
-        {show('public_playlists') && <PublicPlaylistsRow />}
-        {show('trending_actors') && <TrendingActorsRow />}
-        {show('trending_tv_channels') && <TrendingTVChannelsRow />}
-        {show('sports_promo') && <SportsStreamPromo />}
-        {show('livewatch_promo') && <LiveWatchPromo />}
-        {show('vip_game_promo') && <VIPGamePromo />}
-        {show('subscription_offer') && <SubscriptionOffer />}
-        {show('random_content') && <RandomContent />}
-        {show('football_calendar') && <FootballCalendarWidget />}
-        {show('calendar_widget') && <CalendarWidgetHome />}
+        {allKeys.filter(k => k !== 'hero').map(key => moduleComponents[key])}
       </div>
     </div>
   );

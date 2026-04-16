@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import API from '../lib/api';
 import { Monitor, ArrowLeft, Download } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
+import AddToPlaylistButton from '../components/AddToPlaylistButton';
 
 export default function SoftwareDetailPage() {
   const { id } = useParams();
@@ -38,7 +39,10 @@ export default function SoftwareDetailPage() {
           <div className="flex flex-wrap gap-3 pt-2">
             {item.download_url && <a href={item.download_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-2"><Download className="w-5 h-5" />Telecharger</a>}
           </div>
-          <LikeDislike contentId={id} contentType="software" />
+          <div className="flex flex-wrap gap-3 items-center">
+            <LikeDislike contentId={id} contentType="software" />
+            <AddToPlaylistButton contentId={id} contentType="software" title={item.title || item.name} posterPath={item.image_url} />
+          </div>
         </div>
       </div>
     </div>

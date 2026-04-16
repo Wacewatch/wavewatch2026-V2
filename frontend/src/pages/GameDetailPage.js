@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import API from '../lib/api';
 import { Gamepad2, Play, ArrowLeft, Download } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
+import AddToPlaylistButton from '../components/AddToPlaylistButton';
 
 export default function GameDetailPage() {
   const { id } = useParams();
@@ -38,7 +39,10 @@ export default function GameDetailPage() {
           <div className="flex flex-wrap gap-3 pt-2">
             {item.download_url && <a href={item.download_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium flex items-center gap-2"><Play className="w-5 h-5" />Jouer / Telecharger</a>}
           </div>
-          <LikeDislike contentId={id} contentType="game" />
+          <div className="flex flex-wrap gap-3 items-center">
+            <LikeDislike contentId={id} contentType="game" />
+            <AddToPlaylistButton contentId={id} contentType="game" title={item.title || item.name} posterPath={item.image_url} />
+          </div>
         </div>
       </div>
     </div>

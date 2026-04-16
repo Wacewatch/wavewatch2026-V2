@@ -463,7 +463,7 @@ export default function PlaylistDetailPage() {
         )}
 
         <div className="mt-4 relative z-10">
-          <LikeDislike contentId={parseInt(id) || id.hashCode?.()} contentType="playlist" />
+          <LikeDislike contentId={id} contentType="playlist" />
         </div>
       </div>
 

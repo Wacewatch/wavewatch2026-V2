@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import API from '../lib/api';
 import { Music, Play, ArrowLeft, Download, ExternalLink } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
+import AddToPlaylistButton from '../components/AddToPlaylistButton';
 
 export default function MusicDetailPage() {
   const { id } = useParams();
@@ -39,7 +40,10 @@ export default function MusicDetailPage() {
             {item.streaming_url && <a href={item.streaming_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center gap-2"><Play className="w-5 h-5" />Ecouter</a>}
             {item.download_url && <a href={item.download_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg border border-purple-600 text-purple-400 hover:bg-purple-900/20 font-medium flex items-center gap-2"><Download className="w-5 h-5" />Telecharger</a>}
           </div>
-          <LikeDislike contentId={id} contentType="music" />
+          <div className="flex flex-wrap gap-3 items-center">
+            <LikeDislike contentId={id} contentType="music" />
+            <AddToPlaylistButton contentId={id} contentType="music" title={item.title || item.name} posterPath={item.image_url || item.cover_url} />
+          </div>
           <p className="text-xs text-muted-foreground">Ajoute le {item.created_at ? new Date(item.created_at).toLocaleDateString('fr-FR') : ''}</p>
         </div>
       </div>

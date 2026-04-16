@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { LoadingSpinner } from '../components/Loading';
 import LikeDislike from '../components/LikeDislike';
+import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import { Play, Star, Calendar, Clock, Heart, CheckCircle } from 'lucide-react';
 
 export default function EpisodeDetailPage({ isAnime = false }) {
@@ -57,8 +58,11 @@ export default function EpisodeDetailPage({ isAnime = false }) {
     <div className="container mx-auto px-4 py-8" data-testid="episode-detail-page">
       <Link to={`/${basePath}/${id}/season/${seasonNumber}`} className="text-blue-400 hover:underline text-sm mb-4 block">&larr; Retour a la saison {seasonNumber}</Link>
       {episode.still_path && (
-        <div className="aspect-video max-w-3xl rounded-xl overflow-hidden mb-6 bg-muted">
-          <img src={`${TMDB_IMG}/original${episode.still_path}`} alt={episode.name} className="w-full h-full object-cover" />
+        <div className="aspect-video max-w-3xl rounded-xl overflow-hidden mb-6 bg-muted relative">
+          <img src={`${TMDB_IMG}/original${episode.still_path}`} alt={episode.name} className={`w-full h-full object-cover ${user?.hide_spoilers && !isWatched ? 'blur-xl' : ''}`} />
+          {user?.hide_spoilers && !isWatched && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40"><span className="text-white font-medium px-4 py-2 rounded-lg bg-black/50">Anti-spoiler actif</span></div>
+          )}
         </div>
       )}
       <h1 className="text-3xl font-bold mb-2">S{seasonNumber}E{episodeNumber} : {episode.name}</h1>
@@ -67,15 +71,25 @@ export default function EpisodeDetailPage({ isAnime = false }) {
         {episode.air_date && <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{new Date(episode.air_date).toLocaleDateString('fr-FR')}</span>}
         {episode.runtime && <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{episode.runtime} min</span>}
       </div>
-      {episode.overview && <p className="text-lg text-muted-foreground leading-relaxed mb-6">{episode.overview}</p>}
+      {episode.overview && (
+        user?.hide_spoilers && !isWatched ? (
+          <div className="text-lg mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+            <p className="text-yellow-400 font-medium flex items-center gap-2"><span className="text-lg">🔒</span>Mode anti-spoiler actif</p>
+            <p className="text-sm text-muted-foreground mt-1">Le synopsis est masque car vous n'avez pas encore vu cet episode.</p>
+          </div>
+        ) : (
+          <p className="text-lg text-muted-foreground leading-relaxed mb-6">{episode.overview}</p>
+        )
+      )}
       <div className="flex flex-wrap gap-3 mb-4">
-        <button onClick={() => setShowStream(true)} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2" data-testid="watch-btn"><Play className="w-5 h-5" />Regarder</button>
+        <button onClick={() => { setShowStream(true); if (user?.auto_mark_watched !== false && !isWatched) markAsWatched(); }} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2" data-testid="watch-btn"><Play className="w-5 h-5" />Regarder</button>
         <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 ${isFavorite ? 'bg-yellow-900/20' : ''}`} data-testid="favorite-btn">
           <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />Favoris
         </button>
         <button onClick={markAsWatched} className={`px-5 py-2.5 rounded-lg border flex items-center gap-2 transition-all duration-300 ${isWatched ? 'border-green-500 bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20' : 'border-cyan-600 text-cyan-400 hover:bg-cyan-900/20'}`} data-testid="watched-btn">
           <CheckCircle className={`w-5 h-5 transition-all ${isWatched ? 'fill-green-500 text-green-500 scale-110' : ''}`} />{isWatched ? 'Deja vu' : 'Marquer vu'}
         </button>
+        <AddToPlaylistButton contentId={epContentId} contentType="episode" title={`${episode.name} - S${seasonNumber}E${episodeNumber}`} posterPath={episode.still_path} />
       </div>
       <LikeDislike contentId={epContentId} contentType="episode" />
       {episode.guest_stars?.length > 0 && (

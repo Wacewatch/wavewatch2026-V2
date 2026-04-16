@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import API from '../lib/api';
 import { BookOpen, Eye, ArrowLeft, Download } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
+import AddToPlaylistButton from '../components/AddToPlaylistButton';
 
 export default function EbookDetailPage() {
   const { id } = useParams();
@@ -39,7 +40,10 @@ export default function EbookDetailPage() {
             {item.reading_url && <a href={item.reading_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-medium flex items-center gap-2"><Eye className="w-5 h-5" />Lire en ligne</a>}
             {item.download_url && <a href={item.download_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg border border-orange-600 text-orange-400 hover:bg-orange-900/20 font-medium flex items-center gap-2"><Download className="w-5 h-5" />Telecharger</a>}
           </div>
-          <LikeDislike contentId={id} contentType="ebook" />
+          <div className="flex flex-wrap gap-3 items-center">
+            <LikeDislike contentId={id} contentType="ebook" />
+            <AddToPlaylistButton contentId={id} contentType="ebook" title={item.title} posterPath={item.image_url || item.cover_url} />
+          </div>
         </div>
       </div>
     </div>

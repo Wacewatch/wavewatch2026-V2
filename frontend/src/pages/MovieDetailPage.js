@@ -118,7 +118,7 @@ export default function MovieDetailPage() {
             <p className="text-base md:text-xl text-gray-200 leading-relaxed">{movie.overview}</p>
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3">
-              <button onClick={() => setShowStream(true)} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2 transition-colors" data-testid="watch-btn"><Play className="w-5 h-5" />Regarder</button>
+              <button onClick={() => { setShowStream(true); if (user?.auto_mark_watched !== false) markAsWatched(); }} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2 transition-colors" data-testid="watch-btn"><Play className="w-5 h-5" />Regarder</button>
               <button onClick={() => setShowDownload(true)} className="px-5 py-2.5 rounded-lg border border-blue-600 text-blue-400 hover:bg-blue-900/20 flex items-center gap-2 transition-colors" data-testid="download-btn"><Download className="w-5 h-5" />Telecharger</button>
               <button onClick={() => setShowTrailer(true)} className="px-5 py-2.5 rounded-lg border border-orange-600 text-orange-400 hover:bg-orange-900/20 flex items-center gap-2 transition-colors"><Youtube className="w-5 h-5" />Bande-annonce</button>
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 transition-colors ${isFavorite ? 'bg-yellow-900/20' : ''}`} data-testid="favorite-btn">

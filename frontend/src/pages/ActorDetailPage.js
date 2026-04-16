@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import ContentCard from '../components/ContentCard';
 import LikeDislike from '../components/LikeDislike';
+import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import { LoadingSpinner } from '../components/Loading';
 import { Heart } from 'lucide-react';
 
@@ -58,6 +59,7 @@ export default function ActorDetailPage() {
             </button>
           </div>
           <LikeDislike contentId={parseInt(id)} contentType="actor" />
+          <AddToPlaylistButton contentId={parseInt(id)} contentType="actor" title={person.name} posterPath={person.profile_path} />
         </div>
       </div>
       {allCredits.length > 0 && (

@@ -97,6 +97,21 @@ class WaveWatchAPITester:
         
         # Test site settings
         self.test_api_call("GET", "/api/admin/site-settings/home_modules", 200, headers=auth_headers, description="(Home Modules Settings)")
+        
+        # Test module order setting (new feature)
+        self.test_api_call("GET", "/api/admin/site-settings/module_order", 200, headers=auth_headers, description="(Module Order Settings)")
+        
+        # Test changelogs endpoint (new feature)
+        self.test_api_call("GET", "/api/changelogs", 200, description="(Changelogs API)")
+        
+        # Test creating a changelog via admin
+        changelog_data = {
+            "version": "3.1.0",
+            "title": "Test Changelog",
+            "description": "Testing changelog creation",
+            "release_date": "2026-01-20"
+        }
+        self.test_api_call("POST", "/api/admin/changelogs", 201, data=changelog_data, headers=auth_headers, description="(Create Changelog)")
 
     def test_content_endpoints(self):
         """Test content retrieval endpoints"""
@@ -339,6 +354,57 @@ class WaveWatchAPITester:
         self.test_api_call("GET", "/api/tmdb/discover/movie?include_adult=false", 200, 
                          headers=auth_headers, description="(Movies without Adult Content)")
 
+    def test_playlist_like_dislike_string_id(self):
+        """Test playlist like/dislike functionality with string content_id"""
+        if not self.admin_token:
+            print("❌ Skipping playlist like/dislike tests - no admin token")
+            return
+
+        print("\n👍 Testing Playlist Like/Dislike with String ID...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+
+        # First create a test playlist
+        success, response = self.test_api_call("POST", "/api/playlists", 200, 
+                                             {"name": "Test Like Playlist", "description": "Testing like/dislike", "is_public": True}, 
+                                             headers=auth_headers, description="(Create Test Playlist for Like/Dislike)")
+        
+        if success and response:
+            try:
+                playlist_data = response.json()
+                playlist_id = playlist_data.get("playlist", {}).get("_id")
+                
+                if playlist_id:
+                    # Test liking the playlist with string content_id
+                    like_data = {
+                        "content_id": playlist_id,  # String ID
+                        "content_type": "playlist",
+                        "rating": "like"
+                    }
+                    self.test_api_call("POST", "/api/user/ratings", 200, 
+                                     like_data, headers=auth_headers, 
+                                     description="(Like playlist with string ID)")
+                    
+                    # Test getting ratings count for the playlist
+                    self.test_api_call("GET", f"/api/ratings/counts?content_id={playlist_id}&content_type=playlist", 200, 
+                                     description="(Get playlist ratings count)")
+                    
+                    # Test disliking the playlist
+                    dislike_data = {
+                        "content_id": playlist_id,
+                        "content_type": "playlist", 
+                        "rating": "dislike"
+                    }
+                    self.test_api_call("POST", "/api/user/ratings", 200, 
+                                     dislike_data, headers=auth_headers, 
+                                     description="(Dislike playlist with string ID)")
+                    
+                    # Clean up - delete test playlist
+                    self.test_api_call("DELETE", f"/api/playlists/{playlist_id}", 200, 
+                                     headers=auth_headers, description="(Delete Test Like Playlist)")
+                    
+            except Exception as e:
+                self.log_test("Playlist Like/Dislike String ID", False, f"Failed to parse response: {str(e)}")
+
     def run_all_tests(self):
         """Run comprehensive API tests"""
         print("🚀 Starting WaveWatch API Tests...")
@@ -380,6 +446,9 @@ class WaveWatchAPITester:
         
         # Test movies adult content parameter
         self.test_movies_adult_content_param()
+        
+        # Test playlist like/dislike with string ID
+        self.test_playlist_like_dislike_string_id()
         
         # Print summary
         print(f"\n📊 Test Summary:")

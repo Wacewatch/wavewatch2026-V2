@@ -51,6 +51,26 @@ export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, in
   const btnRef = useRef(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+
+  const createAndAdd = async (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!newName.trim()) return;
+    try {
+      const { data } = await API.post('/api/playlists', { name: newName.trim(), description: '', is_public: false });
+      const pid = data.playlist?._id;
+      if (pid) {
+        await API.post(`/api/playlists/${pid}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath });
+        toast({ title: `"${newName}" creee et contenu ajoute` });
+        setAddedTo(p => new Set(p).add(pid));
+      }
+      setNewName(''); setCreating(false);
+      // Refresh playlists
+      API.get('/api/playlists').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {});
+    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+  };
+
   const toggle = (e) => {
     e.preventDefault(); e.stopPropagation();
     if (!user) { toast({ title: 'Connectez-vous', variant: 'destructive' }); return; }
@@ -104,7 +124,16 @@ export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, in
         }}
         onClick={e => { e.preventDefault(); e.stopPropagation(); }}
       >
-        <div className="p-2 text-xs font-bold border-b" style={{ borderColor: 'hsl(var(--border))' }}>Ajouter a une playlist</div>
+        <div className="p-2 text-xs font-bold border-b flex items-center justify-between" style={{ borderColor: 'hsl(var(--border))' }}>
+          <span>Ajouter a une playlist</span>
+          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCreating(!creating); }} className="text-blue-400 hover:underline text-[10px]">{creating ? 'Annuler' : '+ Nouvelle'}</button>
+        </div>
+        {creating && (
+          <form onSubmit={createAndAdd} className="p-2 border-b flex gap-1" style={{ borderColor: 'hsl(var(--border))' }} onClick={e => e.stopPropagation()}>
+            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nom..." className="flex-1 px-2 py-1 text-xs rounded border outline-none" style={{ backgroundColor: 'hsl(var(--input))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }} autoFocus data-testid="quick-create-playlist-input" />
+            <button type="submit" className="px-2 py-1 text-xs rounded text-white" style={{ backgroundColor: 'hsl(var(--primary))' }} data-testid="quick-create-playlist-btn">OK</button>
+          </form>
+        )}
         <div className="max-h-48 overflow-y-auto">
           {playlists.length === 0 ? (
             <div className="p-3 text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
