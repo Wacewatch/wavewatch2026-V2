@@ -2,41 +2,37 @@
 
 ## What's Been Implemented
 
-### Sessions 1-6
-- Admin modules, TV/Retrogaming fix, Recherche globale, 6 Themes CSS, Series resume/mark all
-- Promos LiveWatch/Sports-Stream, VIP Playlists, Calendrier, Collections detail, TMDB Totals
-- All modules as sliders, Badges S/E, Notifications avancees, Sync Admin Modules
+### Sessions 1-6 
+- Admin modules, TV/Retrogaming fix, Recherche globale, Themes CSS, Series, Notifications
 
-### Session 7 - Footer Avis communaute
-### Session 8 - Grid Layout Fix + Advanced Filters (Platform, Sort, Year)
+### Session 7-8
+- Footer Avis, Grid Layout Fix, Advanced Filters (Platform/Sort/Year)
 
 ### Session 9 - Batch Fixes
-- Watch Party removed, LiveWatch Secours removed, Scroll-to-top fix
-- Like/Dislike counts on detail pages, Dashboard Recommendations removed
-- VIP purchase buttons disabled, Playlist popup z-index fix
+- Watch Party removed, LiveWatch Secours removed, Scroll fix, Like/Dislike counts, VIP disabled
 
-### Session 10 (Jan 2026) - Universal Playlists & Grades
-- **Universal Playlists**: PlaylistItemAdd accepts Any content_id (string or int) + any content_type (movie, tv, actor, episode, music, game, ebook, software, tv_channel, radio)
-- **Playlist Popup Fixed**: Uses ReactDOM.createPortal to render on document.body, no more z-index/overflow issues
-- **Grade Hierarchy**: serialize_user() gives uploader/admin users is_vip=true and is_vip_plus=true automatically
-- **Playlist Sorting**: Discover playlists supports sort by recent/likes/size, uploaders always shown first
-- **Profile Preferences**: Adult content filter (include_adult param), hide watched content (ContentCard hides watched items), auto-mark watched, anti-spoiler mode
-- **Backend**: DELETE /api/playlists/{id}/items/{content_id} accepts string IDs
+### Session 10 - Universal Playlists & Grades
+- Universal playlists, popup fix (portal), grade hierarchy, playlist sorting, profile prefs base
 
-## Tech Stack
-- Frontend: React 18 + Tailwind CSS (CRA), Backend: FastAPI, Database: MongoDB, API: TMDB
+### Session 11 (Jan 2026) - Anti-Spoiler, Auto-Mark, Changelogs
+- **Anti-Spoiler Mode**: Episode still images blurred + synopsis hidden when hide_spoilers=true and episode not watched
+- **Auto-Mark Watched**: Clicking "Regarder" on movie/series/episode auto-marks as watched (based on auto_mark_watched preference)
+- **Playlist Button on ALL Detail Pages**: Added AddToPlaylistButton to Episode, Ebook, Software, Game, Music, Actor detail pages
+- **Quick-Add Create**: "+" popup now has "+ Nouvelle" button to create playlist inline
+- **Playlist Like/Dislike Fixed**: Changed parseInt(id) to string id for MongoDB ObjectId compatibility
+- **Changelogs from Admin**: ChangelogsPage now fetches from /api/changelogs (merges admin-created entries with defaults)
+- **Admin Module Order**: HomePage reads module_order setting to render modules in admin-defined order
 
 ## Grade Hierarchy
-1. Admin (full access + VIP + VIP+)
+1. Admin (full + VIP + VIP+)
 2. Uploader (VIP + VIP+ benefits)
 3. VIP+
 4. VIP
 5. Membre
 
 ## Admin Credentials
-- Email: admin@wavewatch.com
-- Password: WaveWatch2026!
+- Email: admin@wavewatch.com / Password: WaveWatch2026!
 
 ## Backlog
-- [ ] Full anti-spoiler mode (hide episode synopsis/images for unwatched episodes)
-- [ ] Auto-mark watched on play click integration
+- [ ] Full video player integration
+- [ ] Notification push for new episodes
