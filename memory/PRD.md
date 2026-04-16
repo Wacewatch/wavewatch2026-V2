@@ -1,20 +1,15 @@
 # WaveWatch PRD
 
-## Session 13 (Jan 2026) - Detail Pages, Anti-Spoiler, Playlists Enhanced
+## Session 14 (Jan 2026) - Sliders, Favoris Universels, Notifications Playlists
 
 ### Changes
-- **Badges Disponible/A venir** : Films (basé sur release_date), Series (En cours/Terminee/Annulee/En production), Episodes (basé sur air_date)
-- **Plus de details** : Budget, Recettes, Langue, Pays, Diffuseur, Prochain episode
-- **Anti-spoiler saisons** : Images floutees + synopsis masque pour episodes non vus (SeasonDetailPage)
-- **Episodes en playlist** : Poster de la serie + overlay still_path + badge S/E + nom de la serie
-- **Popup playlist agrandi** : Modal centree w-80, "+ Nouvelle playlist", bouton "Fermer", texte lisible
-- **Masquer contenu vu** : display:none au lieu de return null (plus de trous)
-- **Limite pages supprimee** : Plus de cap a 500, toutes les pages TMDB accessibles
-- **Notifications basees sur air_date** : Check des episodes par date de diffusion TMDB
+- **Similar en slider** : Films similaires et Series similaires sont maintenant en ligne horizontale scrollable
+- **Favoris universels** : content_id accepte string/int - tout est favori-able (ebook, logiciel, playlist, chaine TV, radio, etc)
+- **Page Favoris refaite** : Badges par type, filtres (Film/Serie/Ebook/etc), dates "Ajoute le", bouton supprimer, navigation correcte
+- **Notifications playlist** : Bouton cloche sur les playlists d'autres users - notification push quand du contenu est ajoute
+- **Favoris playlist** : Bouton coeur pour mettre une playlist en favori
+- **Retrogaming** : QuickPlaylistAdd sur les cartes de jeux retro
+- **Backend** : POST /api/playlists/{id}/subscribe, GET /check, notification auto sur ajout d'item
 
 ## Admin Credentials
 - Email: admin@wavewatch.com / Password: WaveWatch2026!
-
-## Backlog
-- [ ] Retrogaming QuickPlaylistAdd
-- [ ] Notifications par email (optionnel)
