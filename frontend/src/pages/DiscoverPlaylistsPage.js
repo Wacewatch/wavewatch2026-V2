@@ -18,20 +18,20 @@ export default function DiscoverPlaylistsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [sortBy, setSortBy] = useState('recent');
 
   useEffect(() => {
     setLoading(true);
-    API.get(`/api/playlists/public/enhanced?page=${page}`).then(({ data }) => {
+    API.get(`/api/playlists/public/enhanced?page=${page}&sort_by=${sortBy}`).then(({ data }) => {
       setPlaylists(data.playlists || []);
       setTotal(data.total || 0);
     }).catch(() => {
-      // Fallback to original endpoint
       API.get(`/api/playlists/public/discover?page=${page}`).then(({ data }) => {
         setPlaylists(data.playlists || []);
         setTotal(data.total || 0);
       }).catch(() => {});
     }).finally(() => setLoading(false));
-  }, [page]);
+  }, [page, sortBy]);
 
   const colors = ['from-blue-600 to-purple-600', 'from-pink-600 to-red-600', 'from-green-600 to-teal-600', 'from-orange-600 to-yellow-600', 'from-indigo-600 to-blue-600', 'from-purple-600 to-pink-600'];
 
@@ -43,6 +43,19 @@ export default function DiscoverPlaylistsPage() {
         <Globe className="w-12 h-12 text-green-400 mx-auto mb-3" />
         <h1 className="text-3xl font-bold mb-2">Decouvrir des Playlists</h1>
         <p className="text-muted-foreground">Explorez les playlists partagees par la communaute ({total} playlists publiques)</p>
+      </div>
+
+      {/* Sort options */}
+      <div className="flex flex-wrap items-center gap-2 mb-6 justify-center">
+        {[
+          { value: 'recent', label: 'Recentes' },
+          { value: 'likes', label: 'Plus aimees' },
+          { value: 'size', label: 'Plus grandes' },
+        ].map(s => (
+          <button key={s.value} onClick={() => { setSortBy(s.value); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${sortBy === s.value ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
+            data-testid={`sort-${s.value}`}>{s.label}</button>
+        ))}
       </div>
 
       {playlists.length === 0 ? (

@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import ContentCard from '../components/ContentCard';
 import { LoadingGrid } from '../components/Loading';
+import { useAuth } from '../contexts/AuthContext';
 import { Filter, SlidersHorizontal, ChevronDown, X } from 'lucide-react';
 
 const SORT_OPTIONS = [
@@ -29,6 +30,7 @@ const POPULAR_PROVIDERS = [
 ];
 
 export default function MoviesPage() {
+  const { user } = useAuth();
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -53,12 +55,13 @@ export default function MoviesPage() {
     if (genreFilter) endpoint += `&genre=${genreFilter}`;
     if (providerFilter) endpoint += `&provider=${providerFilter}`;
     if (yearFilter) endpoint += `&year=${yearFilter}`;
+    if (user?.show_adult_content) endpoint += '&include_adult=true';
 
     API.get(endpoint).then(({ data }) => {
       setMovies(data.results || []);
       setTotalPages(Math.min(data.total_pages || 1, 500));
     }).catch(() => {}).finally(() => setLoading(false));
-  }, [page, genreFilter, sortBy, providerFilter, yearFilter]);
+  }, [page, genreFilter, sortBy, providerFilter, yearFilter, user?.show_adult_content]);
 
   const updateFilter = (key, value) => {
     const params = new URLSearchParams(searchParams);

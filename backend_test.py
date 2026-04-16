@@ -222,6 +222,123 @@ class WaveWatchAPITester:
         # Test with missing parameters (should handle gracefully)
         self.test_api_call("GET", "/api/ratings/counts", 200, description="(Ratings Counts - No params)")
 
+    def test_universal_playlists(self):
+        """Test universal playlist functionality with any content type"""
+        if not self.admin_token:
+            print("❌ Skipping universal playlist tests - no admin token")
+            return
+
+        print("\n📋 Testing Universal Playlists...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+
+        # First create a test playlist
+        success, response = self.test_api_call("POST", "/api/playlists", 200, 
+                                             {"name": "Test Universal Playlist", "description": "Testing universal content", "is_public": False}, 
+                                             headers=auth_headers, description="(Create Test Playlist)")
+        
+        if success and response:
+            try:
+                playlist_data = response.json()
+                playlist_id = playlist_data.get("playlist", {}).get("_id")
+                
+                if playlist_id:
+                    # Test adding different content types to playlist
+                    content_types = [
+                        {"content_id": 550, "content_type": "movie", "title": "Fight Club"},
+                        {"content_id": 1399, "content_type": "tv", "title": "Game of Thrones"},
+                        {"content_id": "actor_123", "content_type": "actor", "title": "Brad Pitt"},
+                        {"content_id": "episode_456", "content_type": "episode", "title": "S01E01"},
+                        {"content_id": "music_789", "content_type": "music", "title": "Test Song"},
+                        {"content_id": "game_101", "content_type": "game", "title": "Test Game"},
+                        {"content_id": "ebook_202", "content_type": "ebook", "title": "Test Book"},
+                        {"content_id": "software_303", "content_type": "software", "title": "Test Software"},
+                        {"content_id": "tv_channel_404", "content_type": "tv_channel", "title": "Test Channel"},
+                        {"content_id": "radio_505", "content_type": "radio", "title": "Test Radio"}
+                    ]
+                    
+                    for content in content_types:
+                        self.test_api_call("POST", f"/api/playlists/{playlist_id}/items", 200, 
+                                         content, headers=auth_headers, 
+                                         description=f"(Add {content['content_type']} to playlist)")
+                    
+                    # Test removing items with string IDs
+                    self.test_api_call("DELETE", f"/api/playlists/{playlist_id}/items/actor_123", 200, 
+                                     headers=auth_headers, description="(Remove string ID from playlist)")
+                    
+                    # Clean up - delete test playlist
+                    self.test_api_call("DELETE", f"/api/playlists/{playlist_id}", 200, 
+                                     headers=auth_headers, description="(Delete Test Playlist)")
+                    
+            except Exception as e:
+                self.log_test("Universal Playlist Content Addition", False, f"Failed to parse response: {str(e)}")
+
+    def test_grade_hierarchy(self):
+        """Test grade hierarchy - admin/uploader users get VIP+VIP+ perks"""
+        if not self.admin_token:
+            print("❌ Skipping grade hierarchy tests - no admin token")
+            return
+
+        print("\n👑 Testing Grade Hierarchy...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+
+        # Test admin user profile (should have is_vip=true and is_vip_plus=true)
+        success, response = self.test_api_call("GET", "/api/auth/me", 200, 
+                                             headers=auth_headers, description="(Admin User Profile)")
+        
+        if success and response:
+            try:
+                user_data = response.json()
+                user = user_data.get("user", {})
+                
+                is_admin = user.get("is_admin", False)
+                is_uploader = user.get("is_uploader", False)
+                is_vip = user.get("is_vip", False)
+                is_vip_plus = user.get("is_vip_plus", False)
+                
+                # Check grade hierarchy logic
+                if is_admin or is_uploader:
+                    if is_vip and is_vip_plus:
+                        self.log_test("Grade Hierarchy - Admin/Uploader gets VIP+VIP+", True)
+                    else:
+                        self.log_test("Grade Hierarchy - Admin/Uploader gets VIP+VIP+", False, 
+                                    f"Admin/Uploader should have VIP+VIP+ but got vip={is_vip}, vip_plus={is_vip_plus}")
+                else:
+                    self.log_test("Grade Hierarchy - User Role Check", False, "Test user should be admin or uploader")
+                    
+            except Exception as e:
+                self.log_test("Grade Hierarchy Response Parse", False, f"Failed to parse response: {str(e)}")
+
+    def test_enhanced_playlists_endpoint(self):
+        """Test enhanced playlists endpoint with sorting"""
+        print("\n🔍 Testing Enhanced Playlists Endpoint...")
+        
+        # Test enhanced playlists endpoint with different sort options
+        sort_options = ["recent", "likes", "size"]
+        
+        for sort_by in sort_options:
+            self.test_api_call("GET", f"/api/playlists/public/enhanced?sort_by={sort_by}", 200, 
+                             description=f"(Enhanced Playlists - Sort by {sort_by})")
+        
+        # Test with pagination
+        self.test_api_call("GET", "/api/playlists/public/enhanced?page=1&sort_by=recent", 200, 
+                         description="(Enhanced Playlists - With Pagination)")
+
+    def test_movies_adult_content_param(self):
+        """Test movies endpoint includes adult content parameter"""
+        if not self.admin_token:
+            print("❌ Skipping adult content tests - no admin token")
+            return
+
+        print("\n🔞 Testing Movies Adult Content Parameter...")
+        auth_headers = {"Authorization": f"Bearer {self.admin_token}"}
+
+        # Test TMDB discover endpoint with include_adult parameter
+        self.test_api_call("GET", "/api/tmdb/discover/movie?include_adult=true", 200, 
+                         headers=auth_headers, description="(Movies with Adult Content)")
+        
+        self.test_api_call("GET", "/api/tmdb/discover/movie?include_adult=false", 200, 
+                         headers=auth_headers, description="(Movies without Adult Content)")
+
     def run_all_tests(self):
         """Run comprehensive API tests"""
         print("🚀 Starting WaveWatch API Tests...")
@@ -251,6 +368,18 @@ class WaveWatchAPITester:
         
         # Test ratings endpoints
         self.test_ratings_endpoints()
+        
+        # Test universal playlists functionality
+        self.test_universal_playlists()
+        
+        # Test grade hierarchy
+        self.test_grade_hierarchy()
+        
+        # Test enhanced playlists endpoint
+        self.test_enhanced_playlists_endpoint()
+        
+        # Test movies adult content parameter
+        self.test_movies_adult_content_param()
         
         # Print summary
         print(f"\n📊 Test Summary:")

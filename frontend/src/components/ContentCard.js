@@ -5,6 +5,7 @@ import { TMDB_IMG } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import API from '../lib/api';
+import ReactDOM from 'react-dom';
 
 // Global context for user content status (favorites + watched)
 const StatusContext = createContext({ favorites: new Set(), watched: new Set(), loaded: false });
@@ -40,19 +41,15 @@ export function useContentStatus() {
   return useContext(StatusContext);
 }
 
-function QuickPlaylistAdd({ contentId, contentType, title, posterPath, inline = false }) {
+// Universal Quick-Add to Playlist - works with any content type
+export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, inline = false }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [playlists, setPlaylists] = useState([]);
   const [addedTo, setAddedTo] = useState(new Set());
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
 
   const toggle = (e) => {
     e.preventDefault(); e.stopPropagation();
@@ -61,9 +58,18 @@ function QuickPlaylistAdd({ contentId, contentType, title, posterPath, inline = 
       API.get('/api/playlists').then(({ data }) => {
         setPlaylists(data.playlists || []);
         const s = new Set();
-        (data.playlists || []).forEach(p => { if (p.items?.some(i => i.content_id === contentId && i.content_type === contentType)) s.add(p._id); });
+        (data.playlists || []).forEach(p => {
+          if (p.items?.some(i => String(i.content_id) === String(contentId) && i.content_type === contentType)) s.add(p._id);
+        });
         setAddedTo(s);
       }).catch(() => {});
+      // Calculate position
+      if (btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        const top = Math.max(10, rect.top - 200);
+        const left = Math.min(rect.left, window.innerWidth - 230);
+        setPos({ top, left });
+      }
     }
     setOpen(!open);
   };
@@ -71,40 +77,66 @@ function QuickPlaylistAdd({ contentId, contentType, title, posterPath, inline = 
   const addTo = async (e, pid) => {
     e.preventDefault(); e.stopPropagation();
     if (addedTo.has(pid)) {
-      try { await API.delete(`/api/playlists/${pid}/items/${contentId}`); setAddedTo(p => { const n = new Set(p); n.delete(pid); return n; }); toast({ title: 'Retire' }); } catch {}
+      try {
+        await API.delete(`/api/playlists/${pid}/items/${contentId}`);
+        setAddedTo(p => { const n = new Set(p); n.delete(pid); return n; });
+        toast({ title: 'Retire' });
+      } catch {}
       return;
     }
     try {
-      await API.post(`/api/playlists/${pid}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath });
-      setAddedTo(p => new Set(p).add(pid)); toast({ title: 'Ajoute !' });
+      await API.post(`/api/playlists/${pid}/items`, {
+        content_id: contentId, content_type: contentType, title, poster_path: posterPath
+      });
+      setAddedTo(p => new Set(p).add(pid));
+      toast({ title: 'Ajoute !' });
     } catch {}
   };
 
+  const dropdown = open ? ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[9999]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}>
+      <div
+        className="absolute w-56 rounded-lg shadow-2xl overflow-hidden border"
+        style={{
+          top: pos.top, left: pos.left,
+          backgroundColor: 'hsl(var(--card))',
+          borderColor: 'hsl(var(--border))'
+        }}
+        onClick={e => { e.preventDefault(); e.stopPropagation(); }}
+      >
+        <div className="p-2 text-xs font-bold border-b" style={{ borderColor: 'hsl(var(--border))' }}>Ajouter a une playlist</div>
+        <div className="max-h-48 overflow-y-auto">
+          {playlists.length === 0 ? (
+            <div className="p-3 text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+              <p>Aucune playlist</p>
+              <Link to="/playlists" className="text-blue-400 hover:underline mt-1 block" onClick={() => setOpen(false)}>Creer une playlist</Link>
+            </div>
+          ) :
+            playlists.map(p => (
+              <button key={p._id} onClick={(e) => addTo(e, p._id)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/50 transition-colors text-xs"
+                data-testid={`playlist-option-${p._id}`}>
+                {addedTo.has(p._id) ? <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> : <ListMusic className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />}
+                <span className="truncate" style={{ color: 'hsl(var(--foreground))' }}>{p.name}</span>
+                <span className="ml-auto text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{p.items?.length || 0}</span>
+              </button>
+            ))
+          }
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
   return (
-    <div ref={ref} className={inline ? 'relative' : 'absolute bottom-2 right-2 z-10'}>
-      <button onClick={toggle} className={`w-8 h-8 rounded-full bg-blue-600/90 hover:bg-blue-500 text-white flex items-center justify-center transition-colors shadow-lg ${inline ? '' : 'opacity-0 group-hover:opacity-100'}`} data-testid={`quick-add-${contentId}`}>
+    <>
+      <button ref={btnRef} onClick={toggle}
+        className={`w-8 h-8 rounded-full bg-blue-600/90 hover:bg-blue-500 text-white flex items-center justify-center transition-colors shadow-lg ${inline ? '' : 'opacity-0 group-hover:opacity-100'}`}
+        data-testid={`quick-add-${contentId}`}>
         <Plus className="w-4 h-4" />
       </button>
-      {open && (
-        <div className="fixed inset-0 z-[100]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}>
-          <div className="absolute w-52 bg-card border border-border rounded-lg shadow-2xl z-[101] overflow-hidden"
-            style={{ bottom: 'auto', top: ref.current ? Math.max(10, ref.current.getBoundingClientRect().top - 180) : 100, left: ref.current ? Math.min(ref.current.getBoundingClientRect().left, window.innerWidth - 220) : 100 }}
-            onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
-            <div className="p-2 text-xs font-bold border-b border-border">Ajouter a...</div>
-            <div className="max-h-40 overflow-y-auto">
-              {playlists.length === 0 ? <p className="text-xs text-muted-foreground p-2">Aucune playlist</p> :
-                playlists.map(p => (
-                  <button key={p._id} onClick={(e) => addTo(e, p._id)} className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-secondary/50 transition-colors text-xs">
-                    {addedTo.has(p._id) ? <Check className="w-3 h-3 text-green-400 flex-shrink-0" /> : <ListMusic className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
-                    <span className="truncate">{p.name}</span>
-                  </button>
-                ))
-              }
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {dropdown}
+    </>
   );
 }
 
@@ -123,6 +155,10 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
   const key = `${contentType}-${item.id}`;
   const isFav = favorites.has(key);
   const isWatched = watched.has(key);
+
+  // Hide watched content if user preference is set
+  const hideWatched = user?.hide_watched_content && isWatched;
+  if (hideWatched) return null;
 
   const quickMarkWatched = (e) => {
     e.preventDefault(); e.stopPropagation();

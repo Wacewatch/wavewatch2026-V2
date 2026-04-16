@@ -112,6 +112,10 @@ def serialize_user(user: dict) -> dict:
     if "_id" in u:
         u["_id"] = str(u["_id"])
     u.pop("password_hash", None)
+    # Grade hierarchy: admin > uploader (gets VIP+VIP+ perks) > VIP+ > VIP > member
+    if u.get("is_uploader") or u.get("is_admin"):
+        u["is_vip"] = True
+        u["is_vip_plus"] = True
     return u
 
 # Seed admin
@@ -231,10 +235,11 @@ class PlaylistCreate(BaseModel):
     is_public: Optional[bool] = False
 
 class PlaylistItemAdd(BaseModel):
-    content_id: int
-    content_type: str
+    content_id: Any  # Accept int or string for universal content
+    content_type: str  # movie, tv, actor, episode, music, game, ebook, software, tv_channel, radio
     title: str
     poster_path: Optional[str] = None
+    metadata: Optional[dict] = None
 
 class FavoriteToggle(BaseModel):
     content_id: int
@@ -654,16 +659,25 @@ async def add_playlist_item(playlist_id: str, req: PlaylistItemAdd, user: dict =
     playlist = await db.playlists.find_one({"_id": ObjectId(playlist_id), "user_id": user["_id"]})
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist non trouvee")
-    item = {"content_id": req.content_id, "content_type": req.content_type, "title": req.title, "poster_path": req.poster_path, "added_at": datetime.now(timezone.utc).isoformat()}
+    item = {"content_id": req.content_id, "content_type": req.content_type, "title": req.title, "poster_path": req.poster_path, "metadata": req.metadata or {}, "added_at": datetime.now(timezone.utc).isoformat()}
     await db.playlists.update_one({"_id": ObjectId(playlist_id)}, {"$push": {"items": item}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}})
     return {"success": True}
 
 @app.delete("/api/playlists/{playlist_id}/items/{content_id}")
-async def remove_playlist_item(playlist_id: str, content_id: int, user: dict = Depends(get_current_user)):
+async def remove_playlist_item(playlist_id: str, content_id: str, user: dict = Depends(get_current_user)):
+    # Try both string and int match for universal content support
     await db.playlists.update_one(
         {"_id": ObjectId(playlist_id), "user_id": user["_id"]},
         {"$pull": {"items": {"content_id": content_id}}}
     )
+    try:
+        cid_int = int(content_id)
+        await db.playlists.update_one(
+            {"_id": ObjectId(playlist_id), "user_id": user["_id"]},
+            {"$pull": {"items": {"content_id": cid_int}}}
+        )
+    except:
+        pass
     return {"success": True}
 
 @app.delete("/api/playlists/{playlist_id}")
