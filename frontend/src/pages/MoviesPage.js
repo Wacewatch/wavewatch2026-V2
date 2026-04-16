@@ -59,7 +59,7 @@ export default function MoviesPage() {
 
     API.get(endpoint).then(({ data }) => {
       setMovies(data.results || []);
-      setTotalPages(Math.min(data.total_pages || 1, 500));
+      setTotalPages(data.total_pages || 1);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [page, genreFilter, sortBy, providerFilter, yearFilter, user?.show_adult_content]);
 

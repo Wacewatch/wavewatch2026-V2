@@ -114,43 +114,50 @@ export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, in
   };
 
   const dropdown = open ? ReactDOM.createPortal(
-    <div className="fixed inset-0 z-[9999]" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}>
       <div
-        className="absolute w-56 rounded-lg shadow-2xl overflow-hidden border"
+        className="w-80 rounded-xl shadow-2xl overflow-hidden border"
         style={{
-          top: pos.top, left: pos.left,
           backgroundColor: 'hsl(var(--card))',
           borderColor: 'hsl(var(--border))'
         }}
         onClick={e => { e.preventDefault(); e.stopPropagation(); }}
       >
-        <div className="p-2 text-xs font-bold border-b flex items-center justify-between" style={{ borderColor: 'hsl(var(--border))' }}>
-          <span>Ajouter a une playlist</span>
-          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCreating(!creating); }} className="text-blue-400 hover:underline text-[10px]">{creating ? 'Annuler' : '+ Nouvelle'}</button>
+        <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: 'hsl(var(--border))' }}>
+          <span className="text-sm font-bold" style={{ color: 'hsl(var(--foreground))' }}>Ajouter a une playlist</span>
+          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCreating(!creating); }} className="text-blue-400 hover:underline text-xs font-medium">{creating ? 'Annuler' : '+ Nouvelle playlist'}</button>
         </div>
         {creating && (
-          <form onSubmit={createAndAdd} className="p-2 border-b flex gap-1" style={{ borderColor: 'hsl(var(--border))' }} onClick={e => e.stopPropagation()}>
-            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nom..." className="flex-1 px-2 py-1 text-xs rounded border outline-none" style={{ backgroundColor: 'hsl(var(--input))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }} autoFocus data-testid="quick-create-playlist-input" />
-            <button type="submit" className="px-2 py-1 text-xs rounded text-white" style={{ backgroundColor: 'hsl(var(--primary))' }} data-testid="quick-create-playlist-btn">OK</button>
+          <form onSubmit={createAndAdd} className="p-3 border-b flex gap-2" style={{ borderColor: 'hsl(var(--border))' }} onClick={e => e.stopPropagation()}>
+            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} placeholder="Nom de la playlist..." className="flex-1 px-3 py-2 text-sm rounded-lg border outline-none" style={{ backgroundColor: 'hsl(var(--input))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }} autoFocus data-testid="quick-create-playlist-input" />
+            <button type="submit" className="px-4 py-2 text-sm rounded-lg text-white font-medium" style={{ backgroundColor: 'hsl(var(--primary))' }} data-testid="quick-create-playlist-btn">Creer</button>
           </form>
         )}
-        <div className="max-h-48 overflow-y-auto">
+        <div className="max-h-64 overflow-y-auto p-1">
           {playlists.length === 0 ? (
-            <div className="p-3 text-xs text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              <p>Aucune playlist</p>
-              <Link to="/playlists" className="text-blue-400 hover:underline mt-1 block" onClick={() => setOpen(false)}>Creer une playlist</Link>
+            <div className="p-6 text-sm text-center" style={{ color: 'hsl(var(--muted-foreground))' }}>
+              <p className="mb-2">Aucune playlist</p>
+              <Link to="/playlists" className="text-blue-400 hover:underline" onClick={() => setOpen(false)}>Creer ma premiere playlist</Link>
             </div>
           ) :
             playlists.map(p => (
               <button key={p._id} onClick={(e) => addTo(e, p._id)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-secondary/50 transition-colors text-xs"
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg hover:bg-secondary/50 transition-colors"
                 data-testid={`playlist-option-${p._id}`}>
-                {addedTo.has(p._id) ? <Check className="w-3.5 h-3.5 text-green-400 flex-shrink-0" /> : <ListMusic className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />}
-                <span className="truncate" style={{ color: 'hsl(var(--foreground))' }}>{p.name}</span>
-                <span className="ml-auto text-[10px]" style={{ color: 'hsl(var(--muted-foreground))' }}>{p.items?.length || 0}</span>
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${addedTo.has(p._id) ? 'bg-green-500/20' : 'bg-secondary'}`}>
+                  {addedTo.has(p._id) ? <Check className="w-4 h-4 text-green-400" /> : <ListMusic className="w-4 h-4" style={{ color: 'hsl(var(--muted-foreground))' }} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--foreground))' }}>{p.name}</p>
+                  <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{p.items?.length || 0} elements</p>
+                </div>
+                {addedTo.has(p._id) && <span className="text-xs text-green-400 flex-shrink-0">Ajoute</span>}
               </button>
             ))
           }
+        </div>
+        <div className="p-2 border-t" style={{ borderColor: 'hsl(var(--border))' }}>
+          <button onClick={(e) => { e.stopPropagation(); setOpen(false); }} className="w-full py-2 text-sm rounded-lg hover:bg-secondary/50 transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>Fermer</button>
         </div>
       </div>
     </div>,
@@ -187,7 +194,6 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
 
   // Hide watched content if user preference is set
   const hideWatched = user?.hide_watched_content && isWatched;
-  if (hideWatched) return null;
 
   const quickMarkWatched = (e) => {
     e.preventDefault(); e.stopPropagation();
@@ -202,7 +208,7 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
   };
 
   return (
-    <div className="relative group" data-testid={`content-card-${item.id}`}>
+    <div className="relative group" data-testid={`content-card-${item.id}`} style={hideWatched ? { display: 'none' } : undefined}>
       <Link to={`${basePath}/${item.id}`} className="block">
         <div className="overflow-hidden rounded-lg border border-border bg-card transition-transform duration-200 group-hover:scale-105">
           <div className="relative aspect-[2/3]">

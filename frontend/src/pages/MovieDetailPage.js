@@ -115,6 +115,19 @@ export default function MovieDetailPage() {
                 <Link key={g.id} to={`/movies?genre=${g.id}`} className="px-3 py-1 text-sm rounded-full bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 transition-colors">{g.name}</Link>
               ))}
             </div>
+            {/* Release status badge */}
+            <div className="flex flex-wrap items-center gap-3">
+              {movie.release_date && new Date(movie.release_date) <= new Date() ? (
+                <span className="px-3 py-1 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-medium">Disponible</span>
+              ) : (
+                <span className="px-3 py-1 text-xs rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-medium">A venir {movie.release_date ? `le ${new Date(movie.release_date).toLocaleDateString('fr-FR')}` : ''}</span>
+              )}
+              {movie.status === 'Released' && <span className="text-xs text-muted-foreground">Sortie en salle</span>}
+              {movie.budget > 0 && <span className="text-xs text-muted-foreground">Budget : {(movie.budget / 1000000).toFixed(0)}M$</span>}
+              {movie.revenue > 0 && <span className="text-xs text-muted-foreground">Recettes : {(movie.revenue / 1000000).toFixed(0)}M$</span>}
+              {movie.original_language && <span className="text-xs text-muted-foreground">Langue : {movie.original_language.toUpperCase()}</span>}
+              {movie.production_countries?.length > 0 && <span className="text-xs text-muted-foreground">Pays : {movie.production_countries.map(c => c.name).join(', ')}</span>}
+            </div>
             <p className="text-base md:text-xl text-gray-200 leading-relaxed">{movie.overview}</p>
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3">

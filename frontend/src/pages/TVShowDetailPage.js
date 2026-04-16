@@ -146,6 +146,24 @@ export default function TVShowDetailPage() {
             <div className="flex flex-wrap gap-2">
               {show.genres?.map(g => <span key={g.id} className="px-3 py-1 text-sm rounded-full bg-gray-800 text-gray-300 border border-gray-700">{g.name}</span>)}
             </div>
+            {/* Details + Status */}
+            <div className="flex flex-wrap items-center gap-3">
+              {show.status === 'Returning Series' ? (
+                <span className="px-3 py-1 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30 font-medium">En cours de diffusion</span>
+              ) : show.status === 'Ended' ? (
+                <span className="px-3 py-1 text-xs rounded-full bg-zinc-500/20 text-zinc-400 border border-zinc-500/30 font-medium">Serie terminee</span>
+              ) : show.status === 'Canceled' ? (
+                <span className="px-3 py-1 text-xs rounded-full bg-red-500/20 text-red-400 border border-red-500/30 font-medium">Annulee</span>
+              ) : show.status === 'In Production' ? (
+                <span className="px-3 py-1 text-xs rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-medium">En production</span>
+              ) : null}
+              {show.next_episode_to_air && (
+                <span className="text-xs text-amber-400">Prochain ep. le {new Date(show.next_episode_to_air.air_date).toLocaleDateString('fr-FR')}</span>
+              )}
+              {show.original_language && <span className="text-xs text-muted-foreground">Langue : {show.original_language.toUpperCase()}</span>}
+              {show.networks?.length > 0 && <span className="text-xs text-muted-foreground">Diffuseur : {show.networks.map(n => n.name).join(', ')}</span>}
+              {show.production_countries?.length > 0 && <span className="text-xs text-muted-foreground">Pays : {show.production_countries.map(c => c.name).join(', ')}</span>}
+            </div>
             <p className="text-base md:text-xl text-gray-200 leading-relaxed">{show.overview}</p>
             
             {/* Action Buttons */}

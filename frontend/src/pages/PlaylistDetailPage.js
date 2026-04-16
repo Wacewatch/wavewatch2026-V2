@@ -546,10 +546,17 @@ export default function PlaylistDetailPage() {
               subtitle = `${item.metadata.series_name || ''} S${item.metadata.season_number || '?'}E${item.metadata.episode_number || '?'}`;
             }
 
-            // Poster: TMDB or fallback
-            const posterSrc = item.poster_path 
-              ? (item.poster_path.startsWith('http') ? item.poster_path : `${TMDB_IMG}/w300${item.poster_path}`)
-              : null;
+            // Poster: TMDB or fallback - for episodes, use series poster
+            let posterSrc = null;
+            if (item.content_type === 'episode' && item.metadata?.series_poster) {
+              posterSrc = `${TMDB_IMG}/w300${item.metadata.series_poster}`;
+            } else if (item.poster_path) {
+              posterSrc = item.poster_path.startsWith('http') ? item.poster_path : `${TMDB_IMG}/w300${item.poster_path}`;
+            }
+
+            // Episode still for overlay
+            const stillSrc = item.content_type === 'episode' && item.metadata?.still_path
+              ? `${TMDB_IMG}/w300${item.metadata.still_path}` : null;
 
             const card = (
               <div className="group relative" data-testid={`playlist-item-${item.content_id}`}>
@@ -561,6 +568,12 @@ export default function PlaylistDetailPage() {
                       <Icon className={`w-12 h-12 ${cfg.color} opacity-30`} />
                     </div>
                   )}
+                  {/* Episode still overlay at bottom */}
+                  {stillSrc && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1/3">
+                      <img src={stillSrc} alt="" className="w-full h-full object-cover" style={{ maskImage: 'linear-gradient(to top, black 60%, transparent)', WebkitMaskImage: 'linear-gradient(to top, black 60%, transparent)' }} />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <Play className="w-10 h-10 text-white" />
                   </div>
@@ -569,6 +582,12 @@ export default function PlaylistDetailPage() {
                       <Icon className="w-3 h-3" />{cfg.label}
                     </span>
                   </div>
+                  {/* Episode S/E indicator */}
+                  {item.content_type === 'episode' && item.metadata && (
+                    <div className="absolute bottom-2 right-2">
+                      <span className="px-2 py-0.5 text-xs font-bold rounded bg-black/70 text-white">S{item.metadata.season_number}E{item.metadata.episode_number}</span>
+                    </div>
+                  )}
                   {isOwner && (
                     <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeItem(item.content_id); }}
                       className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all"

@@ -67,7 +67,7 @@ export default function AnimePage() {
         (a.origin_country || []).includes('JP') || (a.original_language === 'ja')
       );
       setAnime(results.length > 0 ? results : data.results || []);
-      setTotalPages(Math.min(data.total_pages || 1, 500));
+      setTotalPages(data.total_pages || 1);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [page, genreFilter, sortBy, providerFilter, yearFilter]);
 
