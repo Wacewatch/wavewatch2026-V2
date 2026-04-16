@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import API from '../lib/api';
-import { Gamepad2, ExternalLink, Play, X, Search } from 'lucide-react';
+import { Gamepad2, ExternalLink, Play, X, Search, Heart } from 'lucide-react';
+import { QuickPlaylistAdd } from '../components/ContentCard';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 export default function RetrogamingPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [sources, setSources] = useState([]);
   const [playUrl, setPlayUrl] = useState(null);
   const [playName, setPlayName] = useState('');
@@ -77,6 +82,9 @@ export default function RetrogamingPage() {
                 )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                   <Play className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                  <QuickPlaylistAdd contentId={source._id || source.id || source.name} contentType="retrogaming" title={source.name} posterPath={source.logo_url || source.image_url} inline metadata={{ game_url: source.embed_url || source.url }} />
                 </div>
                 {source.is_active === false && (
                   <div className="absolute top-2 right-2 px-2 py-0.5 rounded text-xs bg-red-500/80 text-white">

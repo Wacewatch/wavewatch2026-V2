@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import API, { TMDB_IMG } from '../lib/api';
 import { LoadingSpinner } from '../components/Loading';
 import LikeDislike from '../components/LikeDislike';
-import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen, Crown, Upload, Sparkles, Image, Settings, Edit3, Check, Share2, Copy, Monitor, Radio, User, X } from 'lucide-react';
+import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen, Crown, Upload, Sparkles, Image, Settings, Edit3, Check, Share2, Copy, Monitor, Radio, User, X, Bell, BellOff, Heart } from 'lucide-react';
 
 const typeConfig = {
   movie: { icon: Film, label: 'Film', color: 'text-red-400', path: 'movies' },
@@ -154,6 +154,8 @@ export default function PlaylistDetailPage() {
   const [editDesc, setEditDesc] = useState('');
   const [customizeTab, setCustomizeTab] = useState('colors');
   const [embedModal, setEmbedModal] = useState(null);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
     // Inject animations CSS
@@ -168,7 +170,11 @@ export default function PlaylistDetailPage() {
       setPlaylist(data.playlist);
       setCoverUrl(data.playlist?.cover_url || '');
     }).catch(() => navigate('/playlists')).finally(() => setLoading(false));
-  }, [id, navigate]);
+    if (user) {
+      API.get(`/api/playlists/${id}/subscribe/check`).then(({ data }) => setIsSubscribed(data.subscribed)).catch(() => {});
+      API.get(`/api/user/favorites/check?content_id=${id}&content_type=playlist`).then(({ data }) => setIsFavorite(data.is_favorite)).catch(() => {});
+    }
+  }, [id, navigate, user]);
 
   const removeItem = async (contentId) => {
     try {
@@ -334,6 +340,20 @@ export default function PlaylistDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {user && !isOwner && (
+              <>
+                <button onClick={async () => {
+                  try { const { data } = await API.post('/api/user/favorites', { content_id: id, content_type: 'playlist', title: playlist.name, poster_path: playlist.cover_url }); setIsFavorite(data.is_favorite); toast({ title: data.is_favorite ? 'Ajoute aux favoris' : 'Retire des favoris' }); } catch {}
+                }} className={`px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-sm hover:bg-white/20 flex items-center gap-2 ${isFavorite ? 'border-red-500/50 text-red-400' : ''}`} data-testid="fav-playlist-btn">
+                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-red-400' : ''}`} />{isFavorite ? 'Favori' : 'Favoris'}
+                </button>
+                <button onClick={async () => {
+                  try { const { data } = await API.post(`/api/playlists/${id}/subscribe`); setIsSubscribed(data.subscribed); toast({ title: data.message }); } catch {}
+                }} className={`px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-sm hover:bg-white/20 flex items-center gap-2 ${isSubscribed ? 'border-amber-500/50 text-amber-400' : ''}`} data-testid="subscribe-playlist-btn">
+                  {isSubscribed ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}{isSubscribed ? 'Notifie' : 'Notifier'}
+                </button>
+              </>
+            )}
             {playlist.is_public && (
               <button onClick={copyShareLink} className="px-3 py-1.5 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-sm hover:bg-white/20 flex items-center gap-2" data-testid="share-btn">
                 <Share2 className="w-4 h-4" />Partager

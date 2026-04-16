@@ -182,8 +182,8 @@ export default function MovieDetailPage() {
             {similar.length > 0 && (
               <div className="space-y-4">
                 <h2 className="text-2xl font-bold text-white">Films similaires</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {similar.map(s => <ContentCard key={s.id} item={s} type="movie" />)}
+                <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                  {similar.map(s => <div key={s.id} className="flex-shrink-0 w-36"><ContentCard item={s} type="movie" /></div>)}
                 </div>
               </div>
             )}

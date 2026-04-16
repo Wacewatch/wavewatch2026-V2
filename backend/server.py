@@ -242,7 +242,7 @@ class PlaylistItemAdd(BaseModel):
     metadata: Optional[dict] = None
 
 class FavoriteToggle(BaseModel):
-    content_id: int
+    content_id: Any  # Accept int or string for universal favorites
     content_type: str
     title: str
     poster_path: Optional[str] = None
@@ -521,8 +521,13 @@ async def toggle_favorite(req: FavoriteToggle, user: dict = Depends(get_current_
     return {"action": "added", "is_favorite": True}
 
 @app.get("/api/user/favorites/check")
-async def check_favorite(content_id: int, content_type: str, user: dict = Depends(get_current_user)):
+async def check_favorite(content_id: str = Query(...), content_type: str = Query(...), user: dict = Depends(get_current_user)):
     existing = await db.favorites.find_one({"user_id": user["_id"], "content_id": content_id, "content_type": content_type})
+    if not existing:
+        try:
+            existing = await db.favorites.find_one({"user_id": user["_id"], "content_id": int(content_id), "content_type": content_type})
+        except:
+            pass
     return {"is_favorite": existing is not None}
 
 # ==================== WATCH HISTORY ====================
@@ -2404,3 +2409,47 @@ async def start_episode_checker():
             except:
                 pass
     asyncio.create_task(episode_check_loop())
+
+
+# =================== PLAYLIST NOTIFICATIONS ===================
+
+@app.post("/api/playlists/{playlist_id}/subscribe")
+async def subscribe_playlist(playlist_id: str, user: dict = Depends(get_current_user)):
+    """Toggle notification subscription for a playlist"""
+    existing = await db.playlist_subscriptions.find_one({"user_id": user["_id"], "playlist_id": playlist_id})
+    if existing:
+        await db.playlist_subscriptions.delete_one({"_id": existing["_id"]})
+        return {"subscribed": False, "message": "Notifications desactivees"}
+    await db.playlist_subscriptions.insert_one({
+        "user_id": user["_id"], "playlist_id": playlist_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    return {"subscribed": True, "message": "Notifications activees"}
+
+@app.get("/api/playlists/{playlist_id}/subscribe/check")
+async def check_playlist_subscription(playlist_id: str, user: dict = Depends(get_current_user)):
+    existing = await db.playlist_subscriptions.find_one({"user_id": user["_id"], "playlist_id": playlist_id})
+    return {"subscribed": existing is not None}
+
+# Override add_playlist_item to also send notifications
+_original_add_item = add_playlist_item
+@app.post("/api/playlists/{playlist_id}/items", include_in_schema=False)
+async def add_playlist_item_with_notif(playlist_id: str, req: PlaylistItemAdd, user: dict = Depends(get_current_user)):
+    result = await _original_add_item(playlist_id, req, user)
+    # Notify subscribers
+    try:
+        playlist = await db.playlists.find_one({"_id": ObjectId(playlist_id)})
+        if playlist:
+            subs = await db.playlist_subscriptions.find({"playlist_id": playlist_id}).to_list(500)
+            for sub in subs:
+                if sub["user_id"] != user["_id"]:
+                    await create_notification(
+                        sub["user_id"],
+                        f"Nouveau dans {playlist.get('name', 'Playlist')}",
+                        f"{req.title} a ete ajoute",
+                        "playlist_update",
+                        f"/playlists/{playlist_id}"
+                    )
+    except:
+        pass
+    return result
