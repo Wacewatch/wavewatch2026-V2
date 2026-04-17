@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff } from 'lucide-react';
+import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff, Download, Youtube } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
@@ -20,6 +20,8 @@ export default function TVShowDetailPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isWatched, setIsWatched] = useState(false);
   const [showStream, setShowStream] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
+  const [showTrailer, setShowTrailer] = useState(false);
   const [logoUrl, setLogoUrl] = useState(null);
   const [watchedEpisodes, setWatchedEpisodes] = useState({});
   const [continueInfo, setContinueInfo] = useState(null);
@@ -109,6 +111,11 @@ export default function TVShowDetailPage() {
   const poster = show.poster_path ? `${TMDB_IMG}/w500${show.poster_path}` : 'https://placehold.co/500x750/1a1a2e/ffffff?text=No+Image';
   const backdrop = show.backdrop_path ? `${TMDB_IMG}/original${show.backdrop_path}` : '';
   const streamUrl = `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-tv-${id}`;
+  const downloadUrl = `https://wwembed.wavewatch.xyz/api/v1/download/ww-tv-${id}`;
+  const getTrailerUrl = () => {
+    const trailer = show?.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube') || show?.videos?.results?.find(v => v.site === 'YouTube');
+    return trailer ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1` : null;
+  };
   const status = show.status === 'Ended' || show.status === 'Canceled' ? { label: 'Terminee', color: 'bg-red-600' } : { label: 'En cours', color: 'bg-green-600' };
 
   return (
@@ -181,6 +188,8 @@ export default function TVShowDetailPage() {
               )}
               
               <button onClick={() => { setShowStream(true); if (user?.auto_mark_watched !== false) markAsWatched(); }} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2"><Play className="w-5 h-5" />Regarder</button>
+              <button onClick={() => setShowDownload(true)} className="px-5 py-2.5 rounded-lg border border-blue-600 text-blue-400 hover:bg-blue-900/20 flex items-center gap-2"><Download className="w-5 h-5" />Telecharger</button>
+              <button onClick={() => setShowTrailer(true)} className="px-5 py-2.5 rounded-lg border border-orange-600 text-orange-400 hover:bg-orange-900/20 flex items-center gap-2"><Youtube className="w-5 h-5" />Bande-annonce</button>
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 ${isFavorite ? 'bg-yellow-900/20' : ''}`}>
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />Favoris
               </button>
@@ -297,6 +306,22 @@ export default function TVShowDetailPage() {
           <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium truncate">Streaming - {show.name}</h3><button onClick={() => setShowStream(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
             <div className="aspect-video"><iframe src={streamUrl} title={show.name} className="w-full h-full" allowFullScreen /></div>
+          </div>
+        </div>
+      )}
+      {showDownload && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowDownload(false)}>
+          <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium truncate">Telechargement - {show.name}</h3><button onClick={() => setShowDownload(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
+            <div className="aspect-video"><iframe src={downloadUrl} title={show.name} className="w-full h-full" allowFullScreen /></div>
+          </div>
+        </div>
+      )}
+      {showTrailer && getTrailerUrl() && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowTrailer(false)}>
+          <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium truncate">Bande-annonce - {show.name}</h3><button onClick={() => setShowTrailer(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
+            <div className="aspect-video"><iframe src={getTrailerUrl()} title={show.name} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" /></div>
           </div>
         </div>
       )}

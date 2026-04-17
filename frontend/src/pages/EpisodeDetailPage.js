@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { LoadingSpinner } from '../components/Loading';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
-import { Play, Star, Calendar, Clock, Heart, CheckCircle } from 'lucide-react';
+import { Play, Star, Calendar, Clock, Heart, CheckCircle, Download, Youtube } from 'lucide-react';
 
 export default function EpisodeDetailPage({ isAnime = false }) {
   const { id, seasonNumber, episodeNumber } = useParams();
@@ -16,6 +16,8 @@ export default function EpisodeDetailPage({ isAnime = false }) {
   const [seriesInfo, setSeriesInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStream, setShowStream] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
+  const [showTrailer, setShowTrailer] = useState(false);
   const [isWatched, setIsWatched] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -55,6 +57,12 @@ export default function EpisodeDetailPage({ isAnime = false }) {
 
   const basePath = isAnime ? 'anime' : 'tv-shows';
   const streamUrl = `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-tv-${id}-s${seasonNumber}-e${episodeNumber}`;
+  const downloadUrl = `https://wwembed.wavewatch.xyz/api/v1/download/ww-tv-${id}-s${seasonNumber}-e${episodeNumber}`;
+  const getTrailerUrl = () => {
+    const vids = seriesInfo?.videos?.results || [];
+    const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
+    return trailer ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1` : null;
+  };
 
   return (
     <div className="container mx-auto px-4 py-8" data-testid="episode-detail-page">
