@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import API from '../lib/api';
 import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X } from 'lucide-react';
 import ModuleOrderManager from '../components/ModuleOrderManager';
+import { InfoPanelView } from '../components/InfoBanner';
 
 const USERS_PER_PAGE = 15;
 
@@ -155,7 +156,8 @@ export default function AdminPage() {
   const [newCodeQuantity, setNewCodeQuantity] = useState(1);
 
   // Info banner
-  const [infoBanner, setInfoBanner] = useState({ enabled: false, message: '', variant: 'info', link_url: '', link_label: '', dismissible: true, version: 1 });
+  const [infoBanner, setInfoBanner] = useState({ enabled: false, title: '', subtitle: '', badge: '', message: '', variant: 'info', image_url: '', tags: [], link_url: '', link_label: '', link2_url: '', link2_label: '', footer_text: '', dismissible: true, version: 1 });
+  const [tagsInput, setTagsInput] = useState('');
 
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
 
@@ -178,7 +180,7 @@ export default function AdminPage() {
       requests: () => API.get('/api/content-requests').then(({ data }) => setRequests(data.requests || [])),
       activities: () => API.get('/api/admin/activities').then(({ data }) => setActivities(data.activities || [])),
       vipcodes: () => API.get('/api/admin/vip-codes').then(({ data }) => setVipCodes(data.codes || [])),
-      info_banner: () => API.get('/api/admin/info-banner').then(({ data }) => { if (data.banner) setInfoBanner(p => ({ ...p, ...data.banner })); }),
+      info_banner: () => API.get('/api/admin/info-banner').then(({ data }) => { if (data.banner) { setInfoBanner(p => ({ ...p, ...data.banner, tags: data.banner.tags || [] })); setTagsInput((data.banner.tags || []).join(', ')); } }),
     };
     if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
   }, [user]);
@@ -332,8 +334,8 @@ export default function AdminPage() {
   const paginatedUsers = filteredUsers.slice((userPage - 1) * USERS_PER_PAGE, userPage * USERS_PER_PAGE);
 
   // Field definitions
-  const tvFields = [{ key: 'name', label: 'Nom' }, { key: 'category', label: 'Categorie' }, { key: 'country', label: 'Pays' }, { key: 'stream_url', label: 'URL du flux' }, { key: 'logo_url', label: 'URL du logo' }, { key: 'description', label: 'Description', type: 'textarea' }, { key: 'quality', label: 'Qualite' }];
-  const radioFields = [{ key: 'name', label: 'Nom' }, { key: 'genre', label: 'Genre' }, { key: 'country', label: 'Pays' }, { key: 'frequency', label: 'Frequence' }, { key: 'stream_url', label: 'URL du flux' }, { key: 'logo_url', label: 'URL du logo' }, { key: 'description', label: 'Description', type: 'textarea' }];
+  const tvFields = [{ key: 'name', label: 'Nom' }, { key: 'category', label: 'Categorie' }, { key: 'country', label: 'Pays' }, { key: 'stream_url', label: 'URL du flux' }, { key: 'logo_url', label: 'URL du logo' }, { key: 'description', label: 'Description', type: 'textarea' }, { key: 'quality', label: 'Qualite' }, { key: 'is_active', label: 'Actif', type: 'checkbox' }];
+  const radioFields = [{ key: 'name', label: 'Nom' }, { key: 'genre', label: 'Genre' }, { key: 'country', label: 'Pays' }, { key: 'frequency', label: 'Frequence (ex: 91.3 FM)' }, { key: 'stream_url', label: 'URL du flux audio' }, { key: 'website_url', label: 'URL du site officiel' }, { key: 'logo_url', label: 'URL du logo' }, { key: 'description', label: 'Description', type: 'textarea' }, { key: 'is_active', label: 'Actif', type: 'checkbox' }];
   const musicFields = [{ key: 'title', label: 'Titre' }, { key: 'artist', label: 'Artiste' }, { key: 'genre', label: 'Genre' }, { key: 'streaming_url', label: 'URL streaming' }, { key: 'thumbnail_url', label: 'URL miniature' }, { key: 'description', label: 'Description', type: 'textarea' }];
   const softFields = [{ key: 'name', label: 'Nom' }, { key: 'developer', label: 'Developpeur' }, { key: 'category', label: 'Categorie' }, { key: 'platform', label: 'Plateforme' }, { key: 'download_url', label: 'URL telechargement' }, { key: 'icon_url', label: 'URL icone' }, { key: 'description', label: 'Description', type: 'textarea' }];
   const gameFields = [{ key: 'title', label: 'Titre' }, { key: 'developer', label: 'Developpeur' }, { key: 'genre', label: 'Genre' }, { key: 'platform', label: 'Plateforme' }, { key: 'download_url', label: 'URL telechargement' }, { key: 'cover_url', label: 'URL couverture' }, { key: 'description', label: 'Description', type: 'textarea' }];
@@ -359,6 +361,7 @@ export default function AdminPage() {
     { id: 'cinema', label: 'Cinema', icon: <Film className="w-4 h-4" /> },
     { id: 'activities', label: 'Feed', icon: <Users className="w-4 h-4" /> },
     { id: 'vipcodes', label: 'Codes', icon: <Crown className="w-4 h-4" /> },
+    { id: 'info_banner', label: 'Panneau', icon: <Send className="w-4 h-4" /> },
     { id: 'tmdb', label: 'TMDB', icon: <Film className="w-4 h-4" /> },
   ];
 
@@ -867,86 +870,121 @@ export default function AdminPage() {
 
       {tab === 'info_banner' && (
         <div className="space-y-6" data-testid="admin-info-banner">
-          <h2 className="text-xl font-bold flex items-center gap-2"><Send className="w-5 h-5 text-blue-400" />Bandeau d'information (accueil)</h2>
-          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={!!infoBanner.enabled} onChange={e => setInfoBanner(p => ({ ...p, enabled: e.target.checked }))} className="w-4 h-4" data-testid="banner-enabled-toggle" />
-              <span className="font-medium">Activer le bandeau</span>
-              <span className="text-xs text-muted-foreground">(s'affiche au-dessus du Hero sur la page d'accueil)</span>
-            </label>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Message</label>
-              <textarea value={infoBanner.message || ''} onChange={e => setInfoBanner(p => ({ ...p, message: e.target.value }))} rows={2} placeholder="Ex : Maintenance prévue dimanche 19h - Nouvelle série ajoutée ! - Code promo WW2026 -20% sur le VIP" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-message-input" />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Style</label>
-                <select value={infoBanner.variant || 'info'} onChange={e => setInfoBanner(p => ({ ...p, variant: e.target.value }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-variant-select">
-                  <option value="info">Info (bleu)</option>
-                  <option value="success">Succès (vert)</option>
-                  <option value="warning">Attention (orange)</option>
-                  <option value="danger">Urgent (rouge)</option>
-                  <option value="promo">Promo (violet)</option>
-                  <option value="announce">Annonce (sombre)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Lien URL (optionnel)</label>
-                <input type="text" value={infoBanner.link_url || ''} onChange={e => setInfoBanner(p => ({ ...p, link_url: e.target.value }))} placeholder="/subscription ou https://..." className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-link-url-input" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Texte du lien</label>
-                <input type="text" value={infoBanner.link_label || ''} onChange={e => setInfoBanner(p => ({ ...p, link_label: e.target.value }))} placeholder="En savoir plus" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-link-label-input" />
-              </div>
-            </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2"><Send className="w-5 h-5 text-blue-400" />Panneau d'information (accueil)</h2>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={infoBanner.dismissible !== false} onChange={e => setInfoBanner(p => ({ ...p, dismissible: e.target.checked }))} className="w-4 h-4" data-testid="banner-dismissible-toggle" />
-              <span className="text-sm">Fermable par l'utilisateur (persistant 24h par version)</span>
+              <input type="checkbox" checked={!!infoBanner.enabled} onChange={e => setInfoBanner(p => ({ ...p, enabled: e.target.checked }))} className="w-4 h-4" data-testid="banner-enabled-toggle" />
+              <span className="text-sm font-medium">{infoBanner.enabled ? 'Activé' : 'Désactivé'}</span>
             </label>
+          </div>
 
-            {/* Preview */}
-            {infoBanner.message && (
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Aperçu</label>
-                <div className={`mt-1 rounded-lg overflow-hidden border border-white/10 shadow-md bg-gradient-to-r ${
-                  infoBanner.variant === 'success' ? 'from-emerald-600/90 to-green-600/90' :
-                  infoBanner.variant === 'warning' ? 'from-amber-600/90 to-orange-600/90' :
-                  infoBanner.variant === 'danger' ? 'from-red-600/90 to-rose-600/90' :
-                  infoBanner.variant === 'promo' ? 'from-fuchsia-600/90 to-purple-600/90' :
-                  infoBanner.variant === 'announce' ? 'from-slate-700/95 to-slate-900/95' :
-                  'from-blue-600/90 to-sky-600/90'
-                }`}>
-                  <div className="px-4 py-3 flex items-center gap-3 text-white">
-                    <span className="text-sm font-medium flex-1">{infoBanner.message}</span>
-                    {infoBanner.link_label && <span className="text-sm font-semibold underline">{infoBanner.link_label} →</span>}
-                    {infoBanner.dismissible !== false && <X className="w-4 h-4 opacity-70" />}
-                  </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left : Editor */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Configuration</h3>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Titre</label>
+                  <input type="text" value={infoBanner.title || ''} onChange={e => setInfoBanner(p => ({ ...p, title: e.target.value }))} placeholder="Ex: Sports-Stream" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-title-input" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Badge (à côté du titre)</label>
+                  <input type="text" value={infoBanner.badge || ''} onChange={e => setInfoBanner(p => ({ ...p, badge: e.target.value }))} placeholder="Ex: by WaveWatch" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-badge-input" />
                 </div>
               </div>
-            )}
 
-            <div className="flex gap-2 pt-2">
-              <button onClick={async () => {
-                try {
-                  const { data } = await API.put('/api/admin/info-banner', infoBanner);
-                  setInfoBanner(data.banner);
-                  toast({ title: infoBanner.enabled ? 'Bandeau activé' : 'Bandeau sauvegardé' });
-                } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
-              }} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2" data-testid="save-banner-btn">
-                <Save className="w-4 h-4" />Enregistrer
-              </button>
-              <button onClick={async () => {
-                try {
-                  const next = { ...infoBanner, enabled: false };
-                  await API.put('/api/admin/info-banner', next);
-                  setInfoBanner(next);
-                  toast({ title: 'Bandeau désactivé' });
-                } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
-              }} className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary" data-testid="disable-banner-btn">
-                Désactiver
-              </button>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Sous-titre (italique)</label>
+                <input type="text" value={infoBanner.subtitle || ''} onChange={e => setInfoBanner(p => ({ ...p, subtitle: e.target.value }))} placeholder="Ex: Votre destination ultime pour le streaming sportif" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-subtitle-input" />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Description</label>
+                <textarea value={infoBanner.message || ''} onChange={e => setInfoBanner(p => ({ ...p, message: e.target.value }))} rows={3} placeholder="Texte descriptif du panneau..." className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-message-input" />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Tags (séparés par des virgules)</label>
+                <input type="text" value={tagsInput} onChange={e => { setTagsInput(e.target.value); setInfoBanner(p => ({ ...p, tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })); }} placeholder="Ex: Multi-sources, +15 Sports, Sans inscription" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-tags-input" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Image / logo (URL)</label>
+                  <input type="text" value={infoBanner.image_url || ''} onChange={e => setInfoBanner(p => ({ ...p, image_url: e.target.value }))} placeholder="https://.../logo.png" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-image-input" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Style / couleur</label>
+                  <select value={infoBanner.variant || 'info'} onChange={e => setInfoBanner(p => ({ ...p, variant: e.target.value }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-variant-select">
+                    <option value="info">Info (bleu)</option>
+                    <option value="success">Succès (vert)</option>
+                    <option value="warning">Attention (orange)</option>
+                    <option value="danger">Urgent (rouge)</option>
+                    <option value="promo">Promo (violet)</option>
+                    <option value="announce">Annonce (cyan)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Bouton principal (CTA)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="text" value={infoBanner.link_label || ''} onChange={e => setInfoBanner(p => ({ ...p, link_label: e.target.value }))} placeholder="Texte : Acceder au site" className="px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-link-label-input" />
+                  <input type="text" value={infoBanner.link_url || ''} onChange={e => setInfoBanner(p => ({ ...p, link_url: e.target.value }))} placeholder="URL : /subscription ou https://..." className="px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-link-url-input" />
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Bouton secondaire (optionnel)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input type="text" value={infoBanner.link2_label || ''} onChange={e => setInfoBanner(p => ({ ...p, link2_label: e.target.value }))} placeholder="Texte : Serveur de secours" className="px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" />
+                  <input type="text" value={infoBanner.link2_url || ''} onChange={e => setInfoBanner(p => ({ ...p, link2_url: e.target.value }))} placeholder="URL" className="px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Texte de pied (petit, sous les boutons)</label>
+                <input type="text" value={infoBanner.footer_text || ''} onChange={e => setInfoBanner(p => ({ ...p, footer_text: e.target.value }))} placeholder="Ex: Football, Tennis, Basketball, et plus..." className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" />
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer pt-2">
+                <input type="checkbox" checked={infoBanner.dismissible !== false} onChange={e => setInfoBanner(p => ({ ...p, dismissible: e.target.checked }))} className="w-4 h-4" data-testid="banner-dismissible-toggle" />
+                <span className="text-sm">Fermable par l'utilisateur <span className="text-muted-foreground text-xs">(persistant 24h par version)</span></span>
+              </label>
+
+              <div className="flex gap-2 pt-2 border-t border-border">
+                <button onClick={async () => {
+                  try {
+                    const { data } = await API.put('/api/admin/info-banner', infoBanner);
+                    setInfoBanner({ ...infoBanner, ...data.banner, tags: data.banner.tags || [] });
+                    toast({ title: infoBanner.enabled ? 'Panneau activé' : 'Panneau sauvegardé' });
+                  } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+                }} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2" data-testid="save-banner-btn">
+                  <Save className="w-4 h-4" />Enregistrer
+                </button>
+                <button onClick={async () => {
+                  try {
+                    const next = { ...infoBanner, enabled: false };
+                    const { data } = await API.put('/api/admin/info-banner', next);
+                    setInfoBanner({ ...next, version: data.banner.version });
+                    toast({ title: 'Panneau désactivé' });
+                  } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+                }} className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary" data-testid="disable-banner-btn">
+                  Désactiver
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">💡 Un changement du titre, description, boutons, etc. incrémente la version : tous les utilisateurs reverront le panneau même s'ils l'avaient fermé.</p>
             </div>
-            <p className="text-xs text-muted-foreground">💡 Quand vous modifiez le message, la version est incrémentée : tous les utilisateurs reverront le bandeau même s'ils l'avaient fermé précédemment.</p>
+
+            {/* Right : Live preview */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Aperçu en direct</h3>
+              <InfoPanelView banner={infoBanner} preview />
+              {!infoBanner.title && !infoBanner.message && !infoBanner.image_url && (
+                <p className="text-xs text-muted-foreground italic">Remplissez au moins un titre ou une description pour voir l'aperçu…</p>
+              )}
+            </div>
           </div>
         </div>
       )}

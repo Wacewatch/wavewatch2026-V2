@@ -1120,19 +1120,30 @@ async def get_my_media_votes(user: dict = Depends(get_current_user)):
 # ==================== INFO BANNER (homepage) ====================
 @app.get("/api/info-banner")
 async def get_info_banner():
-    """Public endpoint - returns active info banner configuration."""
+    """Public endpoint - returns active info panel configuration."""
     setting = await db.site_settings.find_one({"setting_key": "info_banner"}, {"_id": 0})
     banner = (setting or {}).get("setting_value") or {}
     if not banner.get("enabled"):
+        return {"banner": None}
+    # Must have at least some content to render
+    if not any([banner.get("title"), banner.get("subtitle"), banner.get("message"), banner.get("image_url")]):
         return {"banner": None}
     return {"banner": banner}
 
 class InfoBannerUpdate(BaseModel):
     enabled: bool = False
+    title: Optional[str] = ""
+    subtitle: Optional[str] = ""
+    badge: Optional[str] = ""
     message: Optional[str] = ""
-    variant: Optional[str] = "info"  # info | success | warning | danger | promo
+    variant: Optional[str] = "info"  # info | success | warning | danger | promo | announce
+    image_url: Optional[str] = ""
+    tags: Optional[List[str]] = None
     link_url: Optional[str] = ""
     link_label: Optional[str] = ""
+    link2_url: Optional[str] = ""
+    link2_label: Optional[str] = ""
+    footer_text: Optional[str] = ""
     dismissible: Optional[bool] = True
     version: Optional[int] = 1  # bump to force re-show
 
@@ -1141,10 +1152,11 @@ async def update_info_banner(req: InfoBannerUpdate, user: dict = Depends(get_cur
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     value = req.model_dump()
-    # Always bump version if enabled was toggled on or message changed
+    # Bump version when content changes or enabling
     existing = await db.site_settings.find_one({"setting_key": "info_banner"})
     prev = (existing or {}).get("setting_value") or {}
-    if prev.get("message") != value.get("message") or (not prev.get("enabled") and value.get("enabled")):
+    content_changed = any(prev.get(k) != value.get(k) for k in ("title", "subtitle", "badge", "message", "variant", "image_url", "tags", "link_url", "link_label", "link2_url", "link2_label", "footer_text"))
+    if content_changed or (not prev.get("enabled") and value.get("enabled")):
         value["version"] = int(prev.get("version", 0) or 0) + 1
     elif not value.get("version"):
         value["version"] = int(prev.get("version", 1) or 1)
@@ -1160,7 +1172,7 @@ async def get_info_banner_admin(user: dict = Depends(get_current_user)):
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     setting = await db.site_settings.find_one({"setting_key": "info_banner"}, {"_id": 0})
-    banner = (setting or {}).get("setting_value") or {"enabled": False, "message": "", "variant": "info", "dismissible": True, "version": 1}
+    banner = (setting or {}).get("setting_value") or {"enabled": False, "title": "", "subtitle": "", "badge": "", "message": "", "variant": "info", "image_url": "", "tags": [], "link_url": "", "link_label": "", "link2_url": "", "link2_label": "", "footer_text": "", "dismissible": True, "version": 1}
     return {"banner": banner}
 
 # ==================== EBOOKS / SOFTWARE ====================
