@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/api';
-import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X } from 'lucide-react';
+import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X, ExternalLink } from 'lucide-react';
 import ModuleOrderManager from '../components/ModuleOrderManager';
 import { InfoPanelView } from '../components/InfoBanner';
 
@@ -103,7 +103,8 @@ export default function AdminPage() {
     hero: true, trending_movies: true, recommendations: true, trending_tv_shows: true, popular_anime: true,
     popular_collections: true, public_playlists: true, trending_actors: true,
     trending_tv_channels: true, subscription_offer: true, random_content: true,
-    football_calendar: true, calendar_widget: true, sports_promo: true, livewatch_promo: true, vip_game_promo: true
+    football_calendar: true, calendar_widget: true, sports_promo: true, livewatch_promo: true, vip_game_promo: true,
+    download_links: true
   });
   const [cinemaRooms, setCinemaRooms] = useState([]);
   const [newRoom, setNewRoom] = useState({ name: '', movie_title: '', date: '', time: '', capacity: 50 });
@@ -159,6 +160,10 @@ export default function AdminPage() {
   const [infoBanner, setInfoBanner] = useState({ enabled: false, title: '', subtitle: '', badge: '', message: '', variant: 'info', image_url: '', tags: [], link_url: '', link_label: '', link2_url: '', link2_label: '', footer_text: '', dismissible: true, version: 1 });
   const [tagsInput, setTagsInput] = useState('');
 
+  // Download links module
+  const [dlConfig, setDlConfig] = useState({ enabled: true, title: 'Derniers liens de téléchargement', subtitle: 'Les derniers ajouts à la communauté', limit: 12, show_quality_badge: true });
+  const [dlStats, setDlStats] = useState({ total: 0, last_24h: 0 });
+
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
 
   const loadData = useCallback((currentTab) => {
@@ -181,6 +186,10 @@ export default function AdminPage() {
       activities: () => API.get('/api/admin/activities').then(({ data }) => setActivities(data.activities || [])),
       vipcodes: () => API.get('/api/admin/vip-codes').then(({ data }) => setVipCodes(data.codes || [])),
       info_banner: () => API.get('/api/admin/info-banner').then(({ data }) => { if (data.banner) { setInfoBanner(p => ({ ...p, ...data.banner, tags: data.banner.tags || [] })); setTagsInput((data.banner.tags || []).join(', ')); } }),
+      download_links: () => Promise.all([
+        API.get('/api/download-links/config').then(({ data }) => { if (data?.config) setDlConfig(p => ({ ...p, ...data.config })); }),
+        API.get('/api/admin/download-links/stats').then(({ data }) => setDlStats(data || { total: 0, last_24h: 0 })).catch(() => {}),
+      ]),
     };
     if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
   }, [user]);
@@ -362,6 +371,7 @@ export default function AdminPage() {
     { id: 'activities', label: 'Feed', icon: <Users className="w-4 h-4" /> },
     { id: 'vipcodes', label: 'Codes', icon: <Crown className="w-4 h-4" /> },
     { id: 'info_banner', label: 'Panneau', icon: <Send className="w-4 h-4" /> },
+    { id: 'download_links', label: 'Téléchargements', icon: <FileText className="w-4 h-4" /> },
     { id: 'tmdb', label: 'TMDB', icon: <Film className="w-4 h-4" /> },
   ];
 
@@ -373,7 +383,8 @@ export default function AdminPage() {
     trending_tv_channels: 'Chaines TV', subscription_offer: 'Offre VIP',
     random_content: 'Contenu Aleatoire', football_calendar: 'Calendrier Football',
     calendar_widget: 'Prochaines Sorties', sports_promo: 'Promo Sports', livewatch_promo: 'Promo LiveWatch',
-    vip_game_promo: 'Promo Jeu VIP'
+    vip_game_promo: 'Promo Jeu VIP',
+    download_links: 'Liens de Téléchargement'
   };
 
   return (
@@ -985,6 +996,73 @@ export default function AdminPage() {
                 <p className="text-xs text-muted-foreground italic">Remplissez au moins un titre ou une description pour voir l'aperçu…</p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'download_links' && (
+        <div className="space-y-6" data-testid="admin-download-links">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2"><FileText className="w-5 h-5 text-emerald-400" />Module "Liens de téléchargement"</h2>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={!!dlConfig.enabled} onChange={e => setDlConfig(p => ({ ...p, enabled: e.target.checked }))} className="w-4 h-4" data-testid="dl-enabled-toggle" />
+              <span className="text-sm font-medium">{dlConfig.enabled ? 'Activé sur la home' : 'Désactivé'}</span>
+            </label>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+              <p className="text-3xl font-bold text-emerald-400">{dlStats.total.toLocaleString('fr-FR')}</p>
+              <p className="text-sm text-emerald-400/70">Liens disponibles (Supabase)</p>
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+              <p className="text-3xl font-bold text-blue-400">+{dlStats.last_24h}</p>
+              <p className="text-sm text-blue-400/70">Ajoutés ces dernières 24h</p>
+            </div>
+          </div>
+
+          {/* Config */}
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Configuration du module</h3>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Titre (sur la home)</label>
+              <input type="text" value={dlConfig.title || ''} onChange={e => setDlConfig(p => ({ ...p, title: e.target.value }))} placeholder="Derniers liens de téléchargement" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="dl-title-input" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Sous-titre (optionnel)</label>
+              <input type="text" value={dlConfig.subtitle || ''} onChange={e => setDlConfig(p => ({ ...p, subtitle: e.target.value }))} placeholder="Les derniers ajouts à la communauté" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="dl-subtitle-input" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Nombre d'items affichés dans le slider ({dlConfig.limit})</label>
+              <input type="range" min={4} max={30} value={dlConfig.limit || 12} onChange={e => setDlConfig(p => ({ ...p, limit: parseInt(e.target.value) }))} className="mt-1 w-full" data-testid="dl-limit-input" />
+              <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>4</span><span>30</span></div>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={dlConfig.show_quality_badge !== false} onChange={e => setDlConfig(p => ({ ...p, show_quality_badge: e.target.checked }))} className="w-4 h-4" />
+              <span className="text-sm">Afficher le badge qualité (FHD/HD/4K) sur les jaquettes</span>
+            </label>
+            <div className="flex gap-2 pt-2 border-t border-border">
+              <button onClick={async () => {
+                try {
+                  const { data } = await API.put('/api/admin/download-links/config', dlConfig);
+                  if (data?.config) setDlConfig(data.config);
+                  toast({ title: 'Module sauvegardé' });
+                } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+              }} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2" data-testid="dl-save-btn">
+                <Save className="w-4 h-4" />Enregistrer
+              </button>
+              <a href="/download-links" target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary inline-flex items-center gap-2">
+                Voir la page publique <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+            <p className="text-xs text-muted-foreground">💡 L'activation/désactivation et l'ordre du module sur la home se gèrent aussi depuis l'onglet <b>Modules</b>.</p>
+          </div>
+
+          {/* Security note */}
+          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
+            <p className="text-sm text-emerald-400 font-medium">🔒 Sécurité : les clés Supabase (service role) sont uniquement côté backend</p>
+            <p className="text-xs text-muted-foreground mt-1">Le frontend n'a jamais accès aux clés Supabase — toutes les requêtes passent par l'API WaveWatch (/api/download-links/*). Les jaquettes sont enrichies via le proxy TMDB.</p>
           </div>
         </div>
       )}

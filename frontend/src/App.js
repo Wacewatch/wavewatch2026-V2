@@ -54,6 +54,7 @@ import MusicDetailPage from './pages/MusicDetailPage';
 import GameDetailPage from './pages/GameDetailPage';
 import EbookDetailPage from './pages/EbookDetailPage';
 import SoftwareDetailPage from './pages/SoftwareDetailPage';
+import DownloadLinksPage from './pages/DownloadLinksPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { StatusProvider } from './components/ContentCard';
 import './App.css';
@@ -105,6 +106,7 @@ export default function App() {
                   <Route path="/directors/:id" element={<DirectorDetailPage />} />
                   <Route path="/tv-channels" element={<TVChannelsPage />} />
                   <Route path="/radio" element={<RadioPage />} />
+                  <Route path="/download-links" element={<DownloadLinksPage />} />
                   <Route path="/retrogaming" element={<RetrogamingPage />} />
                   <Route path="/ebooks" element={<EbooksPage />} />
                   <Route path="/logiciels" element={<SoftwarePage />} />

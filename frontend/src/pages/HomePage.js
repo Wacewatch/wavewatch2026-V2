@@ -5,6 +5,7 @@ import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIc
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
 import InfoBanner from '../components/InfoBanner';
+import DownloadLinksRow from '../components/DownloadLinksRow';
 import { LoadingGrid } from '../components/Loading';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -573,6 +574,7 @@ export default function HomePage() {
     recommendations: show('recommendations') ? <RecommendationsRow key="recommendations" /> : null,
     trending_tv_shows: show('trending_tv_shows') ? <ContentRow key="trending_tv_shows" title="Series Tendance" endpoint="/api/tmdb/trending/tv" type="tv" link="/tv-shows" /> : null,
     popular_anime: show('popular_anime') ? <ContentRow key="popular_anime" title="Animes Populaires" endpoint="/api/tmdb/trending/anime" type="tv" isAnime link="/anime" /> : null,
+    download_links: show('download_links') ? <DownloadLinksRow key="download_links" /> : null,
     popular_collections: show('popular_collections') ? <PopularCollectionsRow key="popular_collections" /> : null,
     public_playlists: show('public_playlists') ? <PublicPlaylistsRow key="public_playlists" /> : null,
     trending_actors: show('trending_actors') ? <TrendingActorsRow key="trending_actors" /> : null,
@@ -587,7 +589,7 @@ export default function HomePage() {
   };
 
   // Default order
-  const defaultOrder = ['hero', 'trending_movies', 'recommendations', 'trending_tv_shows', 'popular_anime', 'popular_collections', 'public_playlists', 'trending_actors', 'trending_tv_channels', 'sports_promo', 'livewatch_promo', 'vip_game_promo', 'subscription_offer', 'random_content', 'football_calendar', 'calendar_widget'];
+  const defaultOrder = ['hero', 'trending_movies', 'recommendations', 'trending_tv_shows', 'popular_anime', 'download_links', 'popular_collections', 'public_playlists', 'trending_actors', 'trending_tv_channels', 'sports_promo', 'livewatch_promo', 'vip_game_promo', 'subscription_offer', 'random_content', 'football_calendar', 'calendar_widget'];
   const order = moduleOrder || defaultOrder;
   // Include any modules not in the saved order (fallback)
   const allKeys = [...new Set([...order, ...defaultOrder])];

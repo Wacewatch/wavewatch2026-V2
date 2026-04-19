@@ -25,6 +25,8 @@ TMDB_API_KEY = os.environ.get("TMDB_API_KEY")
 TMDB_BASE = "https://api.themoviedb.org/3"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@wavewatch.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "WaveWatch2026!")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 ENV = os.environ.get("ENV", "development").lower()
 IS_PROD = ENV == "production"
 # Allowed CORS origins - support multiple via comma-separated FRONTEND_URL
@@ -1261,6 +1263,215 @@ async def get_retrogaming():
         for s in sources:
             s["_id"] = str(s["_id"])
     return {"sources": sources, "games": sources}
+
+# ==================== DOWNLOAD LINKS (Supabase WWembed) ====================
+# Service role key stays on the backend. Frontend NEVER sees Supabase.
+
+async def _supabase_get(path: str, params: dict = None):
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase non configuré")
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+    }
+    url = f"{SUPABASE_URL}/rest/v1{path}"
+    async with httpx.AsyncClient(timeout=15) as hc:
+        r = await hc.get(url, headers=headers, params=params or {})
+        if r.status_code >= 400:
+            raise HTTPException(status_code=502, detail=f"Supabase error {r.status_code}")
+        return r.json()
+
+# Small TMDB enrichment cache (in-memory, 10 min)
+_tmdb_cache: dict[str, tuple[float, dict]] = {}
+async def _tmdb_meta(tmdb_id: int, media_type: str):
+    import time
+    key = f"{media_type}:{tmdb_id}"
+    now = time.time()
+    cached = _tmdb_cache.get(key)
+    if cached and (now - cached[0] < 600):
+        return cached[1]
+    if media_type not in ("movie", "tv") or not tmdb_id:
+        return {}
+    try:
+        data = await tmdb_fetch(f"/{media_type}/{tmdb_id}")
+        meta = {
+            "title": data.get("title") or data.get("name") or "",
+            "poster_path": data.get("poster_path"),
+            "backdrop_path": data.get("backdrop_path"),
+            "vote_average": data.get("vote_average"),
+            "release_date": data.get("release_date") or data.get("first_air_date"),
+            "overview": data.get("overview"),
+        }
+        _tmdb_cache[key] = (now, meta)
+        return meta
+    except Exception:
+        return {}
+
+async def _enrich_links(items: list) -> list:
+    """Attach TMDB poster/title to each download link."""
+    import asyncio
+    unique = {}
+    for it in items:
+        tid = it.get("tmdb_id"); mt = it.get("media_type")
+        if tid and mt and (tid, mt) not in unique:
+            unique[(tid, mt)] = None
+    # Fetch in parallel
+    async def fetch_one(tid, mt):
+        unique[(tid, mt)] = await _tmdb_meta(tid, mt)
+    await asyncio.gather(*[fetch_one(t, m) for (t, m) in unique.keys()])
+    for it in items:
+        meta = unique.get((it.get("tmdb_id"), it.get("media_type")), {}) or {}
+        it["title"] = meta.get("title") or it.get("release_name") or it.get("ww_id") or ""
+        it["poster_path"] = meta.get("poster_path")
+        it["backdrop_path"] = meta.get("backdrop_path")
+        it["vote_average"] = meta.get("vote_average")
+    return items
+
+def _download_link_filters(quality: Optional[str] = None, media_type: Optional[str] = None,
+                           language: Optional[str] = None, q: Optional[str] = None):
+    """Build PostgREST filter params."""
+    params = {
+        "is_active": "eq.true",
+        "is_valid": "eq.true",
+        "status": "eq.approved",
+    }
+    if quality:
+        params["quality"] = f"eq.{quality}"
+    if media_type and media_type in ("movie", "tv"):
+        params["media_type"] = f"eq.{media_type}"
+    if language:
+        params["language"] = f"eq.{language}"
+    if q:
+        # Search in release_name or source_name
+        params["or"] = f"(release_name.ilike.*{q}*,source_name.ilike.*{q}*,ww_id.ilike.*{q}*)"
+    return params
+
+@app.get("/api/download-links/recent")
+async def get_recent_download_links(limit: int = 12):
+    """Return the N most recent UNIQUE (tmdb_id, media_type) download links, enriched with TMDB poster."""
+    limit = max(1, min(int(limit or 12), 50))
+    # Fetch more than limit to allow deduplication, order by created_at desc
+    params = _download_link_filters()
+    params["select"] = "tmdb_id,media_type,ww_id,source_name,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,created_at"
+    params["order"] = "created_at.desc"
+    params["limit"] = str(limit * 5)
+    rows = await _supabase_get("/download_links", params)
+    # Deduplicate by (tmdb_id, media_type), keep first (most recent)
+    seen = set()
+    unique_items = []
+    for r in rows:
+        k = (r.get("tmdb_id"), r.get("media_type"))
+        if k in seen:
+            continue
+        seen.add(k)
+        unique_items.append(r)
+        if len(unique_items) >= limit:
+            break
+    await _enrich_links(unique_items)
+    return {"items": unique_items, "count": len(unique_items)}
+
+@app.get("/api/download-links")
+async def list_download_links(
+    page: int = 1,
+    limit: int = 24,
+    quality: Optional[str] = None,
+    media_type: Optional[str] = None,
+    language: Optional[str] = None,
+    q: Optional[str] = None,
+    sort: str = "created_at.desc",
+):
+    """Paginated & filterable list of download links, deduplicated by (tmdb_id, media_type)."""
+    page = max(1, int(page or 1))
+    limit = max(1, min(int(limit or 24), 60))
+    params = _download_link_filters(quality=quality, media_type=media_type, language=language, q=q)
+    params["select"] = "tmdb_id,media_type,ww_id,source_name,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,created_at"
+    # Valid sorts
+    if sort not in ("created_at.desc", "created_at.asc"):
+        sort = "created_at.desc"
+    params["order"] = sort
+    # Over-fetch for dedup, then slice page
+    params["limit"] = str(min(limit * page * 3, 500))
+    rows = await _supabase_get("/download_links", params)
+    seen = set()
+    unique_items = []
+    for r in rows:
+        k = (r.get("tmdb_id"), r.get("media_type"))
+        if k in seen:
+            continue
+        seen.add(k)
+        unique_items.append(r)
+    total = len(unique_items)
+    start = (page - 1) * limit
+    page_items = unique_items[start:start + limit]
+    await _enrich_links(page_items)
+    return {"items": page_items, "page": page, "limit": limit, "total": total, "has_more": start + limit < total}
+
+@app.get("/api/download-links/for-content")
+async def get_links_for_content(tmdb_id: int, media_type: str, season: Optional[int] = None, episode: Optional[int] = None):
+    """All download links for a specific TMDB content (used on movie/tv detail page)."""
+    if media_type not in ("movie", "tv"):
+        raise HTTPException(status_code=400, detail="media_type invalide")
+    params = _download_link_filters(media_type=media_type)
+    params["tmdb_id"] = f"eq.{tmdb_id}"
+    if season is not None:
+        params["season_number"] = f"eq.{season}"
+    if episode is not None:
+        params["episode_number"] = f"eq.{episode}"
+    params["order"] = "created_at.desc"
+    params["limit"] = "100"
+    rows = await _supabase_get("/download_links", params)
+    return {"items": rows, "count": len(rows)}
+
+# ---- Admin : download links module config ----
+class DownloadLinksModuleConfig(BaseModel):
+    enabled: bool = True
+    title: Optional[str] = "Derniers liens de téléchargement"
+    subtitle: Optional[str] = "Les derniers ajouts à la communauté"
+    limit: Optional[int] = 12
+    show_quality_badge: Optional[bool] = True
+
+@app.get("/api/download-links/config")
+async def get_download_links_config():
+    setting = await db.site_settings.find_one({"setting_key": "download_links_module"}, {"_id": 0})
+    cfg = (setting or {}).get("setting_value") or {"enabled": True, "title": "Derniers liens de téléchargement", "subtitle": "Les derniers ajouts à la communauté", "limit": 12, "show_quality_badge": True}
+    return {"config": cfg}
+
+@app.put("/api/admin/download-links/config")
+async def update_download_links_config(req: DownloadLinksModuleConfig, user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    value = req.model_dump()
+    value["limit"] = max(4, min(int(value.get("limit") or 12), 30))
+    await db.site_settings.update_one(
+        {"setting_key": "download_links_module"},
+        {"$set": {"setting_value": value, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"success": True, "config": value}
+
+@app.get("/api/admin/download-links/stats")
+async def admin_download_links_stats(user: dict = Depends(get_current_user)):
+    """Quick admin stats: total links, by media_type, last 24h count."""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    # Use Supabase count via head+prefer count=exact
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Supabase non configuré")
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Prefer": "count=exact",
+        "Range-Unit": "items",
+        "Range": "0-0",
+    }
+    async with httpx.AsyncClient(timeout=15) as hc:
+        r_total = await hc.get(f"{SUPABASE_URL}/rest/v1/download_links?is_active=eq.true&is_valid=eq.true", headers=headers)
+        total = int(r_total.headers.get("content-range", "*/0").split("/")[-1] or 0)
+        # Last 24h
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        r_24h = await hc.get(f"{SUPABASE_URL}/rest/v1/download_links?is_active=eq.true&created_at=gte.{cutoff}", headers=headers)
+        last_24h = int(r_24h.headers.get("content-range", "*/0").split("/")[-1] or 0)
+    return {"total": total, "last_24h": last_24h}
 
 # Health check
 @app.get("/api/health")
