@@ -1044,6 +1044,8 @@ async def get_tv_channels():
     channels = await db.tv_channels.find().to_list(500)
     for c in channels:
         c["_id"] = str(c["_id"])
+        c.setdefault("likes", 0)
+        c.setdefault("dislikes", 0)
     return {"channels": channels}
 
 @app.get("/api/radio-stations")
@@ -1051,7 +1053,115 @@ async def get_radio_stations():
     stations = await db.radio_stations.find().to_list(500)
     for s in stations:
         s["_id"] = str(s["_id"])
+        s.setdefault("likes", 0)
+        s.setdefault("dislikes", 0)
     return {"stations": stations}
+
+# ---- Votes (likes / dislikes) on TV channels and radio ----
+async def _toggle_vote(collection_name: str, item_id: str, user_id: str, vote: str):
+    """vote in {'like','dislike','none'}. Returns final counts."""
+    col = db[collection_name]
+    votes_col = db.media_votes  # stores {user_id, target_collection, target_id, vote}
+    key = {"user_id": user_id, "target_collection": collection_name, "target_id": item_id}
+    existing = await votes_col.find_one(key)
+    prev = existing.get("vote") if existing else None
+    # If same vote -> remove
+    if prev == vote:
+        await votes_col.delete_one(key)
+        new_vote = None
+    else:
+        await votes_col.update_one(key, {"$set": {**key, "vote": vote, "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+        new_vote = vote
+    # Recompute inc deltas
+    inc = {}
+    if prev == "like":
+        inc["likes"] = inc.get("likes", 0) - 1
+    if prev == "dislike":
+        inc["dislikes"] = inc.get("dislikes", 0) - 1
+    if new_vote == "like":
+        inc["likes"] = inc.get("likes", 0) + 1
+    if new_vote == "dislike":
+        inc["dislikes"] = inc.get("dislikes", 0) + 1
+    try:
+        oid = ObjectId(item_id)
+        query = {"_id": oid}
+    except Exception:
+        query = {"_id": item_id}
+    if inc:
+        await col.update_one(query, {"$inc": inc})
+    doc = await col.find_one(query)
+    return {
+        "likes": int((doc or {}).get("likes", 0)),
+        "dislikes": int((doc or {}).get("dislikes", 0)),
+        "user_vote": new_vote,
+    }
+
+class VoteRequest(BaseModel):
+    vote: str  # "like" or "dislike"
+
+@app.post("/api/tv-channels/{channel_id}/vote")
+async def vote_tv_channel(channel_id: str, req: VoteRequest, user: dict = Depends(get_current_user)):
+    if req.vote not in ("like", "dislike"):
+        raise HTTPException(status_code=400, detail="Vote invalide")
+    return await _toggle_vote("tv_channels", channel_id, user["_id"], req.vote)
+
+@app.post("/api/radio-stations/{station_id}/vote")
+async def vote_radio_station(station_id: str, req: VoteRequest, user: dict = Depends(get_current_user)):
+    if req.vote not in ("like", "dislike"):
+        raise HTTPException(status_code=400, detail="Vote invalide")
+    return await _toggle_vote("radio_stations", station_id, user["_id"], req.vote)
+
+@app.get("/api/media-votes/mine")
+async def get_my_media_votes(user: dict = Depends(get_current_user)):
+    """Return current user's votes on tv_channels and radio_stations."""
+    votes = await db.media_votes.find({"user_id": user["_id"]}, {"_id": 0}).to_list(2000)
+    return {"votes": votes}
+
+# ==================== INFO BANNER (homepage) ====================
+@app.get("/api/info-banner")
+async def get_info_banner():
+    """Public endpoint - returns active info banner configuration."""
+    setting = await db.site_settings.find_one({"setting_key": "info_banner"}, {"_id": 0})
+    banner = (setting or {}).get("setting_value") or {}
+    if not banner.get("enabled"):
+        return {"banner": None}
+    return {"banner": banner}
+
+class InfoBannerUpdate(BaseModel):
+    enabled: bool = False
+    message: Optional[str] = ""
+    variant: Optional[str] = "info"  # info | success | warning | danger | promo
+    link_url: Optional[str] = ""
+    link_label: Optional[str] = ""
+    dismissible: Optional[bool] = True
+    version: Optional[int] = 1  # bump to force re-show
+
+@app.put("/api/admin/info-banner")
+async def update_info_banner(req: InfoBannerUpdate, user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    value = req.model_dump()
+    # Always bump version if enabled was toggled on or message changed
+    existing = await db.site_settings.find_one({"setting_key": "info_banner"})
+    prev = (existing or {}).get("setting_value") or {}
+    if prev.get("message") != value.get("message") or (not prev.get("enabled") and value.get("enabled")):
+        value["version"] = int(prev.get("version", 0) or 0) + 1
+    elif not value.get("version"):
+        value["version"] = int(prev.get("version", 1) or 1)
+    await db.site_settings.update_one(
+        {"setting_key": "info_banner"},
+        {"$set": {"setting_value": value, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"success": True, "banner": value}
+
+@app.get("/api/admin/info-banner")
+async def get_info_banner_admin(user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    setting = await db.site_settings.find_one({"setting_key": "info_banner"}, {"_id": 0})
+    banner = (setting or {}).get("setting_value") or {"enabled": False, "message": "", "variant": "info", "dismissible": True, "version": 1}
+    return {"banner": banner}
 
 # ==================== EBOOKS / SOFTWARE ====================
 @app.get("/api/ebooks")
@@ -2073,17 +2183,23 @@ async def broadcast_with_notification(request: Request, user: dict = Depends(req
 async def generate_vip_code(request: Request, user: dict = Depends(require_admin)):
     data = await request.json()
     code_type = data.get("type", "vip")  # vip, vip_plus, uploader, admin
-    code = secrets.token_hex(6).upper()
-    await db.activation_codes.insert_one({
-        "code": code,
-        "type": code_type,
-        "created_by": user["_id"],
-        "used_by": None,
-        "is_used": False,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
-    await log_admin_activity(user.get("username", "admin"), f"Code {code_type} genere", code)
-    return {"code": code, "type": code_type}
+    duration_days = int(data.get("duration_days", 30) or 30)
+    quantity = max(1, min(int(data.get("quantity", 1) or 1), 50))
+    codes = []
+    for _ in range(quantity):
+        code = secrets.token_hex(6).upper()
+        await db.activation_codes.insert_one({
+            "code": code,
+            "type": code_type,
+            "duration_days": duration_days,
+            "created_by": user["_id"],
+            "used_by": None,
+            "is_used": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        codes.append(code)
+    await log_admin_activity(user.get("username", "admin"), f"{quantity} code(s) {code_type} {duration_days}j generes", ", ".join(codes[:3]))
+    return {"code": codes[0], "codes": codes, "type": code_type, "duration_days": duration_days}
 
 @app.get("/api/admin/vip-codes")
 async def get_vip_codes(user: dict = Depends(require_admin)):
@@ -2110,13 +2226,15 @@ async def activate_code_v2(request: Request, user: dict = Depends(get_current_us
         raise HTTPException(status_code=400, detail="Code invalide ou deja utilise")
     # Apply privileges based on code type
     code_type = db_code.get("type", "vip")
+    duration_days = int(db_code.get("duration_days", 30) or 30)
+    expires_at = (datetime.now(timezone.utc) + timedelta(days=duration_days)).isoformat() if code_type in ("vip", "vip_plus", "uploader") else None
     updates = {}
     if code_type == "vip":
-        updates = {"is_vip": True}
+        updates = {"is_vip": True, "vip_expires_at": expires_at}
     elif code_type == "vip_plus":
-        updates = {"is_vip": True, "is_vip_plus": True}
+        updates = {"is_vip": True, "is_vip_plus": True, "vip_expires_at": expires_at}
     elif code_type == "uploader":
-        updates = {"is_uploader": True, "is_vip": True}
+        updates = {"is_uploader": True, "is_vip": True, "vip_expires_at": expires_at}
     elif code_type == "admin":
         updates = {"is_admin": True}
     if updates:
@@ -2125,7 +2243,8 @@ async def activate_code_v2(request: Request, user: dict = Depends(get_current_us
     await db.activation_codes.update_one({"_id": db_code["_id"]}, {"$set": {"is_used": True, "used_by": user["_id"], "used_at": datetime.now(timezone.utc).isoformat()}})
     updated = await db.users.find_one({"_id": ObjectId(user["_id"])}, {"password_hash": 0})
     updated["_id"] = str(updated["_id"])
-    return {"message": f"Code {code_type} active !", "user": updated}
+    msg = f"Code {code_type} active" + (f" pour {duration_days} jours !" if expires_at else " !")
+    return {"message": msg, "user": updated}
 
 
 

@@ -151,6 +151,11 @@ export default function AdminPage() {
   // VIP Codes
   const [vipCodes, setVipCodes] = useState([]);
   const [newCodeType, setNewCodeType] = useState('vip');
+  const [newCodeDuration, setNewCodeDuration] = useState(30);
+  const [newCodeQuantity, setNewCodeQuantity] = useState(1);
+
+  // Info banner
+  const [infoBanner, setInfoBanner] = useState({ enabled: false, message: '', variant: 'info', link_url: '', link_label: '', dismissible: true, version: 1 });
 
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
 
@@ -173,6 +178,7 @@ export default function AdminPage() {
       requests: () => API.get('/api/content-requests').then(({ data }) => setRequests(data.requests || [])),
       activities: () => API.get('/api/admin/activities').then(({ data }) => setActivities(data.activities || [])),
       vipcodes: () => API.get('/api/admin/vip-codes').then(({ data }) => setVipCodes(data.codes || [])),
+      info_banner: () => API.get('/api/admin/info-banner').then(({ data }) => { if (data.banner) setInfoBanner(p => ({ ...p, ...data.banner })); }),
     };
     if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
   }, [user]);
@@ -793,45 +799,154 @@ export default function AdminPage() {
         <div className="space-y-6" data-testid="admin-vipcodes">
           <h2 className="text-xl font-bold flex items-center gap-2"><Crown className="w-5 h-5 text-yellow-400" />Codes d'activation</h2>
           <div className="bg-card border border-border rounded-xl p-6">
-            <h3 className="font-bold mb-4">Generer un nouveau code</h3>
-            <div className="flex gap-3 items-end">
+            <h3 className="font-bold mb-4">Générer des codes</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
               <div>
-                <label className="text-sm font-medium">Type</label>
-                <select value={newCodeType} onChange={e => setNewCodeType(e.target.value)} className="mt-1 block px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm">
+                <label className="text-xs font-medium text-muted-foreground">Type</label>
+                <select value={newCodeType} onChange={e => setNewCodeType(e.target.value)} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="code-type-select">
                   <option value="vip">VIP</option>
                   <option value="vip_plus">VIP+</option>
                   <option value="uploader">Uploader</option>
                   <option value="admin">Admin</option>
                 </select>
               </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Durée (jours)</label>
+                <select value={newCodeDuration} onChange={e => setNewCodeDuration(parseInt(e.target.value))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="code-duration-select" disabled={newCodeType === 'admin'}>
+                  <option value={7}>7 jours</option>
+                  <option value={15}>15 jours</option>
+                  <option value={30}>30 jours</option>
+                  <option value={60}>60 jours</option>
+                  <option value={90}>90 jours</option>
+                  <option value={180}>6 mois</option>
+                  <option value={365}>1 an</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Quantité</label>
+                <input type="number" min={1} max={50} value={newCodeQuantity} onChange={e => setNewCodeQuantity(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="code-quantity-input" />
+              </div>
               <button onClick={async () => {
-                try { const { data } = await API.post('/api/admin/vip-codes', { type: newCodeType }); toast({ title: `Code genere: ${data.code}` }); loadData('vipcodes'); }
-                catch { toast({ title: 'Erreur', variant: 'destructive' }); }
-              }} className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium flex items-center gap-2" data-testid="generate-code-btn">
-                <Plus className="w-4 h-4" />Generer
+                try {
+                  const { data } = await API.post('/api/admin/vip-codes', { type: newCodeType, duration_days: newCodeDuration, quantity: newCodeQuantity });
+                  toast({ title: data.codes.length > 1 ? `${data.codes.length} codes générés` : `Code généré: ${data.code}` });
+                  loadData('vipcodes');
+                } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+              }} className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium flex items-center justify-center gap-2" data-testid="generate-code-btn">
+                <Plus className="w-4 h-4" />Générer
               </button>
             </div>
+            <p className="text-xs text-muted-foreground mt-3">💡 Les codes "admin" donnent les droits admin sans expiration. Les autres types activent VIP/VIP+ pour la durée choisie.</p>
           </div>
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="p-4 border-b border-border"><h3 className="font-bold">Codes ({vipCodes.length})</h3></div>
             {vipCodes.length === 0 ? <p className="text-center py-8 text-muted-foreground">Aucun code</p> : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead><tr className="border-b border-border bg-secondary/30"><th className="px-4 py-2 text-left">Code</th><th className="px-4 py-2 text-left">Type</th><th className="px-4 py-2 text-left">Statut</th><th className="px-4 py-2 text-left">Date</th><th className="px-4 py-2 text-left">Actions</th></tr></thead>
+                  <thead><tr className="border-b border-border bg-secondary/30"><th className="px-4 py-2 text-left">Code</th><th className="px-4 py-2 text-left">Type</th><th className="px-4 py-2 text-left">Durée</th><th className="px-4 py-2 text-left">Statut</th><th className="px-4 py-2 text-left">Date</th><th className="px-4 py-2 text-left">Actions</th></tr></thead>
                   <tbody>
                     {vipCodes.map(c => (
                       <tr key={c._id} className="border-b border-border/50 hover:bg-secondary/20">
-                        <td className="px-4 py-2 font-mono font-bold">{c.code}</td>
+                        <td className="px-4 py-2 font-mono font-bold">
+                          <button onClick={() => { navigator.clipboard?.writeText(c.code); toast({ title: 'Code copié' }); }} className="hover:text-primary transition-colors" title="Cliquer pour copier">{c.code}</button>
+                        </td>
                         <td className="px-4 py-2"><span className={`px-2 py-0.5 rounded-full text-xs ${c.type === 'admin' ? 'bg-red-500/20 text-red-400' : c.type === 'vip_plus' ? 'bg-purple-500/20 text-purple-400' : c.type === 'uploader' ? 'bg-blue-500/20 text-blue-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{c.type}</span></td>
-                        <td className="px-4 py-2">{c.is_used ? <span className="text-red-400 text-xs">Utilise{c.used_by ? ` par ${c.used_by}` : ''}</span> : <span className="text-green-400 text-xs">Disponible</span>}</td>
+                        <td className="px-4 py-2 text-xs">{c.type === 'admin' ? '∞' : `${c.duration_days || 30}j`}</td>
+                        <td className="px-4 py-2">{c.is_used ? <span className="text-red-400 text-xs">Utilisé{c.used_by ? ` par ${c.used_by}` : ''}</span> : <span className="text-green-400 text-xs">Disponible</span>}</td>
                         <td className="px-4 py-2 text-xs text-muted-foreground">{c.created_at ? new Date(c.created_at).toLocaleDateString('fr-FR') : ''}</td>
-                        <td className="px-4 py-2"><button onClick={async () => { try { await API.delete(`/api/admin/vip-codes/${c._id}`); toast({ title: 'Supprime' }); loadData('vipcodes'); } catch {} }} className="text-muted-foreground hover:text-red-400"><Trash2 className="w-4 h-4" /></button></td>
+                        <td className="px-4 py-2"><button onClick={async () => { try { await API.delete(`/api/admin/vip-codes/${c._id}`); toast({ title: 'Supprimé' }); loadData('vipcodes'); } catch { /* ignore */ } }} className="text-muted-foreground hover:text-red-400"><Trash2 className="w-4 h-4" /></button></td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'info_banner' && (
+        <div className="space-y-6" data-testid="admin-info-banner">
+          <h2 className="text-xl font-bold flex items-center gap-2"><Send className="w-5 h-5 text-blue-400" />Bandeau d'information (accueil)</h2>
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input type="checkbox" checked={!!infoBanner.enabled} onChange={e => setInfoBanner(p => ({ ...p, enabled: e.target.checked }))} className="w-4 h-4" data-testid="banner-enabled-toggle" />
+              <span className="font-medium">Activer le bandeau</span>
+              <span className="text-xs text-muted-foreground">(s'affiche au-dessus du Hero sur la page d'accueil)</span>
+            </label>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Message</label>
+              <textarea value={infoBanner.message || ''} onChange={e => setInfoBanner(p => ({ ...p, message: e.target.value }))} rows={2} placeholder="Ex : Maintenance prévue dimanche 19h - Nouvelle série ajoutée ! - Code promo WW2026 -20% sur le VIP" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-message-input" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Style</label>
+                <select value={infoBanner.variant || 'info'} onChange={e => setInfoBanner(p => ({ ...p, variant: e.target.value }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-variant-select">
+                  <option value="info">Info (bleu)</option>
+                  <option value="success">Succès (vert)</option>
+                  <option value="warning">Attention (orange)</option>
+                  <option value="danger">Urgent (rouge)</option>
+                  <option value="promo">Promo (violet)</option>
+                  <option value="announce">Annonce (sombre)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Lien URL (optionnel)</label>
+                <input type="text" value={infoBanner.link_url || ''} onChange={e => setInfoBanner(p => ({ ...p, link_url: e.target.value }))} placeholder="/subscription ou https://..." className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-link-url-input" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Texte du lien</label>
+                <input type="text" value={infoBanner.link_label || ''} onChange={e => setInfoBanner(p => ({ ...p, link_label: e.target.value }))} placeholder="En savoir plus" className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="banner-link-label-input" />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={infoBanner.dismissible !== false} onChange={e => setInfoBanner(p => ({ ...p, dismissible: e.target.checked }))} className="w-4 h-4" data-testid="banner-dismissible-toggle" />
+              <span className="text-sm">Fermable par l'utilisateur (persistant 24h par version)</span>
+            </label>
+
+            {/* Preview */}
+            {infoBanner.message && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Aperçu</label>
+                <div className={`mt-1 rounded-lg overflow-hidden border border-white/10 shadow-md bg-gradient-to-r ${
+                  infoBanner.variant === 'success' ? 'from-emerald-600/90 to-green-600/90' :
+                  infoBanner.variant === 'warning' ? 'from-amber-600/90 to-orange-600/90' :
+                  infoBanner.variant === 'danger' ? 'from-red-600/90 to-rose-600/90' :
+                  infoBanner.variant === 'promo' ? 'from-fuchsia-600/90 to-purple-600/90' :
+                  infoBanner.variant === 'announce' ? 'from-slate-700/95 to-slate-900/95' :
+                  'from-blue-600/90 to-sky-600/90'
+                }`}>
+                  <div className="px-4 py-3 flex items-center gap-3 text-white">
+                    <span className="text-sm font-medium flex-1">{infoBanner.message}</span>
+                    {infoBanner.link_label && <span className="text-sm font-semibold underline">{infoBanner.link_label} →</span>}
+                    {infoBanner.dismissible !== false && <X className="w-4 h-4 opacity-70" />}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button onClick={async () => {
+                try {
+                  const { data } = await API.put('/api/admin/info-banner', infoBanner);
+                  setInfoBanner(data.banner);
+                  toast({ title: infoBanner.enabled ? 'Bandeau activé' : 'Bandeau sauvegardé' });
+                } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+              }} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2" data-testid="save-banner-btn">
+                <Save className="w-4 h-4" />Enregistrer
+              </button>
+              <button onClick={async () => {
+                try {
+                  const next = { ...infoBanner, enabled: false };
+                  await API.put('/api/admin/info-banner', next);
+                  setInfoBanner(next);
+                  toast({ title: 'Bandeau désactivé' });
+                } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+              }} className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary" data-testid="disable-banner-btn">
+                Désactiver
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">💡 Quand vous modifiez le message, la version est incrémentée : tous les utilisateurs reverront le bandeau même s'ils l'avaient fermé précédemment.</p>
           </div>
         </div>
       )}

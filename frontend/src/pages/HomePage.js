@@ -4,6 +4,7 @@ import API, { TMDB_IMG } from '../lib/api';
 import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users, Sparkles, X } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
+import InfoBanner from '../components/InfoBanner';
 import { LoadingGrid } from '../components/Loading';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -593,6 +594,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-8" data-testid="home-page">
+      <InfoBanner />
       {allKeys.map(key => {
         if (key === 'hero') return moduleComponents[key];
         return null;
