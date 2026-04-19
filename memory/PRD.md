@@ -13,6 +13,24 @@
 - **Favoris playlist** : Bouton coeur
 - **Retrogaming** : QuickPlaylistAdd sur les cartes de jeux retro
 
+## Session 17 (Jan 2026) — Panneau d'info (comme modules promo)
+
+### Transformation Bandeau → Panneau
+- Le bandeau simple a été transformé en **vrai panneau promotionnel** style `sports-stream` / `livewatch`
+- Image/logo à gauche (URL configurable), contenu riche à droite
+- Champs admin : titre, badge, sous-titre italique, description, tags (liste), image_url, variant couleur, CTA principal + CTA secondaire, footer_text, dismissible
+- 6 variants : info/success/warning/danger/promo/announce (bordure colorée + gradient sombre matchant sports-stream)
+- Aperçu en direct dans l'admin (composant `InfoPanelView` réutilisable)
+- Versioning auto sur tout changement de contenu, fermeture 24h par user
+
+### Enrichissement CRUD TV / Radio (déjà en place)
+- Les champs `description`, `country`, `stream_url`, `logo_url`, `quality` (TV), `frequency`, `website_url` (radio), `is_active` sont tous configurables via Admin > TV ou Admin > Radio
+- Ajout de `website_url` au formulaire radio (pour le bouton "Site" sur la page radio)
+- Ajout de `is_active` checkbox aux deux formulaires
+
+### Validation
+- Testing agent iteration 28 : **19/19 tests passés (100%)**, 1 mini issue LOW fixée (version downgrade guard)
+
 ## Session 16 (Jan 2026) — Pages TV/Radio, Codes VIP avancés, Bandeau d'info
 
 ### Pages TV Channels & Radio (restyle complet)

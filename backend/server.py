@@ -1156,10 +1156,12 @@ async def update_info_banner(req: InfoBannerUpdate, user: dict = Depends(get_cur
     existing = await db.site_settings.find_one({"setting_key": "info_banner"})
     prev = (existing or {}).get("setting_value") or {}
     content_changed = any(prev.get(k) != value.get(k) for k in ("title", "subtitle", "badge", "message", "variant", "image_url", "tags", "link_url", "link_label", "link2_url", "link2_label", "footer_text"))
+    prev_version = int(prev.get("version", 0) or 0)
     if content_changed or (not prev.get("enabled") and value.get("enabled")):
-        value["version"] = int(prev.get("version", 0) or 0) + 1
-    elif not value.get("version"):
-        value["version"] = int(prev.get("version", 1) or 1)
+        value["version"] = prev_version + 1
+    else:
+        # Preserve highest version (never downgrade)
+        value["version"] = max(int(value.get("version") or 0), prev_version, 1)
     await db.site_settings.update_one(
         {"setting_key": "info_banner"},
         {"$set": {"setting_value": value, "updated_at": datetime.now(timezone.utc).isoformat()}},
