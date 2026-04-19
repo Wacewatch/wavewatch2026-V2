@@ -1370,6 +1370,65 @@ async def get_recent_download_links(limit: int = 12):
     await _enrich_links(unique_items)
     return {"items": unique_items, "count": len(unique_items)}
 
+# ---- Cached Supabase full-fetch loop (for grouping) ----
+_dl_cache: dict = {}
+async def _fetch_all_download_links(filter_params: dict, max_rows: int = 20000):
+    """Fetch ALL matching rows via Supabase with pagination. Returns list of dicts."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return []
+    headers = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
+    all_rows: list = []
+    page_size = 1000
+    offset = 0
+    base_qs = "&".join([f"{k}={v}" for k, v in filter_params.items()])
+    async with httpx.AsyncClient(timeout=30) as hc:
+        while offset < max_rows:
+            url = f"{SUPABASE_URL}/rest/v1/download_links?{base_qs}"
+            r = await hc.get(url, headers={**headers, "Range-Unit": "items", "Range": f"{offset}-{offset + page_size - 1}"})
+            if r.status_code >= 400:
+                break
+            batch = r.json()
+            if not batch:
+                break
+            all_rows.extend(batch)
+            if len(batch) < page_size:
+                break
+            offset += page_size
+    return all_rows
+
+def _compress_range(sorted_nums: list) -> str:
+    """Return compressed representation: [1,2,3,5,6,7,10] -> 'E1-3, E5-7, E10'."""
+    if not sorted_nums:
+        return ""
+    runs = []
+    start = prev = sorted_nums[0]
+    for n in sorted_nums[1:]:
+        if n == prev + 1:
+            prev = n
+        else:
+            runs.append((start, prev))
+            start = prev = n
+    runs.append((start, prev))
+    parts = []
+    for a, b in runs:
+        parts.append(f"E{a}" if a == b else f"E{a}-{b}")
+    return ", ".join(parts)
+
+@app.get("/api/download-links/media-types")
+async def list_media_types():
+    """Return distinct media_type values from Supabase for the filter dropdown."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return {"types": []}
+    headers = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
+    async with httpx.AsyncClient(timeout=15) as hc:
+        # Fetch only the media_type column for all rows, distinct in Python
+        r = await hc.get(f"{SUPABASE_URL}/rest/v1/download_links?select=media_type&is_active=eq.true&is_valid=eq.true&status=eq.approved", headers={**headers, "Range-Unit": "items", "Range": "0-20000"})
+        if r.status_code >= 400:
+            return {"types": []}
+        data = r.json() or []
+    types = sorted({(d.get("media_type") or "").strip() for d in data if d.get("media_type")})
+    return {"types": types}
+
 @app.get("/api/download-links")
 async def list_download_links(
     page: int = 1,
@@ -1380,50 +1439,138 @@ async def list_download_links(
     q: Optional[str] = None,
     sort: str = "created_at.desc",
     uploader: Optional[str] = None,
+    group: bool = True,
 ):
-    """Full paginated & filterable list of ALL download links (no dedup). Includes uploader info."""
+    """Full paginated list. When group=True (default), TV episodes from same (show, season) are merged into one entry with episode range."""
     page = max(1, int(page or 1))
     limit = max(1, min(int(limit or 24), 60))
     params = _download_link_filters(quality=quality, media_type=media_type, language=language, q=q)
-    # Use inner join on profiles when filtering by uploader, else left join
     if uploader:
         params["select"] = "id,tmdb_id,media_type,ww_id,source_name,source_url,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,file_size,is_verified,created_at,submitted_by,profiles!inner(username,role)"
         params["profiles.username"] = f"eq.{uploader}"
     else:
         params["select"] = "id,tmdb_id,media_type,ww_id,source_name,source_url,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,file_size,is_verified,created_at,submitted_by,profiles(username,role)"
-    # Valid sorts
     if sort not in ("created_at.desc", "created_at.asc", "profiles(username).asc", "profiles(username).desc", "quality.asc", "quality.desc"):
         sort = "created_at.desc"
     params["order"] = sort
-    # Get total count via head request
-    total = 0
-    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
-        headers = {
-            "apikey": SUPABASE_SERVICE_KEY,
-            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-            "Prefer": "count=exact",
-            "Range-Unit": "items",
-            "Range": f"{(page-1)*limit}-{page*limit-1}",
-        }
-        qs = "&".join([f"{k}={v}" for k, v in params.items()])
-        async with httpx.AsyncClient(timeout=20) as hc:
-            r = await hc.get(f"{SUPABASE_URL}/rest/v1/download_links?{qs}", headers=headers)
-            if r.status_code >= 400:
-                raise HTTPException(status_code=502, detail=f"Supabase error {r.status_code}")
-            rows = r.json()
-            cr = r.headers.get("content-range", "")
-            if "/" in cr:
-                total = int(cr.split("/")[-1] or 0)
+
+    # Fetch all matching rows (cached briefly per filter combination)
+    import time, hashlib, json as _json
+    cache_key = hashlib.md5(_json.dumps(params, sort_keys=True).encode()).hexdigest() + f":group={group}"
+    now = time.time()
+    cached = _dl_cache.get(cache_key)
+    if cached and now - cached[0] < 30:
+        groups = cached[1]
     else:
-        rows = []
-    # Flatten profile
-    for r in rows:
-        prof = r.pop("profiles", None) or {}
-        r["uploader_username"] = prof.get("username") or "Anonyme"
-        r["uploader_role"] = prof.get("role") or "user"
-    await _enrich_links(rows)
-    has_more = (page * limit) < total
-    return {"items": rows, "page": page, "limit": limit, "total": total, "has_more": has_more}
+        rows = await _fetch_all_download_links(params)
+        # Flatten profile
+        for r in rows:
+            prof = r.pop("profiles", None) or {}
+            r["uploader_username"] = prof.get("username") or "Anonyme"
+            r["uploader_role"] = prof.get("role") or "user"
+
+        if group:
+            # Group TV by (tmdb_id, season_number); movies stay individual
+            grouped: dict = {}
+            order_counter = 0
+            for r in rows:
+                mt = r.get("media_type")
+                tid = r.get("tmdb_id")
+                if mt == "tv" and r.get("season_number") is not None:
+                    key = ("tv", tid, r["season_number"])
+                else:
+                    # Each movie (or tv without season) is its own group, still unique by row
+                    key = (mt, tid, r.get("id"))
+                g = grouped.get(key)
+                if not g:
+                    g = {
+                        "key": str(key),
+                        "group_type": "tv_season" if key[0] == "tv" else "movie",
+                        "tmdb_id": tid,
+                        "media_type": mt,
+                        "season_number": r.get("season_number"),
+                        "episode_numbers": set(),
+                        "items": [],
+                        "latest_created_at": r.get("created_at"),
+                        "earliest_created_at": r.get("created_at"),
+                        "qualities": set(),
+                        "languages": set(),
+                        "uploaders": set(),
+                        "uploader_roles": {},
+                        "resolutions": set(),
+                        "_order": order_counter,
+                    }
+                    grouped[key] = g
+                    order_counter += 1
+                g["items"].append(r)
+                if r.get("episode_number") is not None:
+                    g["episode_numbers"].add(r["episode_number"])
+                if r.get("quality"):
+                    g["qualities"].add(r["quality"])
+                if r.get("language"):
+                    g["languages"].add(r["language"])
+                if r.get("uploader_username"):
+                    g["uploaders"].add(r["uploader_username"])
+                    g["uploader_roles"][r["uploader_username"]] = r.get("uploader_role", "user")
+                if r.get("resolution"):
+                    g["resolutions"].add(r["resolution"])
+                if r.get("created_at") and r["created_at"] > g["latest_created_at"]:
+                    g["latest_created_at"] = r["created_at"]
+                if r.get("created_at") and r["created_at"] < g["earliest_created_at"]:
+                    g["earliest_created_at"] = r["created_at"]
+
+            # Serialize groups
+            results = []
+            for g in grouped.values():
+                eps_sorted = sorted(g["episode_numbers"])
+                sample = g["items"][0]
+                # Pick the most represented uploader
+                top_uploader = max(g["uploaders"], key=lambda u: sum(1 for it in g["items"] if it.get("uploader_username") == u)) if g["uploaders"] else "Anonyme"
+                results.append({
+                    "key": g["key"],
+                    "group_type": g["group_type"],
+                    "tmdb_id": g["tmdb_id"],
+                    "media_type": g["media_type"],
+                    "season_number": g["season_number"],
+                    "episode_count": len(eps_sorted),
+                    "episode_range": _compress_range(eps_sorted) if eps_sorted else None,
+                    "episode_min": eps_sorted[0] if eps_sorted else None,
+                    "episode_max": eps_sorted[-1] if eps_sorted else None,
+                    "qualities": sorted(g["qualities"]),
+                    "languages": sorted(g["languages"]),
+                    "resolutions": sorted(g["resolutions"]),
+                    "uploader_username": top_uploader,
+                    "uploader_role": g["uploader_roles"].get(top_uploader, "user"),
+                    "uploaders_count": len(g["uploaders"]),
+                    "latest_created_at": g["latest_created_at"],
+                    "earliest_created_at": g["earliest_created_at"],
+                    # Keep a representative item for fallback display
+                    "id": sample.get("id"),
+                    "ww_id": sample.get("ww_id"),
+                    "source_name": sample.get("source_name"),
+                    "source_url": sample.get("source_url"),
+                    "release_name": sample.get("release_name"),
+                    "created_at": g["latest_created_at"],
+                    "quality": sorted(g["qualities"])[0] if g["qualities"] else None,
+                    "resolution": sorted(g["resolutions"])[0] if g["resolutions"] else None,
+                    "language": sorted(g["languages"])[0] if g["languages"] else None,
+                    "_order": g["_order"],
+                })
+            # Sort groups: keep original row order (most recent first)
+            results.sort(key=lambda x: x["_order"])
+            for r in results:
+                r.pop("_order", None)
+            groups = results
+        else:
+            groups = rows
+        _dl_cache[cache_key] = (now, groups)
+
+    total = len(groups)
+    start = (page - 1) * limit
+    page_items = groups[start:start + limit]
+    # Enrich only the page items
+    await _enrich_links(page_items)
+    return {"items": page_items, "page": page, "limit": limit, "total": total, "has_more": start + limit < total, "grouped": group}
 
 @app.get("/api/download-links/uploaders")
 async def list_uploaders():

@@ -1,0 +1,58 @@
+{
+  "summary": "Backend testing complete for iteration 31: Download Links Grouping & Dynamic Media Types. All 29 tests passed. Verified: (1) GET /api/download-links/media-types returns dynamic ['movie', 'tv'] sorted, PUBLIC endpoint, (2) GET /api/download-links with default group=True returns 3003 grouped items (vs 15237 raw rows), (3) group=false returns raw 15237 rows, (4) Grouped items have all required fields: group_type, episode_count, episode_range, episode_min, episode_max, qualities[], languages[], uploaders_count, latest_created_at, earliest_created_at, (5) TV episodes grouped by (tmdb_id, season_number) with episode_range like 'E1-3', (6) Movies stay individual with group_type='movie', (7) Filters work with grouping (uploader, media_type), (8) Pagination works on grouped results, (9) Cache working (2s first request, 0.1s cached), (10) Security headers present, no credential leakage.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/download-links/media-types returns list with types ['movie', 'tv']",
+    "GET /api/download-links/media-types is PUBLIC (no auth required)",
+    "GET /api/download-links/media-types types are sorted alphabetically",
+    "No Supabase credentials leak in media-types response",
+    "GET /api/download-links?limit=5 default returns grouped=true",
+    "Grouped total=3003 (not 15237 raw rows)",
+    "GET /api/download-links?group=false returns raw rows total=15237",
+    "Grouped items have all required fields: group_type, episode_count, episode_range, episode_min, episode_max, qualities, languages, uploaders_count, latest_created_at, earliest_created_at",
+    "group_type values are 'tv_season' or 'movie'",
+    "TV season groups have valid episode info (episode_count >= 1, episode_range like 'E1-3')",
+    "Episode range format correct (E1-3 for consecutive episodes)",
+    "qualities field is array of unique qualities",
+    "languages field is array of unique languages",
+    "uploaders_count is integer >= 1",
+    "Movies stay individual with group_type='movie'",
+    "Filter by uploader=IMPERIUM works with grouping",
+    "Filter by media_type=movie returns only movies (group_type='movie')",
+    "Filter by media_type=tv returns only TV groups (group_type='tv_season')",
+    "Pagination works on grouped results (page 1 and 2 have different items)",
+    "has_more flag correct for pagination",
+    "Sort by created_at.desc works with grouping",
+    "Sort by quality.desc works with grouping",
+    "Cache makes second request fast (~2s first, ~0.1s cached)",
+    "GET /api/download-links/recent still deduplicates by (tmdb_id, media_type)",
+    "No Supabase credentials leak in download-links response",
+    "Security headers present (X-Frame-Options=DENY, X-Content-Type-Options=nosniff)",
+    "Non-existent uploader filter returns empty (total=0)",
+    "Explicit group=false returns ungrouped data"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_iteration31_download_links_grouping.py",
+    "/app/test_reports/pytest/pytest_results_iteration31.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iteration31_download_links_grouping.py"
+  ],
+  "success_rate": {
+    "backend": "100% (29/29 passed)"
+  },
+  "seed_data_creation": "None - used existing Supabase WWembed data (15237 total links, 3003 groups)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 31 backend features validated: Download Links Grouping & Dynamic Media Types. Key changes: (1) NEW endpoint GET /api/download-links/media-types returns dynamic ['movie', 'tv'] from Supabase, sorted, PUBLIC. (2) GET /api/download-links now defaults to group=True - TV episodes from same (tmdb_id, season_number) merged into one entry. Grouped total=3003 vs raw total=15237. (3) Grouped items have: group_type ('tv_season'|'movie'), episode_count, episode_range (compressed like 'E1-3, E5, E7'), episode_min, episode_max, qualities[], languages[], uploaders_count, latest_created_at, earliest_created_at. (4) group=false returns raw ungrouped rows. (5) 30s cache with key based on filters+group flag. (6) /api/download-links/recent unchanged (still deduplicates for home slider)."
+}

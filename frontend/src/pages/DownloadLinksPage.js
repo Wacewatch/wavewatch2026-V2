@@ -6,11 +6,7 @@ import { qualityColor, linkHref, timeAgo } from '../components/DownloadLinksRow'
 
 const QUALITIES = ['', 'FHD', 'HD', '4K', 'SD'];
 const LANGUAGES = ['', 'multi', 'truefrench', 'french', 'vostfr', 'vf', 'vo'];
-const TYPES = [
-  { v: '', label: 'Tous' },
-  { v: 'movie', label: 'Films' },
-  { v: 'tv', label: 'Séries' },
-];
+const TYPE_LABELS = { movie: 'Films', tv: 'Séries', anime: 'Animes', episode: 'Épisodes' };
 const SORTS = [
   { v: 'created_at.desc', label: 'Plus récents' },
   { v: 'created_at.asc', label: 'Plus anciens' },
@@ -23,32 +19,48 @@ const SORTS = [
 function FullLinkCard({ item }) {
   const poster = item.poster_path ? `${TMDB_IMG}/w342${item.poster_path}` : 'https://placehold.co/342x513/1e293b/64748b?text=%3F';
   const isTv = item.media_type === 'tv';
-  const hasEpisode = isTv && item.season_number != null && item.episode_number != null;
+  const isGroup = item.group_type === 'tv_season';
+  const episodeLabel = isGroup
+    ? (item.episode_count > 1
+        ? `S${item.season_number} ${item.episode_range}`
+        : `S${item.season_number}${item.episode_range ? ' ' + item.episode_range : ''}`)
+    : null;
   const isUploaderAdmin = item.uploader_role === 'admin';
+  const qualities = item.qualities || [];
+  const languages = item.languages || [];
+  const primaryQuality = qualities[0] || item.quality;
+  const primaryLang = languages[0] || item.language;
   return (
-    <Link to={linkHref(item)} className="group block" data-testid={`dl-item-${item.id}`}>
+    <Link to={linkHref(item)} className="group block" data-testid={`dl-item-${item.tmdb_id}-${item.season_number ?? 'movie'}`}>
       <div className="relative overflow-hidden rounded-lg border border-border bg-card transition-transform duration-200 group-hover:scale-[1.02] group-hover:border-primary/40 flex flex-col h-full">
         <div className="aspect-[2/3] overflow-hidden relative">
           <img src={poster} alt={item.title} loading="lazy" className="w-full h-full object-cover" onError={e => { e.target.src = 'https://placehold.co/342x513/1e293b/64748b?text=%3F'; }} />
-          {item.quality && (
-            <div className={`absolute top-2 left-2 text-[11px] font-extrabold px-2 py-0.5 rounded border ${qualityColor(item.quality)} shadow-lg`}>{item.quality.toUpperCase()}</div>
+          {primaryQuality && (
+            <div className={`absolute top-2 left-2 text-[11px] font-extrabold px-2 py-0.5 rounded border ${qualityColor(primaryQuality)} shadow-lg`}>
+              {String(primaryQuality).toUpperCase()}
+              {qualities.length > 1 && <span className="ml-0.5 opacity-80">+{qualities.length - 1}</span>}
+            </div>
           )}
           <div className="absolute top-2 right-2 p-1 rounded bg-black/70 backdrop-blur-sm shadow-lg">
             {isTv ? <Tv className="w-3.5 h-3.5 text-white" /> : <Film className="w-3.5 h-3.5 text-white" />}
           </div>
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-8 pb-2 px-2">
-            {hasEpisode && (
-              <div className="inline-block text-[11px] font-extrabold text-white bg-red-600 px-1.5 py-0.5 rounded mb-1">S{item.season_number} E{item.episode_number}</div>
+            {episodeLabel && (
+              <div className="inline-block text-[11px] font-extrabold text-white bg-red-600 px-1.5 py-0.5 rounded mb-1">
+                {episodeLabel}
+                {item.episode_count > 1 && <span className="ml-1 opacity-90">· {item.episode_count} ép.</span>}
+              </div>
             )}
-            <p className="text-[11px] text-white flex items-center gap-1 font-medium drop-shadow"><Clock className="w-3 h-3" />{timeAgo(item.created_at)}</p>
+            <p className="text-[11px] text-white flex items-center gap-1 font-medium drop-shadow"><Clock className="w-3 h-3" />{timeAgo(item.latest_created_at || item.created_at)}</p>
           </div>
         </div>
         <div className="p-2 flex flex-col gap-1.5 flex-1">
           <p className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{item.title}</p>
           <div className="flex items-center gap-1 flex-wrap text-[10px] font-medium">
-            {item.language && (
+            {primaryLang && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-                <Globe className="w-2.5 h-2.5" />{String(item.language).toUpperCase()}
+                <Globe className="w-2.5 h-2.5" />{String(primaryLang).toUpperCase()}
+                {languages.length > 1 && <span className="ml-0.5 opacity-70">+{languages.length - 1}</span>}
               </span>
             )}
             {item.resolution && <span className="px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/30">{item.resolution}</span>}
@@ -57,11 +69,7 @@ function FullLinkCard({ item }) {
           <div className="flex items-center gap-1 text-[10px] mt-auto pt-1 border-t border-border/50">
             {isUploaderAdmin ? <Crown className="w-2.5 h-2.5 text-yellow-400" /> : <User className="w-2.5 h-2.5 text-muted-foreground" />}
             <span className={`truncate ${isUploaderAdmin ? 'text-yellow-400 font-semibold' : 'text-muted-foreground'}`}>{item.uploader_username}</span>
-            {item.source_url && (
-              <a href={item.source_url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="ml-auto text-emerald-400 hover:text-emerald-300" title="Télécharger">
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            )}
+            {item.uploaders_count > 1 && <span className="ml-auto text-muted-foreground">+{item.uploaders_count - 1}</span>}
           </div>
         </div>
       </div>
@@ -80,9 +88,11 @@ export default function DownloadLinksPage() {
   const [filters, setFilters] = useState({ quality: '', media_type: '', language: '', uploader: '' });
   const [sort, setSort] = useState('created_at.desc');
   const [uploaders, setUploaders] = useState([]);
+  const [mediaTypes, setMediaTypes] = useState([]);
 
   useEffect(() => {
     API.get('/api/download-links/uploaders').then(({ data }) => setUploaders(data.uploaders || [])).catch(() => {});
+    API.get('/api/download-links/media-types').then(({ data }) => setMediaTypes(data.types || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -117,7 +127,7 @@ export default function DownloadLinksPage() {
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">Liens de téléchargement</h1>
         <p className="mt-3 text-muted-foreground text-base md:text-lg">
-          {total > 0 ? `${total.toLocaleString('fr-FR')} liens disponibles` : 'Derniers liens ajoutés par la communauté'}
+          {total > 0 ? `${total.toLocaleString('fr-FR')} contenus disponibles` : 'Derniers liens ajoutés par la communauté'}
         </p>
       </div>
 
@@ -138,7 +148,7 @@ export default function DownloadLinksPage() {
               data-testid="dl-search"
             />
           </div>
-          <SelectField value={filters.media_type} onChange={v => setFilter('media_type', v)} options={TYPES.map(t => ({ value: t.v, label: t.label }))} testid="dl-type" />
+          <SelectField value={filters.media_type} onChange={v => setFilter('media_type', v)} options={[{ value: '', label: 'Tous les types' }, ...mediaTypes.map(t => ({ value: t, label: TYPE_LABELS[t] || t.charAt(0).toUpperCase() + t.slice(1) }))]} testid="dl-type" />
           <SelectField value={filters.quality} onChange={v => setFilter('quality', v)} options={QUALITIES.map(q => ({ value: q, label: q || 'Toutes qualités' }))} testid="dl-quality" />
           <SelectField value={filters.language} onChange={v => setFilter('language', v)} options={LANGUAGES.map(l => ({ value: l, label: l ? l.toUpperCase() : 'Toutes langues' }))} testid="dl-lang" />
           <SelectField value={filters.uploader} onChange={v => setFilter('uploader', v)} options={[{ value: '', label: 'Tous les uploaders' }, ...uploaders.map(u => ({ value: u.username, label: `${u.username}${u.role === 'admin' ? ' 👑' : ''}` }))]} testid="dl-uploader" />
