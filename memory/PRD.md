@@ -13,6 +13,30 @@
 - **Favoris playlist** : Bouton coeur
 - **Retrogaming** : QuickPlaylistAdd sur les cartes de jeux retro
 
+## Session 21 (Jan 2026) — Polish retours UX
+
+### Retour 1 — Aucune icône "Télécharger" sur les jaquettes
+- Icône `ExternalLink` retirée des cartes sur `/download-links`
+- Aucun bouton de téléchargement visible nulle part sur les jaquettes (règle générale)
+
+### Retour 2 — Groupement intelligent des épisodes consécutifs
+- Côté backend : `/api/download-links` groupe par défaut les épisodes TV par (tmdb_id, season_number)
+- **15 237 liens bruts → 3 003 contenus groupés**
+- Format d'affichage : `S1 E1-10 · 10 ép.` (compressé avec plages ex `E1-5, E7-10`)
+- Chaque groupe agrège : qualities[], languages[], resolutions[], uploaders_count, latest_created_at
+- Paramètre `?group=false` disponible pour mode raw (retrocompat)
+- Cache mémoire 30s avec clé sur filtres+flag group (2e requête ~0.1s)
+- `/api/download-links/recent` inchangé (dédup pour slider home)
+
+### Retour 3 — Filtre type dynamique
+- Nouvel endpoint public `/api/download-links/media-types` → retourne les types distincts de Supabase
+- Frontend charge dynamiquement le dropdown (s'adapte automatiquement si nouveaux types en DB)
+- Label FR humanisé : movie→Films, tv→Séries, anime→Animes, etc.
+
+### Validation
+- Testing agent iteration 31 : **29/29 tests backend passés (100%)**
+- Visuel vérifié : 3 003 contenus groupés, "S1 E1-4 · 4 ép." affiché, filtres dynamiques ✅
+
 ## Session 20 (Jan 2026) — Polish retours utilisateur
 
 ### Retour 1 — Retrait section "Liens de téléchargement" des pages détail
