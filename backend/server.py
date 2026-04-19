@@ -1426,14 +1426,14 @@ async def get_links_for_content(tmdb_id: int, media_type: str, season: Optional[
 class DownloadLinksModuleConfig(BaseModel):
     enabled: bool = True
     title: Optional[str] = "Derniers liens de téléchargement"
-    subtitle: Optional[str] = "Les derniers ajouts à la communauté"
+    subtitle: Optional[str] = ""
     limit: Optional[int] = 12
     show_quality_badge: Optional[bool] = True
 
 @app.get("/api/download-links/config")
 async def get_download_links_config():
     setting = await db.site_settings.find_one({"setting_key": "download_links_module"}, {"_id": 0})
-    cfg = (setting or {}).get("setting_value") or {"enabled": True, "title": "Derniers liens de téléchargement", "subtitle": "Les derniers ajouts à la communauté", "limit": 12, "show_quality_badge": True}
+    cfg = (setting or {}).get("setting_value") or {"enabled": True, "title": "Derniers liens de téléchargement", "subtitle": "", "limit": 12, "show_quality_badge": True}
     return {"config": cfg}
 
 @app.put("/api/admin/download-links/config")

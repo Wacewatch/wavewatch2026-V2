@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
+import DownloadLinksSection from '../components/DownloadLinksSection';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Star, Calendar, Clock, Play, Download, Youtube, ThumbsUp, ThumbsDown, Heart, Eye, User, Plus, CheckCircle } from 'lucide-react';
@@ -189,6 +190,10 @@ export default function MovieDetailPage() {
             )}
           </div>
         </div>
+      </div>
+      {/* Download links section (Supabase WWembed) */}
+      <div className="container mx-auto px-4">
+        <DownloadLinksSection tmdbId={parseInt(id)} mediaType="movie" />
       </div>
       {/* Modals */}
       {showStream && <IframeModal src={streamUrl} title={`Streaming - ${movie.title}`} onClose={() => setShowStream(false)} />}

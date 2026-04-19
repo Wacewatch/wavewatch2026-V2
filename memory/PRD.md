@@ -13,6 +13,34 @@
 - **Favoris playlist** : Bouton coeur
 - **Retrogaming** : QuickPlaylistAdd sur les cartes de jeux retro
 
+## Session 19 (Jan 2026) — Module "Liens de téléchargement" - Polish & Intégration
+
+### Corrections UI du slider home
+- Sous-titre par défaut retiré ("Les derniers ajouts…")
+- Badge qualité passé en couleur PLEINE (FHD vert solide, 4K ambre, HD bleu) — très visible
+- Badge S1E4 sur fond rouge solide avec texte blanc — contraste fort
+- Langue (VOSTFR cyan) et résolution (1080p violet) = pills séparées colorées
+- Gradient noir en bas plus opaque pour lisibilité
+
+### Fix du routing (bug critique)
+- Click sur carte du slider → route correcte `/tv-shows/:id/season/:s/episode/:e` pour séries/animes
+- Films → `/movies/:id` (inchangé)
+- Séries sans season/episode → `/tv-shows/:id`
+- Helper `linkHref()` exporté pour réutilisation
+
+### Intégration détail film/épisode
+- Nouveau composant `DownloadLinksSection` : tableau des liens pour un TMDB spécifique
+  - Colonnes : Source, Qualité (badge), Résolution, Langue (pill), Ajouté (il y a), Taille, Action "Télécharger" vert
+  - Filtres dynamiques par qualité et langue au-dessus du tableau
+  - Bouton "Télécharger" ouvre `source_url` en nouvel onglet
+  - Icône "vérifié" pour les liens `is_verified=true`
+- Injecté sur `MovieDetailPage` et `EpisodeDetailPage` sous les boutons principaux
+- Bouton "Télécharger" manquant ajouté à `EpisodeDetailPage` (ouvre le widget wwembed en iframe)
+
+### Validation
+- Fait manuellement + navigation testée : click slider → page détail chargée correctement
+- Lint OK sur tous les fichiers
+
 ## Session 18 (Jan 2026) — Module "Liens de téléchargement" (Supabase WWembed)
 
 ### Intégration Supabase sécurisée

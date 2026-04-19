@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
+import DownloadLinksSection from '../components/DownloadLinksSection';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { LoadingSpinner } from '../components/Loading';
@@ -104,10 +105,14 @@ export default function EpisodeDetailPage({ isAnime = false }) {
         <button onClick={markAsWatched} className={`px-5 py-2.5 rounded-lg border flex items-center gap-2 transition-all duration-300 ${isWatched ? 'border-green-500 bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20' : 'border-cyan-600 text-cyan-400 hover:bg-cyan-900/20'}`} data-testid="watched-btn">
           <CheckCircle className={`w-5 h-5 transition-all ${isWatched ? 'fill-green-500 text-green-500 scale-110' : ''}`} />{isWatched ? 'Deja vu' : 'Marquer vu'}
         </button>
+        <button onClick={() => setShowDownload(true)} className="px-5 py-2.5 rounded-lg border border-blue-600 text-blue-400 hover:bg-blue-900/20 flex items-center gap-2" data-testid="download-btn"><Download className="w-5 h-5" />Telecharger</button>
         <AddToPlaylistButton contentId={epContentId} contentType="episode" title={`${seriesInfo?.name || 'Serie'} - ${episode.name} S${seasonNumber}E${episodeNumber}`} posterPath={seriesInfo?.poster_path || episode.still_path}
           metadata={{ series_id: id, series_name: seriesInfo?.name || '', series_poster: seriesInfo?.poster_path, season_number: seasonNumber, episode_number: episodeNumber, is_anime: isAnime, still_path: episode.still_path }} />
       </div>
       <LikeDislike contentId={epContentId} contentType="episode" />
+
+      {/* Download links from WWembed Supabase */}
+      <DownloadLinksSection tmdbId={parseInt(id)} mediaType="tv" season={parseInt(seasonNumber)} episode={parseInt(episodeNumber)} />
       {episode.guest_stars?.length > 0 && (
         <div className="mt-8"><h2 className="text-xl font-bold mb-4">Guest Stars</h2>
           <div className="flex gap-3 overflow-x-auto pb-4">
@@ -125,6 +130,14 @@ export default function EpisodeDetailPage({ isAnime = false }) {
           <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium">{episode.name}</h3><button onClick={() => setShowStream(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
             <div className="aspect-video"><iframe src={streamUrl} title={episode.name} className="w-full h-full" allowFullScreen /></div>
+          </div>
+        </div>
+      )}
+      {showDownload && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowDownload(false)}>
+          <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium">Telechargement - {episode.name}</h3><button onClick={() => setShowDownload(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
+            <div className="aspect-video"><iframe src={downloadUrl} title={`Download ${episode.name}`} className="w-full h-full" allowFullScreen /></div>
           </div>
         </div>
       )}
