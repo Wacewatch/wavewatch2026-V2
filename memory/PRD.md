@@ -13,6 +13,30 @@
 - **Favoris playlist** : Bouton coeur
 - **Retrogaming** : QuickPlaylistAdd sur les cartes de jeux retro
 
+## Session 20 (Jan 2026) — Polish retours utilisateur
+
+### Retour 1 — Retrait section "Liens de téléchargement" des pages détail
+- `DownloadLinksSection` retiré de `MovieDetailPage` et `EpisodeDetailPage`
+- Le bouton "Telecharger" bleu existant suffit (ouvre widget WWembed en iframe)
+
+### Retour 2 — EpisodeDetailPage complète pour épisodes à venir
+- Fallback image : si `episode.still_path` absent, on utilise `seriesInfo.backdrop_path` puis `poster_path`
+- Badge "Image de la série" en bas à droite quand fallback
+- Fallback synopsis : si `episode.overview` absent, on affiche celui de la série (titre "À propos de la série")
+
+### Retour 3 — Page `/download-links` avec TOUS les liens + uploaders
+- **Plus de déduplication** côté serveur → **15 237 liens** affichés au lieu de 22
+- Chaque item expose `uploader_username` et `uploader_role` (join Supabase `profiles`)
+- **Filtre uploader** via dropdown dynamique (9 uploaders listés)
+- **Tris** ajoutés : uploader A→Z, uploader Z→A, qualité ↑↓
+- Card affiche badge uploader + icône 👑 pour admins, liens externe direct via icône
+- Pagination complète avec compteur "Page X / Y"
+- Endpoint `/api/download-links/recent` inchangé (déduplication pour le slider home)
+
+### Validation
+- Testing agent iteration 30 : **21/21 tests backend passés (100%)**, zéro issue
+- Screenshots live : 15 237 liens affichés, uploaders visibles, épisode "À venir" complet ✅
+
 ## Session 19 (Jan 2026) — Module "Liens de téléchargement" - Polish & Intégration
 
 ### Corrections UI du slider home
