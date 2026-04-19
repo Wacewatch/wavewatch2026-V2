@@ -13,6 +13,39 @@
 - **Favoris playlist** : Bouton coeur
 - **Retrogaming** : QuickPlaylistAdd sur les cartes de jeux retro
 
+## Session 18 (Jan 2026) — Module "Liens de téléchargement" (Supabase WWembed)
+
+### Intégration Supabase sécurisée
+- **Clés Supabase uniquement côté backend** (service role dans `/app/backend/.env` : `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`)
+- Frontend n'a AUCUN accès direct à Supabase — proxy 100% via l'API WaveWatch
+- Aucune fuite de credentials validée par testing agent (iter29)
+
+### Endpoints backend
+- `GET /api/download-links/recent?limit=N` : N derniers uniques (tmdb_id, media_type), enrichis TMDB (poster_path, title, backdrop_path, vote_average)
+- `GET /api/download-links?page=X&limit=Y&quality=&media_type=&language=&q=&sort=` : liste paginée avec filtres + dédup
+- `GET /api/download-links/for-content?tmdb_id=&media_type=&season=&episode=` : tous les liens d'un contenu
+- `GET /api/download-links/config` : config publique du module
+- `PUT /api/admin/download-links/config` : admin (clamp limit 4-30)
+- `GET /api/admin/download-links/stats` : `{total, last_24h}` depuis Supabase
+- Filtrage automatique : `is_active=true`, `is_valid=true`, `status=approved`
+- Cache TMDB en mémoire (10 min) pour éviter le spam d'API
+
+### Frontend
+- **Composant slider** `DownloadLinksRow.js` : cartes jaquettes avec badge qualité coloré (FHD/4K/HD), icône movie/tv, S{n}E{n}, "il y a X", langue + résolution
+- **Page complète** `DownloadLinksPage.js` (`/download-links`) : recherche + filtres type/qualité/langue + tri + pagination
+- **Inséré dans HomePage** entre `popular_anime` et `popular_collections`
+- Click sur jaquette → page détail film/série WaveWatch (route existante `/movies/:id` ou `/tv/:id`)
+
+### Admin
+- Nouvel onglet "Téléchargements" : toggle actif, titre, sous-titre, nombre d'items (4-30), stats live
+- Indicateur sécurité "🔒 Clés Supabase uniquement côté backend"
+- Module aussi activable/réordonnable depuis l'onglet **Modules** comme les autres
+
+### Validation
+- Testing agent iteration 29 : **27/27 tests passés (100%)**, zéro issue
+- Vérification explicite : credentials Supabase jamais exposés dans aucun endpoint
+- Sécurité headers présents sur tous les nouveaux endpoints
+
 ## Session 17 (Jan 2026) — Panneau d'info (comme modules promo)
 
 ### Transformation Bandeau → Panneau
