@@ -13,6 +13,42 @@
 - **Favoris playlist** : Bouton coeur
 - **Retrogaming** : QuickPlaylistAdd sur les cartes de jeux retro
 
+## Session 16 (Jan 2026) — Pages TV/Radio, Codes VIP avancés, Bandeau d'info
+
+### Pages TV Channels & Radio (restyle complet)
+- Titre centré + sous-titre, barre de recherche 12h + filtre catégories/genres
+- Cards : logo + nom + badge catégorie coloré + description + pays + HD/LIVE
+- Likes / Dislikes cliquables (toggle, flip, backend `/api/tv-channels/{id}/vote` et `/api/radio-stations/{id}/vote`)
+- Bouton coeur favori intégré sur la card
+- Bouton Regarder (rouge) / Écouter (bleu) + bouton "+" playlist + bouton Site (radio)
+- Modal streaming TV avec iframe
+- Audio player global radio (play/pause par station)
+
+### Admin → Codes VIP avancés
+- Choix du type : VIP, VIP+, Uploader, Admin
+- Choix de la durée : 7/15/30/60/90/180/365 jours (admin = illimité)
+- Génération par **quantité** (1 à 50 codes d'un coup)
+- Click sur code → copie dans le presse-papier
+- À l'activation, `vip_expires_at` est automatiquement posé en base
+
+### Admin → Bandeau d'information (homepage)
+- Tab "Bandeau" dans l'admin
+- Activation / désactivation, édition du message, 6 variants (info/success/warning/danger/promo/announce)
+- Lien optionnel (URL + label)
+- Fermable par l'utilisateur, **persistant 24h** côté client via localStorage
+- **Versioning auto** : changement de message ou activation bump la version → tous les utilisateurs reverront le bandeau
+- Aperçu en direct dans l'admin
+- Composant `InfoBanner.js` injecté au-dessus du Hero sur la homepage
+
+### Backend
+- `GET /api/info-banner` (public), `PUT/GET /api/admin/info-banner` (admin)
+- `POST /api/tv-channels/{id}/vote`, `POST /api/radio-stations/{id}/vote` (auth)
+- `GET /api/media-votes/mine` (auth) - votes de l'utilisateur courant
+- `/api/admin/vip-codes` supporte maintenant `duration_days` et `quantity`
+
+### Validation
+- Testing agent iteration 27 : **24/24 tests passés (100%)**, zéro issue
+
 ## Session 15 (Jan 2026) - Sécurisation & préparation mise en ligne
 
 ### Phase A — Sécurité backend
