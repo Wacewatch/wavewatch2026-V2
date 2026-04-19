@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://code-monitor-7.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://code-continu.preview.emergentagent.com')
 
 class TestHealthAndBasicEndpoints:
     """Basic health and connectivity tests"""

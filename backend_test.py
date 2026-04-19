@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 class WaveWatchAPITester:
-    def __init__(self, base_url="https://code-monitor-7.preview.emergentagent.com"):
+    def __init__(self, base_url="https://code-continu.preview.emergentagent.com"):
         self.base_url = base_url
         self.session = requests.Session()
         self.admin_token = None
