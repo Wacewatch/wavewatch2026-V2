@@ -20,11 +20,16 @@ function FullLinkCard({ item }) {
   const poster = item.poster_path ? `${TMDB_IMG}/w342${item.poster_path}` : 'https://placehold.co/342x513/1e293b/64748b?text=%3F';
   const isTv = item.media_type === 'tv';
   const isGroup = item.group_type === 'tv_season';
-  const episodeLabel = isGroup
-    ? (item.episode_count > 1
-        ? `S${item.season_number} ${item.episode_range}`
-        : `S${item.season_number}${item.episode_range ? ' ' + item.episode_range : ''}`)
-    : null;
+  let episodeLabel = null;
+  if (isGroup && item.season_number != null) {
+    const emin = item.episode_min;
+    const emax = item.episode_max;
+    if (emin != null && emax != null) {
+      episodeLabel = emin === emax ? `S${item.season_number} E${emin}` : `S${item.season_number} E${emin} - E${emax}`;
+    } else {
+      episodeLabel = `S${item.season_number}`;
+    }
+  }
   const isUploaderAdmin = item.uploader_role === 'admin';
   const qualities = item.qualities || [];
   const languages = item.languages || [];
@@ -48,7 +53,6 @@ function FullLinkCard({ item }) {
             {episodeLabel && (
               <div className="inline-block text-[11px] font-extrabold text-white bg-red-600 px-1.5 py-0.5 rounded mb-1">
                 {episodeLabel}
-                {item.episode_count > 1 && <span className="ml-1 opacity-90">· {item.episode_count} ép.</span>}
               </div>
             )}
             <p className="text-[11px] text-white flex items-center gap-1 font-medium drop-shadow"><Clock className="w-3 h-3" />{timeAgo(item.latest_created_at || item.created_at)}</p>
@@ -83,6 +87,7 @@ export default function DownloadLinksPage() {
   const [loading, setLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
+  const [totalLinks, setTotalLinks] = useState(0);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filters, setFilters] = useState({ quality: '', media_type: '', language: '', uploader: '' });
@@ -109,7 +114,7 @@ export default function DownloadLinksPage() {
     if (filters.uploader) params.set('uploader', filters.uploader);
     if (debouncedSearch) params.set('q', debouncedSearch);
     API.get(`/api/download-links?${params.toString()}`)
-      .then(({ data }) => { setItems(data.items || []); setHasMore(!!data.has_more); setTotal(data.total || 0); })
+      .then(({ data }) => { setItems(data.items || []); setHasMore(!!data.has_more); setTotal(data.total || 0); setTotalLinks(data.total_links || 0); })
       .catch(() => { setItems([]); setHasMore(false); })
       .finally(() => setLoading(false));
   }, [page, sort, filters, debouncedSearch]);
@@ -127,7 +132,14 @@ export default function DownloadLinksPage() {
         </div>
         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">Liens de téléchargement</h1>
         <p className="mt-3 text-muted-foreground text-base md:text-lg">
-          {total > 0 ? `${total.toLocaleString('fr-FR')} contenus disponibles` : 'Derniers liens ajoutés par la communauté'}
+          {total > 0 ? (
+            <>
+              <span className="text-foreground font-semibold">{total.toLocaleString('fr-FR')}</span> contenus
+              {totalLinks > 0 && totalLinks !== total && (
+                <> · <span className="text-foreground font-semibold">{totalLinks.toLocaleString('fr-FR')}</span> liens disponibles</>
+              )}
+            </>
+          ) : 'Derniers liens ajoutés par la communauté'}
         </p>
       </div>
 

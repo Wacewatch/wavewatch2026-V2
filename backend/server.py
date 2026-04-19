@@ -1461,8 +1461,10 @@ async def list_download_links(
     cached = _dl_cache.get(cache_key)
     if cached and now - cached[0] < 30:
         groups = cached[1]
+        raw_count = cached[2] if len(cached) > 2 else len(groups)
     else:
         rows = await _fetch_all_download_links(params)
+        raw_count = len(rows)
         # Flatten profile
         for r in rows:
             prof = r.pop("profiles", None) or {}
@@ -1563,14 +1565,14 @@ async def list_download_links(
             groups = results
         else:
             groups = rows
-        _dl_cache[cache_key] = (now, groups)
+        _dl_cache[cache_key] = (now, groups, raw_count)
 
     total = len(groups)
     start = (page - 1) * limit
     page_items = groups[start:start + limit]
     # Enrich only the page items
     await _enrich_links(page_items)
-    return {"items": page_items, "page": page, "limit": limit, "total": total, "has_more": start + limit < total, "grouped": group}
+    return {"items": page_items, "page": page, "limit": limit, "total": total, "total_links": raw_count, "has_more": start + limit < total, "grouped": group}
 
 @app.get("/api/download-links/uploaders")
 async def list_uploaders():
