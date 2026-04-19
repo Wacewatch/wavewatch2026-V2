@@ -1379,32 +1379,65 @@ async def list_download_links(
     language: Optional[str] = None,
     q: Optional[str] = None,
     sort: str = "created_at.desc",
+    uploader: Optional[str] = None,
 ):
-    """Paginated & filterable list of download links, deduplicated by (tmdb_id, media_type)."""
+    """Full paginated & filterable list of ALL download links (no dedup). Includes uploader info."""
     page = max(1, int(page or 1))
     limit = max(1, min(int(limit or 24), 60))
     params = _download_link_filters(quality=quality, media_type=media_type, language=language, q=q)
-    params["select"] = "tmdb_id,media_type,ww_id,source_name,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,created_at"
+    # Use inner join on profiles when filtering by uploader, else left join
+    if uploader:
+        params["select"] = "id,tmdb_id,media_type,ww_id,source_name,source_url,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,file_size,is_verified,created_at,submitted_by,profiles!inner(username,role)"
+        params["profiles.username"] = f"eq.{uploader}"
+    else:
+        params["select"] = "id,tmdb_id,media_type,ww_id,source_name,source_url,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,file_size,is_verified,created_at,submitted_by,profiles(username,role)"
     # Valid sorts
-    if sort not in ("created_at.desc", "created_at.asc"):
+    if sort not in ("created_at.desc", "created_at.asc", "profiles(username).asc", "profiles(username).desc", "quality.asc", "quality.desc"):
         sort = "created_at.desc"
     params["order"] = sort
-    # Over-fetch for dedup, then slice page
-    params["limit"] = str(min(limit * page * 3, 500))
-    rows = await _supabase_get("/download_links", params)
-    seen = set()
-    unique_items = []
+    # Get total count via head request
+    total = 0
+    if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+        headers = {
+            "apikey": SUPABASE_SERVICE_KEY,
+            "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+            "Prefer": "count=exact",
+            "Range-Unit": "items",
+            "Range": f"{(page-1)*limit}-{page*limit-1}",
+        }
+        qs = "&".join([f"{k}={v}" for k, v in params.items()])
+        async with httpx.AsyncClient(timeout=20) as hc:
+            r = await hc.get(f"{SUPABASE_URL}/rest/v1/download_links?{qs}", headers=headers)
+            if r.status_code >= 400:
+                raise HTTPException(status_code=502, detail=f"Supabase error {r.status_code}")
+            rows = r.json()
+            cr = r.headers.get("content-range", "")
+            if "/" in cr:
+                total = int(cr.split("/")[-1] or 0)
+    else:
+        rows = []
+    # Flatten profile
     for r in rows:
-        k = (r.get("tmdb_id"), r.get("media_type"))
-        if k in seen:
-            continue
-        seen.add(k)
-        unique_items.append(r)
-    total = len(unique_items)
-    start = (page - 1) * limit
-    page_items = unique_items[start:start + limit]
-    await _enrich_links(page_items)
-    return {"items": page_items, "page": page, "limit": limit, "total": total, "has_more": start + limit < total}
+        prof = r.pop("profiles", None) or {}
+        r["uploader_username"] = prof.get("username") or "Anonyme"
+        r["uploader_role"] = prof.get("role") or "user"
+    await _enrich_links(rows)
+    has_more = (page * limit) < total
+    return {"items": rows, "page": page, "limit": limit, "total": total, "has_more": has_more}
+
+@app.get("/api/download-links/uploaders")
+async def list_uploaders():
+    """Return list of unique uploaders with their submission count, for filter dropdown."""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+        return {"uploaders": []}
+    headers = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
+    async with httpx.AsyncClient(timeout=20) as hc:
+        # Get all profiles that have at least one upload
+        r = await hc.get(f"{SUPABASE_URL}/rest/v1/profiles?select=username,role&role=in.(uploader,admin)&order=username.asc", headers=headers)
+        if r.status_code >= 400:
+            return {"uploaders": []}
+        profiles = r.json() or []
+    return {"uploaders": [{"username": p.get("username"), "role": p.get("role")} for p in profiles if p.get("username")]}
 
 @app.get("/api/download-links/for-content")
 async def get_links_for_content(tmdb_id: int, media_type: str, season: Optional[int] = None, episode: Optional[int] = None):

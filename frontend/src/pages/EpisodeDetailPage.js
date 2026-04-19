@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
-import DownloadLinksSection from '../components/DownloadLinksSection';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { LoadingSpinner } from '../components/Loading';
@@ -68,9 +67,17 @@ export default function EpisodeDetailPage({ isAnime = false }) {
   return (
     <div className="container mx-auto px-4 py-8" data-testid="episode-detail-page">
       <Link to={`/${basePath}/${id}/season/${seasonNumber}`} className="text-blue-400 hover:underline text-sm mb-4 block">&larr; Retour a la saison {seasonNumber}</Link>
-      {episode.still_path && (
+      {/* Hero image: episode still OR series backdrop fallback OR series poster fallback */}
+      {(episode.still_path || seriesInfo?.backdrop_path || seriesInfo?.poster_path) && (
         <div className="aspect-video max-w-3xl rounded-xl overflow-hidden mb-6 bg-muted relative">
-          <img src={`${TMDB_IMG}/original${episode.still_path}`} alt={episode.name} className={`w-full h-full object-cover ${user?.hide_spoilers && !isWatched ? 'blur-xl' : ''}`} />
+          <img
+            src={`${TMDB_IMG}/original${episode.still_path || seriesInfo?.backdrop_path || seriesInfo?.poster_path}`}
+            alt={episode.name}
+            className={`w-full h-full object-cover ${user?.hide_spoilers && !isWatched ? 'blur-xl' : ''}`}
+          />
+          {!episode.still_path && (
+            <div className="absolute bottom-3 right-3 text-[10px] px-2 py-1 rounded bg-black/70 text-white/80">Image de la série</div>
+          )}
           {user?.hide_spoilers && !isWatched && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40"><span className="text-white font-medium px-4 py-2 rounded-lg bg-black/50">Anti-spoiler actif</span></div>
           )}
@@ -87,7 +94,7 @@ export default function EpisodeDetailPage({ isAnime = false }) {
           <span className="px-2 py-0.5 text-xs rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">A venir</span>
         )}
       </div>
-      {episode.overview && (
+      {episode.overview ? (
         user?.hide_spoilers && !isWatched ? (
           <div className="text-lg mb-6 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
             <p className="text-yellow-400 font-medium flex items-center gap-2"><span className="text-lg">🔒</span>Mode anti-spoiler actif</p>
@@ -96,7 +103,12 @@ export default function EpisodeDetailPage({ isAnime = false }) {
         ) : (
           <p className="text-lg text-muted-foreground leading-relaxed mb-6">{episode.overview}</p>
         )
-      )}
+      ) : seriesInfo?.overview ? (
+        <div className="mb-6">
+          <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">À propos de la série</p>
+          <p className="text-base text-muted-foreground leading-relaxed">{seriesInfo.overview}</p>
+        </div>
+      ) : null}
       <div className="flex flex-wrap gap-3 mb-4">
         <button onClick={() => { setShowStream(true); if (user?.auto_mark_watched !== false && !isWatched) markAsWatched(); }} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2" data-testid="watch-btn"><Play className="w-5 h-5" />Regarder</button>
         <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 ${isFavorite ? 'bg-yellow-900/20' : ''}`} data-testid="favorite-btn">
@@ -110,9 +122,6 @@ export default function EpisodeDetailPage({ isAnime = false }) {
           metadata={{ series_id: id, series_name: seriesInfo?.name || '', series_poster: seriesInfo?.poster_path, season_number: seasonNumber, episode_number: episodeNumber, is_anime: isAnime, still_path: episode.still_path }} />
       </div>
       <LikeDislike contentId={epContentId} contentType="episode" />
-
-      {/* Download links from WWembed Supabase */}
-      <DownloadLinksSection tmdbId={parseInt(id)} mediaType="tv" season={parseInt(seasonNumber)} episode={parseInt(episodeNumber)} />
       {episode.guest_stars?.length > 0 && (
         <div className="mt-8"><h2 className="text-xl font-bold mb-4">Guest Stars</h2>
           <div className="flex gap-3 overflow-x-auto pb-4">
