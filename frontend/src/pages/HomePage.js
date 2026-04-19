@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
+import API, { TMDB_IMG } from '../lib/api';
 import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users, Sparkles, X } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
@@ -19,8 +19,8 @@ function Hero() {
         setMovies(top5);
         // Fetch logos for each movie
         top5.forEach(m => {
-          fetch(`https://api.themoviedb.org/3/movie/${m.id}/images?api_key=${TMDB_API_KEY}&include_image_language=fr,en,null`)
-            .then(r => r.json()).then(d => {
+          API.get(`/api/tmdb/movie/${m.id}/images`)
+            .then(({ data: d }) => {
               const logo = d.logos?.find(l => l.iso_639_1 === 'fr') || d.logos?.find(l => l.iso_639_1 === 'en') || d.logos?.[0];
               if (logo?.file_path) setLogos(prev => ({ ...prev, [m.id]: `${TMDB_IMG}/w500${logo.file_path}` }));
             }).catch(() => {});

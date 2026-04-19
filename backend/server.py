@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import os
+import re
 import bcrypt
 import jwt
 import secrets
@@ -10,7 +11,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Any
 from fastapi import FastAPI, HTTPException, Request, Response, Depends, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
+from starlette.middleware.base import BaseHTTPMiddleware
+from pydantic import BaseModel, EmailStr, field_validator
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from contextlib import asynccontextmanager
@@ -23,6 +25,11 @@ TMDB_API_KEY = os.environ.get("TMDB_API_KEY")
 TMDB_BASE = "https://api.themoviedb.org/3"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@wavewatch.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "WaveWatch2026!")
+ENV = os.environ.get("ENV", "development").lower()
+IS_PROD = ENV == "production"
+# Allowed CORS origins - support multiple via comma-separated FRONTEND_URL
+_raw_origins = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",") if o.strip()]
 
 # MongoDB client
 client = AsyncIOMotorClient(MONGO_URL)
@@ -75,8 +82,14 @@ def create_refresh_token(user_id: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 def set_auth_cookies(response: Response, access_token: str, refresh_token: str):
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False, samesite="lax", max_age=86400, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+    cookie_kwargs = {
+        "httponly": True,
+        "secure": IS_PROD,
+        "samesite": "none" if IS_PROD else "lax",
+        "path": "/",
+    }
+    response.set_cookie(key="access_token", value=access_token, max_age=86400, **cookie_kwargs)
+    response.set_cookie(key="refresh_token", value=refresh_token, max_age=604800, **cookie_kwargs)
 
 async def get_current_user(request: Request) -> dict:
     token = request.cookies.get("access_token")
@@ -196,22 +209,54 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="WaveWatch API", lifespan=lifespan)
 
+# Security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        if IS_PROD:
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.environ.get("FRONTEND_URL", "http://localhost:3000")],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Origin", "X-Requested-With"],
 )
+
+# Password policy
+PASSWORD_MIN_LEN = 8
+def validate_password_strength(pw: str):
+    if len(pw) < PASSWORD_MIN_LEN:
+        raise HTTPException(status_code=400, detail=f"Le mot de passe doit contenir au moins {PASSWORD_MIN_LEN} caracteres")
+    if not re.search(r"[A-Z]", pw):
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins une majuscule")
+    if not re.search(r"[0-9]", pw):
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins un chiffre")
 
 # Pydantic models
 class RegisterRequest(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     password: str
 
+    @field_validator("username")
+    @classmethod
+    def _uname(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 2 or len(v) > 32:
+            raise ValueError("Le nom d'utilisateur doit contenir entre 2 et 32 caracteres")
+        return v
+
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 class FeedbackRequest(BaseModel):
@@ -261,8 +306,22 @@ class UserRoleUpdate(BaseModel):
 
 # ==================== AUTH ====================
 @app.post("/api/auth/register")
-async def register(req: RegisterRequest, response: Response):
+async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.strip().lower()
+    # Rate-limit register by IP (max 5 registrations / hour)
+    ip = request.client.host if request.client else "unknown"
+    rl_key = f"register:{ip}"
+    rl = await db.register_attempts.find_one({"identifier": rl_key})
+    now = datetime.now(timezone.utc)
+    if rl:
+        window_start = datetime.fromisoformat(rl.get("window_start", now.isoformat()))
+        if (now - window_start).total_seconds() < 3600:
+            if rl.get("count", 0) >= 5:
+                raise HTTPException(status_code=429, detail="Trop de comptes crees depuis cette IP. Reessayez plus tard.")
+        else:
+            await db.register_attempts.delete_one({"identifier": rl_key})
+    # Password policy
+    validate_password_strength(req.password)
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="Cet email est deja utilise")
@@ -285,6 +344,12 @@ async def register(req: RegisterRequest, response: Response):
     access = create_access_token(user_id, email)
     refresh = create_refresh_token(user_id)
     set_auth_cookies(response, access, refresh)
+    # Record rate-limit attempt
+    await db.register_attempts.update_one(
+        {"identifier": rl_key},
+        {"$inc": {"count": 1}, "$setOnInsert": {"window_start": now.isoformat()}},
+        upsert=True
+    )
     user_doc["_id"] = user_id
     return {"user": serialize_user(user_doc), "token": access}
 
@@ -339,7 +404,7 @@ async def refresh_token(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         access = create_access_token(str(user["_id"]), user["email"])
-        response.set_cookie(key="access_token", value=access, httponly=True, secure=False, samesite="lax", max_age=86400, path="/")
+        response.set_cookie(key="access_token", value=access, httponly=True, secure=IS_PROD, samesite="none" if IS_PROD else "lax", max_age=86400, path="/")
         return {"token": access}
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
@@ -898,8 +963,7 @@ async def update_profile(request: Request, user: dict = Depends(get_current_user
 async def change_password(request: Request, user: dict = Depends(get_current_user)):
     body = await request.json()
     new_password = body.get("new_password", "")
-    if len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caracteres")
+    validate_password_strength(new_password)
     full_user = await db.users.find_one({"_id": ObjectId(user["_id"])})
     current = body.get("current_password", "")
     if current and not verify_password(current, full_user.get("password_hash", "")):

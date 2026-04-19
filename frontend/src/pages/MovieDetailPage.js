@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import API, { TMDB_IMG, TMDB_API_KEY } from '../lib/api';
+import API, { TMDB_IMG } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Star, Calendar, Clock, Play, Download, Youtube, ThumbsUp, ThumbsDown, Heart, Eye, User, Plus, CheckCircle } from 'lucide-react';
@@ -34,8 +34,8 @@ export default function MovieDetailPage() {
     }).catch(() => {}).finally(() => setLoading(false));
     API.get(`/api/tmdb/similar/movies/${id}`).then(({ data }) => setSimilar((data.results || []).slice(0, 12))).catch(() => {});
     // Fetch logo
-    fetch(`https://api.themoviedb.org/3/movie/${id}/images?api_key=${TMDB_API_KEY}&include_image_language=fr,en,null`)
-      .then(r => r.json()).then(data => {
+    API.get(`/api/tmdb/movie/${id}/images`)
+      .then(({ data }) => {
         const logo = data.logos?.find(l => l.iso_639_1 === 'fr') || data.logos?.find(l => l.iso_639_1 === 'en') || data.logos?.[0];
         if (logo?.file_path) setLogoUrl(`${TMDB_IMG}/original${logo.file_path}`);
       }).catch(() => {});
