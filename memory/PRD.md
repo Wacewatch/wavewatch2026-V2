@@ -227,3 +227,30 @@ Avant de déployer, l'opérateur doit :
 - Features: full-screen on mobile (no margins, full height), fullscreen toggle button (Maximize2/Minimize2), close button, ESC-to-close, body scroll lock
 - Integrated across: MovieDetailPage (stream/download/trailer), TVShowDetailPage (stream/download/trailer), EpisodeDetailPage (stream/download), PlaylistDetailPage (embed), RetrogamingPage (game stream), HomePage (TV channel), TVChannelsPage (channel stream)
 - data-testids: `iframe-modal`, `iframe-modal-close`, `iframe-modal-fullscreen`, `iframe-modal-open-newtab`
+
+## Update - Bug Fixes Multi-points (2026-01-21)
+
+### Backend
+- **Rate limit register relaxé** : 30 inscriptions / 24h par IP (au lieu de 5/h) — pour IP partagées / carriers mobiles
+- **Fix mark-all-watched** : écrit maintenant dans `watch_history` (et non `user_history`) — la série + tous les épisodes sont bien comptés dans les stats (testé : Breaking Bad → 62 épisodes comptabilisés)
+- **Fix detailed-stats** : formule temps corrigée (movies×110 + episodes×42, fallback series×45 seulement si pas d'épisodes) — plus de double comptage
+- **Reviews communauté** : purge au démarrage des seed_user_* + filtre dans GET /api/platform-reviews
+- **Admin Activity Feed étendu** : nouveau endpoint `/api/admin/activities` retourne un flux unifié:
+  - `register` : nouvelle inscription (username, email, IP)
+  - `code_redeem` : utilisation code VIP (code, type, durée)
+  - `play` : lecture contenu (titre, type, throttle 1h par contenu)
+  - `admin_action` : actions admin (TMDB update, broadcast, génération codes)
+
+### Frontend
+- **IframeModal** étendu à **Musique**, **Jeu**, **Logiciel**, **Ebook** pour Lecture/Écoute/Téléchargement
+  - MusicDetailPage : bouton Télécharger ajouté + player audio inline pour flux .mp3/.wav/.ogg
+  - GameDetailPage : séparation Jouer (iframe) / Télécharger
+  - EbookDetailPage : Lire en ligne (iframe) / Télécharger
+  - SoftwareDetailPage : Télécharger via modal
+- **CalendarPage** : fetch 5 pages de chaque source (movies, tv, on_the_air), dédupliqué par id, pas de `.slice(0,50)` → affichage complet
+- **TVShowDetailPage** : bouton "Marquer vu" supprimé, seul "Tout marquer" (série complète) subsiste
+- **DashboardPage** : composant `Section` hoisté hors du composant parent → plus de remount et plus de scroll jump lors de la saisie dans le textarea d'avis
+- **AdminPage Feed** : nouveau `ActivityFeedView` avec stats compteur par type, filtres (Tous / Inscriptions / Codes / Lectures / Admin), rendu enrichi avec icônes et détails contextuels
+
+### Tests
+- Backend 100% OK (pytest 9/9, /app/backend/tests/test_iteration32_bugfixes.py)
