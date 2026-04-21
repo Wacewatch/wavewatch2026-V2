@@ -4,12 +4,14 @@ import API from '../lib/api';
 import { Monitor, ArrowLeft, Download } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
+import IframeModal from '../components/IframeModal';
 
 export default function SoftwareDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showDownload, setShowDownload] = useState(false);
 
   useEffect(() => {
     API.get('/api/software').then(({ data }) => {
@@ -18,8 +20,14 @@ export default function SoftwareDetailPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
+  const logHistory = () => {
+    API.post('/api/user/history', { content_id: id, content_type: 'software', title: item?.name || item?.title || '', poster_path: item?.icon_url || item?.icon || '' }).catch(() => {});
+  };
+
   if (loading) return <div className="container mx-auto px-4 py-12 text-center">Chargement...</div>;
   if (!item) return <div className="container mx-auto px-4 py-12 text-center">Logiciel non trouve</div>;
+
+  const dlUrl = item.download_url;
 
   return (
     <div className="container mx-auto px-4 py-8" data-testid="software-detail-page">
@@ -37,7 +45,11 @@ export default function SoftwareDetailPage() {
           </div>
           {item.description && <p className="text-lg text-muted-foreground leading-relaxed">{item.description}</p>}
           <div className="flex flex-wrap gap-3 pt-2">
-            {item.download_url && <a href={item.download_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-2"><Download className="w-5 h-5" />Telecharger</a>}
+            {dlUrl && (
+              <button onClick={() => { setShowDownload(true); logHistory(); }} className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium flex items-center gap-2" data-testid="software-download-btn">
+                <Download className="w-5 h-5" />Telecharger
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap gap-3 items-center">
             <LikeDislike contentId={id} contentType="software" />
@@ -45,6 +57,17 @@ export default function SoftwareDetailPage() {
           </div>
         </div>
       </div>
+
+      {showDownload && (
+        <IframeModal
+          src={dlUrl}
+          title={`Telechargement - ${item.name}`}
+          onClose={() => setShowDownload(false)}
+          icon={<Monitor className="w-5 h-5 text-blue-400" />}
+          showOpenInNewTab
+          borderColor="border-blue-500/30"
+        />
+      )}
     </div>
   );
 }

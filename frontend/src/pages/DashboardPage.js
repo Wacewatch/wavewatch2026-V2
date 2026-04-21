@@ -35,6 +35,18 @@ function UserBadge({ review }) {
   return null;
 }
 
+function Section({ title, icon, isOpen, setIsOpen, children, gradient }) {
+  return (
+    <div className={`rounded-xl border border-border overflow-hidden ${gradient || 'bg-card'}`}>
+      <button type="button" onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-5 hover:opacity-80 transition-opacity" data-testid={`section-${title.toLowerCase().replace(/\s/g, '-')}`}>
+        <h2 className="text-lg font-bold flex items-center gap-2">{icon}{title}</h2>
+        {isOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
+      </button>
+      {isOpen && <div className="px-5 pb-5">{children}</div>}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -113,16 +125,6 @@ export default function DashboardPage() {
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
     finally { setSavingReview(false); }
   };
-
-  const Section = ({ title, icon, isOpen, setIsOpen, children, gradient }) => (
-    <div className={`rounded-xl border border-border overflow-hidden ${gradient || 'bg-card'}`}>
-      <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-5 hover:opacity-80 transition-opacity" data-testid={`section-${title.toLowerCase().replace(/\s/g, '-')}`}>
-        <h2 className="text-lg font-bold flex items-center gap-2">{icon}{title}</h2>
-        {isOpen ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
-      </button>
-      {isOpen && <div className="px-5 pb-5">{children}</div>}
-    </div>
-  );
 
   const displayedReviews = showAllReviews ? communityReviews.reviews : communityReviews.reviews.slice(0, 5);
 

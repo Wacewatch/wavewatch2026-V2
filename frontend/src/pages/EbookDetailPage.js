@@ -4,12 +4,15 @@ import API from '../lib/api';
 import { BookOpen, Eye, ArrowLeft, Download } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
+import IframeModal from '../components/IframeModal';
 
 export default function EbookDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showRead, setShowRead] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
 
   useEffect(() => {
     API.get('/api/ebooks').then(({ data }) => {
@@ -18,8 +21,15 @@ export default function EbookDetailPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
+  const logHistory = () => {
+    API.post('/api/user/history', { content_id: id, content_type: 'ebook', title: item?.title || '', poster_path: item?.cover_url || item?.cover || '' }).catch(() => {});
+  };
+
   if (loading) return <div className="container mx-auto px-4 py-12 text-center">Chargement...</div>;
   if (!item) return <div className="container mx-auto px-4 py-12 text-center">Ebook non trouve</div>;
+
+  const readUrl = item.reading_url;
+  const dlUrl = item.download_url;
 
   return (
     <div className="container mx-auto px-4 py-8" data-testid="ebook-detail-page">
@@ -37,8 +47,16 @@ export default function EbookDetailPage() {
           </div>
           {item.description && <p className="text-lg text-muted-foreground leading-relaxed">{item.description}</p>}
           <div className="flex flex-wrap gap-3 pt-2">
-            {item.reading_url && <a href={item.reading_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-medium flex items-center gap-2"><Eye className="w-5 h-5" />Lire en ligne</a>}
-            {item.download_url && <a href={item.download_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg border border-orange-600 text-orange-400 hover:bg-orange-900/20 font-medium flex items-center gap-2"><Download className="w-5 h-5" />Telecharger</a>}
+            {readUrl && (
+              <button onClick={() => { setShowRead(true); logHistory(); }} className="px-6 py-3 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-medium flex items-center gap-2" data-testid="ebook-read-btn">
+                <Eye className="w-5 h-5" />Lire en ligne
+              </button>
+            )}
+            {dlUrl && (
+              <button onClick={() => setShowDownload(true)} className="px-6 py-3 rounded-lg border border-orange-600 text-orange-400 hover:bg-orange-900/20 font-medium flex items-center gap-2" data-testid="ebook-download-btn">
+                <Download className="w-5 h-5" />Telecharger
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap gap-3 items-center">
             <LikeDislike contentId={id} contentType="ebook" />
@@ -46,6 +64,20 @@ export default function EbookDetailPage() {
           </div>
         </div>
       </div>
+
+      {showRead && (
+        <IframeModal
+          src={readUrl}
+          title={`Lecture - ${item.title}`}
+          onClose={() => setShowRead(false)}
+          icon={<BookOpen className="w-5 h-5 text-orange-400" />}
+          showOpenInNewTab
+          borderColor="border-orange-500/30"
+        />
+      )}
+      {showDownload && (
+        <IframeModal src={dlUrl} title={`Telechargement - ${item.title}`} onClose={() => setShowDownload(false)} showOpenInNewTab icon={<Download className="w-5 h-5 text-orange-400" />} />
+      )}
     </div>
   );
 }

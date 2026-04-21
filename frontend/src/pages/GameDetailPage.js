@@ -4,12 +4,15 @@ import API from '../lib/api';
 import { Gamepad2, Play, ArrowLeft, Download } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
+import IframeModal from '../components/IframeModal';
 
 export default function GameDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPlay, setShowPlay] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
 
   useEffect(() => {
     API.get('/api/games').then(({ data }) => {
@@ -18,8 +21,15 @@ export default function GameDetailPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
+  const logHistory = () => {
+    API.post('/api/user/history', { content_id: id, content_type: 'game', title: item?.title || '', poster_path: item?.cover_url || '' }).catch(() => {});
+  };
+
   if (loading) return <div className="container mx-auto px-4 py-12 text-center">Chargement...</div>;
   if (!item) return <div className="container mx-auto px-4 py-12 text-center">Jeu non trouve</div>;
+
+  const playUrl = item.play_url || item.game_url || item.stream_url;
+  const dlUrl = item.download_url;
 
   return (
     <div className="container mx-auto px-4 py-8" data-testid="game-detail-page">
@@ -37,7 +47,16 @@ export default function GameDetailPage() {
           </div>
           {item.description && <p className="text-lg text-muted-foreground leading-relaxed">{item.description}</p>}
           <div className="flex flex-wrap gap-3 pt-2">
-            {item.download_url && <a href={item.download_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium flex items-center gap-2"><Play className="w-5 h-5" />Jouer / Telecharger</a>}
+            {playUrl && (
+              <button onClick={() => { setShowPlay(true); logHistory(); }} className="px-6 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium flex items-center gap-2" data-testid="game-play-btn">
+                <Play className="w-5 h-5" />Jouer
+              </button>
+            )}
+            {dlUrl && (
+              <button onClick={() => setShowDownload(true)} className="px-6 py-3 rounded-lg border border-green-600 text-green-400 hover:bg-green-900/20 font-medium flex items-center gap-2" data-testid="game-download-btn">
+                <Download className="w-5 h-5" />Telecharger
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap gap-3 items-center">
             <LikeDislike contentId={id} contentType="game" />
@@ -45,6 +64,21 @@ export default function GameDetailPage() {
           </div>
         </div>
       </div>
+
+      {showPlay && (
+        <IframeModal
+          src={playUrl}
+          title={item.title}
+          onClose={() => setShowPlay(false)}
+          icon={<Gamepad2 className="w-5 h-5 text-green-400" />}
+          showOpenInNewTab
+          borderColor="border-green-500/30"
+          iframeAllow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        />
+      )}
+      {showDownload && (
+        <IframeModal src={dlUrl} title={`Telechargement - ${item.title}`} onClose={() => setShowDownload(false)} showOpenInNewTab icon={<Download className="w-5 h-5 text-green-400" />} />
+      )}
     </div>
   );
 }

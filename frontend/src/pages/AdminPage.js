@@ -3,11 +3,114 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/api';
-import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X, ExternalLink } from 'lucide-react';
+import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X, ExternalLink, UserPlus, Key, Play } from 'lucide-react';
 import ModuleOrderManager from '../components/ModuleOrderManager';
 import { InfoPanelView } from '../components/InfoBanner';
 
 const USERS_PER_PAGE = 15;
+
+const ACTIVITY_META = {
+  register: { label: 'Inscription', icon: UserPlus, color: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/30' },
+  code_redeem: { label: 'Code utilise', icon: Key, color: 'text-amber-400', bg: 'bg-amber-500/15 border-amber-500/30' },
+  play: { label: 'Lecture', icon: Play, color: 'text-red-400', bg: 'bg-red-500/15 border-red-500/30' },
+  admin_action: { label: 'Admin', icon: Shield, color: 'text-blue-400', bg: 'bg-blue-500/15 border-blue-500/30' },
+};
+
+function ActivityFeedView({ activities, onRefresh }) {
+  const [filter, setFilter] = useState('all');
+  const filters = [
+    { id: 'all', label: 'Tous', color: 'bg-secondary' },
+    { id: 'register', label: 'Inscriptions', color: 'bg-emerald-500/20 text-emerald-300' },
+    { id: 'code_redeem', label: 'Codes', color: 'bg-amber-500/20 text-amber-300' },
+    { id: 'play', label: 'Lectures', color: 'bg-red-500/20 text-red-300' },
+    { id: 'admin_action', label: 'Admin', color: 'bg-blue-500/20 text-blue-300' },
+  ];
+  const filtered = filter === 'all' ? activities : activities.filter(a => a.type === filter);
+  const counts = activities.reduce((acc, a) => { acc[a.type] = (acc[a.type] || 0) + 1; return acc; }, {});
+
+  return (
+    <div className="space-y-4">
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {['register', 'code_redeem', 'play', 'admin_action'].map(k => {
+          const meta = ACTIVITY_META[k];
+          const Icon = meta.icon;
+          return (
+            <div key={k} className={`rounded-xl border p-3 flex items-center gap-3 ${meta.bg}`}>
+              <Icon className={`w-5 h-5 ${meta.color}`} />
+              <div>
+                <p className={`text-lg font-bold ${meta.color}`}>{counts[k] || 0}</p>
+                <p className="text-xs text-muted-foreground">{meta.label}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        {filters.map(f => (
+          <button key={f.id} type="button" onClick={() => setFilter(f.id)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filter === f.id ? 'bg-primary text-primary-foreground' : `${f.color} hover:opacity-80`}`}
+            data-testid={`activity-filter-${f.id}`}>
+            {f.label}
+          </button>
+        ))}
+        <button type="button" onClick={onRefresh} className="ml-auto px-3 py-1.5 rounded-lg text-xs border border-border hover:bg-secondary">Rafraichir</button>
+      </div>
+
+      {/* Feed */}
+      {filtered.length === 0 ? (
+        <p className="text-center py-8 text-muted-foreground">Aucune activite</p>
+      ) : (
+        <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border">
+          {filtered.map(a => {
+            const meta = ACTIVITY_META[a.type] || ACTIVITY_META.admin_action;
+            const Icon = meta.icon;
+            return (
+              <div key={a._id} className="p-4 flex items-start gap-3 hover:bg-secondary/30 transition-colors" data-testid={`activity-${a.type}`}>
+                <div className={`w-10 h-10 rounded-full border flex items-center justify-center shrink-0 ${meta.bg}`}>
+                  <Icon className={`w-5 h-5 ${meta.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[10px] uppercase tracking-wider font-bold ${meta.color}`}>{meta.label}</span>
+                    {a.username && <span className="font-bold text-sm truncate">{a.username}</span>}
+                  </div>
+                  <p className="text-sm mt-0.5">{a.details || a.action}</p>
+                  {/* Extra details */}
+                  {a.type === 'register' && (a.email || a.ip) && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {a.email && <span>{a.email}</span>}
+                      {a.ip && <span className="ml-2 opacity-70">IP: {a.ip}</span>}
+                    </p>
+                  )}
+                  {a.type === 'code_redeem' && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Code: <span className="font-mono text-amber-300">{a.code}</span>
+                      {a.code_type && <span className="ml-2 uppercase">{a.code_type}</span>}
+                      {a.duration_days ? <span className="ml-2">{a.duration_days}j</span> : null}
+                    </p>
+                  )}
+                  {a.type === 'play' && a.title && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {a.content_type && <span className="uppercase mr-2 opacity-70">{a.content_type}</span>}
+                      <span className="italic">« {a.title} »</span>
+                    </p>
+                  )}
+                  {a.type === 'admin_action' && a.target && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{a.target}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-1 opacity-70">{a.created_at ? new Date(a.created_at).toLocaleString('fr-FR') : ''}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ContentForm({ fields, data, setData, onSubmit, onCancel, title }) {
   return (
@@ -768,21 +871,12 @@ export default function AdminPage() {
       {/* Activity Feed */}
       {tab === 'activities' && (
         <div className="space-y-4" data-testid="admin-activities">
-          <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5" />Activites recentes</h2>
-          {activities.length === 0 ? <p className="text-center py-8 text-muted-foreground">Aucune activite recente</p> :
-            <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border">
-              {activities.map(a => (
-                <div key={a._id} className="p-4 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0"><Shield className="w-4 h-4 text-primary" /></div>
-                  <div className="flex-1">
-                    <p className="text-sm"><span className="font-bold">{a.admin_username}</span> - {a.action}</p>
-                    {a.target && <p className="text-xs text-muted-foreground">{a.target}</p>}
-                    <p className="text-xs text-muted-foreground mt-1">{a.created_at ? new Date(a.created_at).toLocaleString('fr-FR') : ''}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          }
+          <h2 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5" />Feed d'activites</h2>
+          <p className="text-sm text-muted-foreground">Inscriptions, utilisations de codes, lectures et actions admin en temps reel.</p>
+
+          {/* Filters */}
+          {(() => null)()}
+          <ActivityFeedView activities={activities} onRefresh={() => loadData('activities')} />
         </div>
       )}
 

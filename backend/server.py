@@ -183,17 +183,10 @@ async def seed_default_content():
         ]
         await db.radio_stations.insert_many(default_radios)
     # Seed platform reviews if empty
+    # Purge old seeded demo reviews if present
+    await db.platform_reviews.delete_many({"user_id": {"$regex": "^seed_user_"}})
     if await db.platform_reviews.count_documents({}) == 0:
-        now = datetime.now(timezone.utc).isoformat()
-        default_reviews = [
-            {"user_id": "seed_user_1", "username": "CinePhile75", "is_admin": False, "is_vip": True, "is_vip_plus": False, "is_uploader": False, "contenu_score": 9, "fonctionnalites_score": 8, "design_score": 9, "message": "Super plateforme ! Le catalogue est immense et la qualite toujours au rendez-vous. J'adore les collections thematiques.", "created_at": now},
-            {"user_id": "seed_user_2", "username": "MovieLover92", "is_admin": False, "is_vip": False, "is_vip_plus": False, "is_uploader": False, "contenu_score": 8, "fonctionnalites_score": 9, "design_score": 8, "message": "Le design est magnifique et tres intuitif. Les themes personnalisables sont un vrai plus !", "created_at": now},
-            {"user_id": "seed_user_3", "username": "SeriesAddict", "is_admin": False, "is_vip": True, "is_vip_plus": True, "is_uploader": False, "contenu_score": 10, "fonctionnalites_score": 9, "design_score": 10, "message": "La meilleure plateforme de streaming que j'ai testee. Le suivi des series avec les notifications est genial.", "created_at": now},
-            {"user_id": "seed_user_4", "username": "AnimeFan_FR", "is_admin": False, "is_vip": False, "is_vip_plus": False, "is_uploader": False, "contenu_score": 9, "fonctionnalites_score": 8, "design_score": 9, "message": "Enfin une plateforme avec un vrai catalogue anime ! Les sous-titres francais sont toujours disponibles.", "created_at": now},
-            {"user_id": "seed_user_5", "username": "TechReviewer", "is_admin": False, "is_vip": True, "is_vip_plus": False, "is_uploader": True, "contenu_score": 8, "fonctionnalites_score": 10, "design_score": 8, "message": "Fonctionnalites impressionnantes : playlists, retrogaming, radio... C'est bien plus qu'un simple site de streaming.", "created_at": now},
-            {"user_id": "seed_user_6", "username": "NightOwl", "is_admin": False, "is_vip": False, "is_vip_plus": False, "is_uploader": False, "contenu_score": 9, "fonctionnalites_score": 8, "design_score": 9, "message": "Le mode sombre est parfait pour les sessions nocturnes. Bravo pour le travail sur l'interface !", "created_at": now},
-        ]
-        await db.platform_reviews.insert_many(default_reviews)
+        pass  # No seed - only real user reviews are shown
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -310,15 +303,15 @@ class UserRoleUpdate(BaseModel):
 @app.post("/api/auth/register")
 async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.strip().lower()
-    # Rate-limit register by IP (max 5 registrations / hour)
+    # Rate-limit register by IP (max 30 registrations / 24h - relaxed for shared IPs / mobile carriers)
     ip = request.client.host if request.client else "unknown"
     rl_key = f"register:{ip}"
     rl = await db.register_attempts.find_one({"identifier": rl_key})
     now = datetime.now(timezone.utc)
     if rl:
         window_start = datetime.fromisoformat(rl.get("window_start", now.isoformat()))
-        if (now - window_start).total_seconds() < 3600:
-            if rl.get("count", 0) >= 5:
+        if (now - window_start).total_seconds() < 86400:
+            if rl.get("count", 0) >= 30:
                 raise HTTPException(status_code=429, detail="Trop de comptes crees depuis cette IP. Reessayez plus tard.")
         else:
             await db.register_attempts.delete_one({"identifier": rl_key})
@@ -352,6 +345,16 @@ async def register(req: RegisterRequest, request: Request, response: Response):
         {"$inc": {"count": 1}, "$setOnInsert": {"window_start": now.isoformat()}},
         upsert=True
     )
+    # Log activity for admin feed
+    await db.activity_events.insert_one({
+        "type": "register",
+        "user_id": user_id,
+        "username": req.username.strip(),
+        "email": email,
+        "ip": ip,
+        "details": f"Nouvelle inscription : {req.username.strip()} ({email})",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
     user_doc["_id"] = user_id
     return {"user": serialize_user(user_doc), "token": access}
 
@@ -606,16 +609,45 @@ async def get_history(user: dict = Depends(get_current_user)):
 @app.post("/api/user/history")
 async def add_to_history(request: Request, user: dict = Depends(get_current_user)):
     body = await request.json()
+    ctype = body["content_type"]
+    title = body.get("title", "")
+    # Detect if it's a new entry (first watch) for activity log
+    existing = await db.watch_history.find_one(
+        {"user_id": user["_id"], "content_id": body["content_id"], "content_type": ctype}
+    )
     await db.watch_history.update_one(
-        {"user_id": user["_id"], "content_id": body["content_id"], "content_type": body["content_type"]},
+        {"user_id": user["_id"], "content_id": body["content_id"], "content_type": ctype},
         {"$set": {
-            "title": body.get("title", ""),
+            "title": title,
             "poster_path": body.get("poster_path"),
             "metadata": body.get("metadata", {}),
             "watched_at": datetime.now(timezone.utc).isoformat()
         }},
         upsert=True
     )
+    # Log "play" activity only on first watch to avoid spam (or hourly re-play)
+    should_log = not existing
+    if existing:
+        try:
+            last = existing.get("watched_at")
+            if last and (datetime.now(timezone.utc) - datetime.fromisoformat(last)).total_seconds() > 3600:
+                should_log = True
+        except:
+            pass
+    if should_log:
+        type_labels = {"movie": "un film", "tv": "une serie", "anime": "un anime", "episode": "un episode",
+                       "music": "de la musique", "game": "un jeu", "ebook": "un ebook", "software": "un logiciel"}
+        await db.activity_events.insert_one({
+            "type": "play",
+            "user_id": user["_id"],
+            "username": user.get("username", ""),
+            "content_id": body["content_id"],
+            "content_type": ctype,
+            "title": title,
+            "poster_path": body.get("poster_path"),
+            "details": f"{user.get('username', 'Utilisateur')} a lance {type_labels.get(ctype, 'un contenu')} : {title}",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
     return {"success": True}
 
 @app.post("/api/user/history/batch")
@@ -2193,8 +2225,9 @@ async def get_user_detailed_stats(user: dict = Depends(get_current_user)):
     movies_watched = sum(1 for h in history if h.get("content_type") == "movie")
     shows_watched = sum(1 for h in history if h.get("content_type") == "tv")
     episodes_watched = sum(1 for h in history if h.get("content_type") == "episode")
-    # Recent watch time (simulated based on count)
-    total_watch_time = movies_watched * 120 + shows_watched * 45 + episodes_watched * 45
+    # Watch time estimate: movies ~110 min, episodes ~42 min each.
+    # For TV shows without per-episode entries, add ~45 min per show (rough fallback).
+    total_watch_time = (movies_watched * 110) + (episodes_watched * 42) + (shows_watched * 45 if episodes_watched == 0 else 0)
     # Likes/dislikes
     likes = await db.user_ratings.count_documents({"user_id": uid, "rating": "like"})
     dislikes = await db.user_ratings.count_documents({"user_id": uid, "rating": "dislike"})
@@ -2341,7 +2374,8 @@ async def submit_platform_review(request: Request, user: dict = Depends(get_curr
 
 @app.get("/api/platform-reviews")
 async def get_platform_reviews():
-    reviews = await db.platform_reviews.find().sort("created_at", -1).to_list(500)
+    # Exclude seeded demo reviews (user_id starts with "seed_user_")
+    reviews = await db.platform_reviews.find({"user_id": {"$not": {"$regex": "^seed_user_"}}}).sort("created_at", -1).to_list(500)
     for r in reviews:
         r["_id"] = str(r["_id"])
     total = len(reviews)
@@ -2414,10 +2448,47 @@ async def log_admin_activity(admin_username: str, action: str, target: str = "")
 
 @app.get("/api/admin/activities")
 async def get_admin_activities(user: dict = Depends(require_admin)):
-    activities = await db.admin_activities.find().sort("created_at", -1).to_list(50)
-    for a in activities:
-        a["_id"] = str(a["_id"])
-    return {"activities": activities}
+    # Admin actions
+    admin_acts = await db.admin_activities.find().sort("created_at", -1).to_list(100)
+    items = []
+    for a in admin_acts:
+        items.append({
+            "_id": str(a["_id"]),
+            "kind": "admin",
+            "type": "admin_action",
+            "username": a.get("admin_username", "admin"),
+            "action": a.get("action", ""),
+            "target": a.get("target", ""),
+            "details": f"{a.get('admin_username', 'admin')} - {a.get('action', '')}" + (f" ({a.get('target', '')})" if a.get("target") else ""),
+            "created_at": a.get("created_at"),
+        })
+    # User/system events (register, code redeem, play)
+    events = await db.activity_events.find().sort("created_at", -1).to_list(200)
+    for e in events:
+        items.append({
+            "_id": str(e["_id"]),
+            "kind": "event",
+            "type": e.get("type", "event"),
+            "username": e.get("username", ""),
+            "email": e.get("email"),
+            "ip": e.get("ip"),
+            "code": e.get("code"),
+            "code_type": e.get("code_type"),
+            "duration_days": e.get("duration_days"),
+            "content_id": e.get("content_id"),
+            "content_type": e.get("content_type"),
+            "title": e.get("title"),
+            "poster_path": e.get("poster_path"),
+            "details": e.get("details", ""),
+            "created_at": e.get("created_at"),
+        })
+    # Sort desc by created_at
+    items.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+    # Backward-compatible alias
+    for it in items:
+        it["admin_username"] = it.get("username", "")
+        it["action"] = it.get("details", "")
+    return {"activities": items[:200]}
 
 # =================== ADMIN TMDB UPDATE ===================
 
@@ -2648,6 +2719,17 @@ async def activate_code_v2(request: Request, user: dict = Depends(get_current_us
         await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": updates})
     # Mark code as used
     await db.activation_codes.update_one({"_id": db_code["_id"]}, {"$set": {"is_used": True, "used_by": user["_id"], "used_at": datetime.now(timezone.utc).isoformat()}})
+    # Log activity for admin feed
+    await db.activity_events.insert_one({
+        "type": "code_redeem",
+        "user_id": user["_id"],
+        "username": user.get("username", ""),
+        "code": code,
+        "code_type": code_type,
+        "duration_days": duration_days,
+        "details": f"{user.get('username', 'Utilisateur')} a utilise un code {code_type.upper()}" + (f" ({duration_days}j)" if expires_at else ""),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
     updated = await db.users.find_one({"_id": ObjectId(user["_id"])}, {"password_hash": 0})
     updated["_id"] = str(updated["_id"])
     msg = f"Code {code_type} active" + (f" pour {duration_days} jours !" if expires_at else " !")
@@ -2741,21 +2823,45 @@ async def mark_all_episodes_watched(show_id: str, request: Request, user: dict =
         }},
         upsert=True
     )
-    
-    # Also add to history
-    await db.user_history.update_one(
-        {"user_id": user["_id"], "content_id": int(show_id), "content_type": "tv"},
+
+    # Add series itself + every episode to watch_history so stats count them
+    try:
+        show_id_int = int(show_id)
+    except (TypeError, ValueError):
+        show_id_int = show_id
+    now_iso = datetime.now(timezone.utc).isoformat()
+    await db.watch_history.update_one(
+        {"user_id": user["_id"], "content_id": show_id_int, "content_type": "tv"},
         {"$set": {
             "user_id": user["_id"],
-            "content_id": int(show_id),
+            "content_id": show_id_int,
             "content_type": "tv",
             "title": show_name,
             "poster_path": poster_path,
-            "watched_at": datetime.now(timezone.utc).isoformat()
+            "watched_at": now_iso,
         }},
         upsert=True
     )
-    
+    # Episodes: content_id composed as int(series_id + season + ep) to match existing convention
+    for snum_str, eps in watched_episodes.items():
+        for ep_str in eps.keys():
+            try:
+                ep_content_id = int(f"{show_id}{snum_str}{ep_str}")
+            except ValueError:
+                continue
+            await db.watch_history.update_one(
+                {"user_id": user["_id"], "content_id": ep_content_id, "content_type": "episode"},
+                {"$set": {
+                    "user_id": user["_id"],
+                    "content_id": ep_content_id,
+                    "content_type": "episode",
+                    "title": f"{show_name} S{snum_str}E{ep_str}",
+                    "poster_path": poster_path,
+                    "watched_at": now_iso,
+                }},
+                upsert=True
+            )
+
     return {"message": "Serie complete marquee comme vue", "total_episodes": total_episodes}
 
 @app.delete("/api/user/tv-progress/{show_id}")

@@ -1,0 +1,33 @@
+{
+  "summary": "WaveWatch iteration 32 backend bug-fix verification: all 9 pytest tests pass. Verified register rate-limit relaxed (30/24h, 6 consecutive registers OK), activity_events properly logged for register/code_redeem/play, mark-all-watched on Breaking Bad (62 episodes) writes to watch_history and is reflected in detailed-stats with correct total_watch_time formula (movies*110 + episodes*42), platform-reviews excludes seed_user_*, /api/admin/activities returns enriched format with type/username/details/email/ip/code/code_type/title plus backward-compat admin_username/action aliases.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration32_bugfixes.py",
+    "/app/test_reports/pytest/iteration32_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is 3152 lines - should be split into routers/modules per code_review_guideline (>700 lines).",
+    "mark_all_episodes_watched composes episode content_id as int(f'{show_id}{snum}{ep}') which can collide across shows (e.g. show 13961 S0E0 vs show 1396 S1E0). Recommend using a tuple/string key like f'{show_id}-{snum}-{ep}' to avoid stat double-counting across series.",
+    "TMDB API key has a hardcoded fallback in mark_all_episodes_watched ('d4b8332681051181b69c8a6c9ba1a70a') - secret should not be in source.",
+    "detailed-stats fallback adds shows_watched*45 only when episodes_watched==0 globally; user with episodes from one show + another show without episodes will undercount the latter. Track per-show fallback instead."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration32_bugfixes.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "n/a"},
+  "test_credentials": "Admin: admin@wavewatch.com / WaveWatch2026! (used). Test users created on the fly with @wavewatch.dev domain (.test TLD rejected by pydantic email validator).",
+  "seed_data_creation": "Created several throwaway test users (test_*@wavewatch.dev, rl_*@wavewatch.dev) and one VIP activation code via admin endpoint. Test movies posted to history with TEST_ prefix. No cleanup performed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests live at /app/backend/tests/test_iteration32_bugfixes.py (pytest, JUnit XML). Tests rely on .dev TLD for register because pydantic email-validator (via fastapi) rejects reserved .test TLD. Breaking Bad show_id=1396 returns 62 episodes via TMDB. The /api/admin/activities endpoint deduplicates fields with both new (username/details) and legacy (admin_username/action) aliases.",
+  "rca of the issue": "Initial test run failed with 422 'reserved special-use TLD' because pydantic EmailStr blocks @*.test addresses. Switched to @wavewatch.dev to get past validation; all bug-fix assertions then passed."
+}

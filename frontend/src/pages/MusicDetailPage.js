@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import API from '../lib/api';
-import { Music, Play, ArrowLeft, Download, ExternalLink } from 'lucide-react';
+import { Music, Play, ArrowLeft, Download } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
+import IframeModal from '../components/IframeModal';
 
 export default function MusicDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPlay, setShowPlay] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
 
   useEffect(() => {
     API.get('/api/music').then(({ data }) => {
@@ -19,8 +22,15 @@ export default function MusicDetailPage() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
+  const logHistory = () => {
+    API.post('/api/user/history', { content_id: id, content_type: 'music', title: item?.title || '', poster_path: item?.thumbnail_url || '' }).catch(() => {});
+  };
+
   if (loading) return <div className="container mx-auto px-4 py-12 text-center">Chargement...</div>;
   if (!item) return <div className="container mx-auto px-4 py-12 text-center">Contenu non trouve</div>;
+
+  const streamUrl = item.streaming_url || item.stream_url;
+  const dlUrl = item.download_url;
 
   return (
     <div className="container mx-auto px-4 py-8" data-testid="music-detail-page">
@@ -37,8 +47,16 @@ export default function MusicDetailPage() {
           </div>
           {item.description && <p className="text-lg text-muted-foreground leading-relaxed">{item.description}</p>}
           <div className="flex flex-wrap gap-3 pt-2">
-            {item.streaming_url && <a href={item.streaming_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center gap-2"><Play className="w-5 h-5" />Ecouter</a>}
-            {item.download_url && <a href={item.download_url} target="_blank" rel="noopener noreferrer" className="px-6 py-3 rounded-lg border border-purple-600 text-purple-400 hover:bg-purple-900/20 font-medium flex items-center gap-2"><Download className="w-5 h-5" />Telecharger</a>}
+            {streamUrl && (
+              <button onClick={() => { setShowPlay(true); logHistory(); }} className="px-6 py-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium flex items-center gap-2" data-testid="music-play-btn">
+                <Play className="w-5 h-5" />Ecouter
+              </button>
+            )}
+            {dlUrl && (
+              <button onClick={() => setShowDownload(true)} className="px-6 py-3 rounded-lg border border-purple-600 text-purple-400 hover:bg-purple-900/20 font-medium flex items-center gap-2" data-testid="music-download-btn">
+                <Download className="w-5 h-5" />Telecharger
+              </button>
+            )}
           </div>
           <div className="flex flex-wrap gap-3 items-center">
             <LikeDislike contentId={id} contentType="music" />
@@ -47,6 +65,27 @@ export default function MusicDetailPage() {
           <p className="text-xs text-muted-foreground">Ajoute le {item.created_at ? new Date(item.created_at).toLocaleDateString('fr-FR') : ''}</p>
         </div>
       </div>
+
+      {showPlay && (
+        <IframeModal src={streamUrl} title={`Ecoute - ${item.title}`} onClose={() => setShowPlay(false)} icon={<Music className="w-5 h-5 text-purple-400" />}>
+          {/\.(mp3|wav|ogg|aac|flac|m4a)$/i.test(streamUrl || '') ? (
+            <div className="flex flex-col items-center justify-center gap-6 py-12 px-4 bg-black h-full">
+              {item.thumbnail_url && <img src={item.thumbnail_url} alt={item.title} className="w-40 h-40 rounded-2xl object-cover shadow-2xl" />}
+              <p className="text-lg font-medium text-white text-center">{item.title}</p>
+              {item.artist && <p className="text-sm text-white/60">{item.artist}</p>}
+              <audio controls autoPlay src={streamUrl} className="w-full max-w-md" />
+            </div>
+          ) : (
+            <div className="w-full h-full sm:aspect-video sm:h-auto">
+              <iframe src={streamUrl} title={item.title} className="w-full h-full block" allowFullScreen allow="autoplay; encrypted-media; fullscreen" />
+            </div>
+          )}
+        </IframeModal>
+      )}
+
+      {showDownload && (
+        <IframeModal src={dlUrl} title={`Telechargement - ${item.title}`} onClose={() => setShowDownload(false)} showOpenInNewTab icon={<Download className="w-5 h-5 text-purple-400" />} />
+      )}
     </div>
   );
 }
