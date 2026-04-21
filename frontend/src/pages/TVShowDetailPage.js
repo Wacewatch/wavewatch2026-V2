@@ -8,6 +8,7 @@ import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
 import { LoadingSpinner } from '../components/Loading';
+import IframeModal from '../components/IframeModal';
 
 export default function TVShowDetailPage() {
   const { id } = useParams();
@@ -302,28 +303,13 @@ export default function TVShowDetailPage() {
         </div>
       </div>
       {showStream && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowStream(false)}>
-          <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium truncate">Streaming - {show.name}</h3><button onClick={() => setShowStream(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
-            <div className="aspect-video"><iframe src={streamUrl} title={show.name} className="w-full h-full" allowFullScreen /></div>
-          </div>
-        </div>
+        <IframeModal src={streamUrl} title={`Streaming - ${show.name}`} onClose={() => setShowStream(false)} />
       )}
       {showDownload && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowDownload(false)}>
-          <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium truncate">Telechargement - {show.name}</h3><button onClick={() => setShowDownload(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
-            <div className="aspect-video"><iframe src={downloadUrl} title={show.name} className="w-full h-full" allowFullScreen /></div>
-          </div>
-        </div>
+        <IframeModal src={downloadUrl} title={`Telechargement - ${show.name}`} onClose={() => setShowDownload(false)} />
       )}
       {showTrailer && getTrailerUrl() && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowTrailer(false)}>
-          <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium truncate">Bande-annonce - {show.name}</h3><button onClick={() => setShowTrailer(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
-            <div className="aspect-video"><iframe src={getTrailerUrl()} title={show.name} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" /></div>
-          </div>
-        </div>
+        <IframeModal src={getTrailerUrl()} title={`Bande-annonce - ${show.name}`} onClose={() => setShowTrailer(false)} />
       )}
     </div>
   );

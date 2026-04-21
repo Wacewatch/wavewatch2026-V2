@@ -8,6 +8,7 @@ import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
 import { LoadingSpinner } from '../components/Loading';
+import IframeModal from '../components/IframeModal';
 
 export default function MovieDetailPage() {
   const { id } = useParams();
@@ -194,21 +195,6 @@ export default function MovieDetailPage() {
       {showStream && <IframeModal src={streamUrl} title={`Streaming - ${movie.title}`} onClose={() => setShowStream(false)} />}
       {showDownload && <IframeModal src={downloadUrl} title={`Telechargement - ${movie.title}`} onClose={() => setShowDownload(false)} />}
       {showTrailer && <IframeModal src={getTrailerUrl()} title={`Bande-annonce - ${movie.title}`} onClose={() => setShowTrailer(false)} />}
-    </div>
-  );
-}
-
-function IframeModal({ src, title, onClose }) {
-  if (!src) return null;
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose} data-testid="iframe-modal">
-      <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-3 border-b border-gray-800">
-          <h3 className="text-white font-medium truncate">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
-        </div>
-        <div className="aspect-video"><iframe src={src} title={title} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" /></div>
-      </div>
     </div>
   );
 }

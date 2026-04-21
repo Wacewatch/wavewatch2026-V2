@@ -221,3 +221,9 @@ Avant de déployer, l'opérateur doit :
 - P2 : 2FA pour comptes admin
 - P2 : Audit log (qui a modifié quoi côté admin)
 - P2 : Migration MongoDB Atlas + backups automatiques
+
+## Update - Iframe Modal Mobile + Fullscreen (2026-01-21)
+- Created shared `/app/frontend/src/components/IframeModal.js` component
+- Features: full-screen on mobile (no margins, full height), fullscreen toggle button (Maximize2/Minimize2), close button, ESC-to-close, body scroll lock
+- Integrated across: MovieDetailPage (stream/download/trailer), TVShowDetailPage (stream/download/trailer), EpisodeDetailPage (stream/download), PlaylistDetailPage (embed), RetrogamingPage (game stream), HomePage (TV channel), TVChannelsPage (channel stream)
+- data-testids: `iframe-modal`, `iframe-modal-close`, `iframe-modal-fullscreen`, `iframe-modal-open-newtab`

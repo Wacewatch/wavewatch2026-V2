@@ -6,6 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { LoadingSpinner } from '../components/Loading';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
+import IframeModal from '../components/IframeModal';
 import { Play, Star, Calendar, Clock, Heart, CheckCircle, Download, Youtube } from 'lucide-react';
 
 export default function EpisodeDetailPage({ isAnime = false }) {
@@ -135,20 +136,10 @@ export default function EpisodeDetailPage({ isAnime = false }) {
         </div>
       )}
       {showStream && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowStream(false)}>
-          <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium">{episode.name}</h3><button onClick={() => setShowStream(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
-            <div className="aspect-video"><iframe src={streamUrl} title={episode.name} className="w-full h-full" allowFullScreen /></div>
-          </div>
-        </div>
+        <IframeModal src={streamUrl} title={episode.name} onClose={() => setShowStream(false)} />
       )}
       {showDownload && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setShowDownload(false)}>
-          <div className="w-full max-w-5xl bg-black rounded-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-3 border-b border-gray-800"><h3 className="text-white font-medium">Telechargement - {episode.name}</h3><button onClick={() => setShowDownload(false)} className="text-gray-400 hover:text-white text-xl">&times;</button></div>
-            <div className="aspect-video"><iframe src={downloadUrl} title={`Download ${episode.name}`} className="w-full h-full" allowFullScreen /></div>
-          </div>
-        </div>
+        <IframeModal src={downloadUrl} title={`Telechargement - ${episode.name}`} onClose={() => setShowDownload(false)} />
       )}
     </div>
   );

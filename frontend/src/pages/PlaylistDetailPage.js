@@ -5,6 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import API, { TMDB_IMG } from '../lib/api';
 import { LoadingSpinner } from '../components/Loading';
 import LikeDislike from '../components/LikeDislike';
+import IframeModal from '../components/IframeModal';
 import { ListMusic, Globe, Lock, Trash2, Film, Tv, ArrowLeft, Play, Music, Gamepad2, BookOpen, Crown, Upload, Sparkles, Image, Settings, Edit3, Check, Share2, Copy, Monitor, Radio, User, X, Bell, BellOff, Heart } from 'lucide-react';
 
 const typeConfig = {
@@ -504,37 +505,33 @@ export default function PlaylistDetailPage() {
       ) : (
         <>
         {embedModal && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setEmbedModal(null)}>
-            <div className="w-full max-w-4xl bg-card rounded-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between p-3 border-b border-border">
-                <h3 className="font-bold">{embedModal.title}</h3>
-                <button onClick={() => setEmbedModal(null)} className="p-1 rounded-lg hover:bg-secondary"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="p-4">
-                {embedModal.content_type === 'radio' ? (
-                  <div className="flex flex-col items-center gap-4 py-8">
-                    <Radio className="w-16 h-16 text-amber-400" />
-                    <p className="text-lg font-medium">{embedModal.title}</p>
-                    {embedModal.metadata?.stream_url ? (
-                      <audio controls autoPlay src={embedModal.metadata.stream_url} className="w-full max-w-md" />
-                    ) : (
-                      <p className="text-muted-foreground">Aucun flux disponible</p>
-                    )}
-                  </div>
-                ) : embedModal.metadata?.stream_url ? (
-                  <div className="aspect-video">
-                    <iframe src={embedModal.metadata.stream_url} className="w-full h-full rounded-lg" allowFullScreen allow="autoplay; encrypted-media" title={embedModal.title} />
-                  </div>
-                ) : embedModal.metadata?.game_url ? (
-                  <div className="aspect-video">
-                    <iframe src={embedModal.metadata.game_url} className="w-full h-full rounded-lg" allowFullScreen title={embedModal.title} />
-                  </div>
+          <IframeModal
+            src={embedModal.metadata?.stream_url || embedModal.metadata?.game_url}
+            title={embedModal.title}
+            onClose={() => setEmbedModal(null)}
+          >
+            {embedModal.content_type === 'radio' ? (
+              <div className="flex flex-col items-center gap-4 py-12 px-4 bg-card h-full justify-center">
+                <Radio className="w-16 h-16 text-amber-400" />
+                <p className="text-lg font-medium text-center">{embedModal.title}</p>
+                {embedModal.metadata?.stream_url ? (
+                  <audio controls autoPlay src={embedModal.metadata.stream_url} className="w-full max-w-md" />
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">Contenu non disponible</div>
+                  <p className="text-muted-foreground">Aucun flux disponible</p>
                 )}
               </div>
-            </div>
-          </div>
+            ) : embedModal.metadata?.stream_url ? (
+              <div className="w-full h-full sm:aspect-video sm:h-auto">
+                <iframe src={embedModal.metadata.stream_url} className="w-full h-full block" allowFullScreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture" title={embedModal.title} />
+              </div>
+            ) : embedModal.metadata?.game_url ? (
+              <div className="w-full h-full sm:aspect-video sm:h-auto">
+                <iframe src={embedModal.metadata.game_url} className="w-full h-full block" allowFullScreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture" title={embedModal.title} />
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground bg-card h-full flex items-center justify-center">Contenu non disponible</div>
+            )}
+          </IframeModal>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {playlist.items.map((item, idx) => {

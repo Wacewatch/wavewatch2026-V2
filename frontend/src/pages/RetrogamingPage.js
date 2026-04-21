@@ -4,6 +4,7 @@ import { Gamepad2, ExternalLink, Play, X, Search, Heart } from 'lucide-react';
 import { QuickPlaylistAdd } from '../components/ContentCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import IframeModal from '../components/IframeModal';
 
 export default function RetrogamingPage() {
   const { user } = useAuth();
@@ -116,42 +117,15 @@ export default function RetrogamingPage() {
 
       {/* Stream Modal */}
       {playUrl && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setPlayUrl(null)}>
-          <div className="w-full max-w-5xl bg-black rounded-xl overflow-hidden border border-green-500/30" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b border-green-500/20">
-              <div className="flex items-center gap-3">
-                <Gamepad2 className="w-5 h-5 text-green-400" />
-                <span className="text-white font-medium">{playName}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <a 
-                  href={playUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="p-2 text-gray-400 hover:text-white transition-colors"
-                  title="Ouvrir dans un nouvel onglet"
-                >
-                  <ExternalLink className="w-5 h-5" />
-                </a>
-                <button 
-                  onClick={() => setPlayUrl(null)} 
-                  className="p-2 text-gray-400 hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="aspect-video bg-black">
-              <iframe 
-                src={playUrl} 
-                title={playName}
-                className="w-full h-full" 
-                allowFullScreen 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              />
-            </div>
-          </div>
-        </div>
+        <IframeModal
+          src={playUrl}
+          title={playName}
+          onClose={() => setPlayUrl(null)}
+          icon={<Gamepad2 className="w-5 h-5 text-green-400" />}
+          showOpenInNewTab
+          borderColor="border-green-500/30"
+          iframeAllow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        />
       )}
     </div>
   );

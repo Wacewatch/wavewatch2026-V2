@@ -7,6 +7,7 @@ import ContentGrid from '../components/ContentGrid';
 import InfoBanner from '../components/InfoBanner';
 import DownloadLinksRow from '../components/DownloadLinksRow';
 import { LoadingGrid } from '../components/Loading';
+import IframeModal from '../components/IframeModal';
 import { useAuth } from '../contexts/AuthContext';
 
 function Hero() {
@@ -168,21 +169,22 @@ function TrendingTVChannelsRow() {
         ))}
       </ContentGrid>
       {selectedChannel && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setSelectedChannel(null)}>
-          <div className="w-full max-w-5xl bg-black rounded-xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-gray-800">
-              <h3 className="text-white font-bold">{selectedChannel.name}</h3>
-              <button onClick={() => setSelectedChannel(null)} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+        <IframeModal
+          src={selectedChannel.stream_url}
+          title={selectedChannel.name}
+          onClose={() => setSelectedChannel(null)}
+        >
+          {selectedChannel.stream_url ? (
+            <div className="w-full h-full sm:aspect-video sm:h-auto">
+              <iframe src={selectedChannel.stream_url} title={selectedChannel.name} className="w-full h-full block" allowFullScreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture" />
             </div>
-            <div className="aspect-video bg-black">
-              {selectedChannel.stream_url ? (
-                <iframe src={selectedChannel.stream_url} title={selectedChannel.name} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-500"><Tv className="w-16 h-16 mb-3" /><p>Aucun flux disponible</p></div>
-              )}
+          ) : (
+            <div className="w-full h-full sm:aspect-video sm:h-auto flex flex-col items-center justify-center text-gray-500 bg-black">
+              <Tv className="w-16 h-16 mb-3" />
+              <p>Aucun flux disponible</p>
             </div>
-          </div>
-        </div>
+          )}
+        </IframeModal>
       )}
     </>
   );

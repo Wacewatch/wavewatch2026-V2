@@ -4,6 +4,7 @@ import { Tv, X, Play, Search, ThumbsUp, ThumbsDown, Heart, Plus, ChevronDown } f
 import { QuickPlaylistAdd } from '../components/ContentCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import IframeModal from '../components/IframeModal';
 
 const CATEGORY_COLORS = {
   Generaliste: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
@@ -225,25 +226,22 @@ export default function TVChannelsPage() {
       )}
 
       {selectedChannel && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedChannel(null)}>
-          <div className="w-full max-w-5xl bg-card rounded-2xl overflow-hidden border border-border shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <div className="flex items-center gap-3">
-                {(selectedChannel.logo || selectedChannel.logo_url) && (
-                  <img src={selectedChannel.logo || selectedChannel.logo_url} alt="" className="h-9 w-auto object-contain bg-white/90 rounded p-0.5" />
-                )}
-                <div>
-                  <h3 className="font-bold">{selectedChannel.name}</h3>
-                  <p className="text-xs text-muted-foreground">{selectedChannel.category}{selectedChannel.country ? ` · ${selectedChannel.country}` : ''}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedChannel(null)} className="p-2 rounded-lg hover:bg-secondary transition-colors" data-testid="close-stream-modal"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="aspect-video bg-black">
+        <IframeModal
+          src={selectedChannel.stream_url}
+          title={selectedChannel.name}
+          onClose={() => setSelectedChannel(null)}
+          icon={(selectedChannel.logo || selectedChannel.logo_url) ? (
+            <img src={selectedChannel.logo || selectedChannel.logo_url} alt="" className="h-7 w-auto object-contain bg-white/90 rounded p-0.5" />
+          ) : null}
+        >
+          <div className="flex flex-col h-full">
+            <div className="flex-1 bg-black">
               {selectedChannel.stream_url ? (
-                <iframe src={selectedChannel.stream_url} title={selectedChannel.name} className="w-full h-full" allowFullScreen allow="autoplay; encrypted-media" />
+                <div className="w-full h-full sm:aspect-video sm:h-auto">
+                  <iframe src={selectedChannel.stream_url} title={selectedChannel.name} className="w-full h-full block" allowFullScreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture" />
+                </div>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                <div className="w-full h-full sm:aspect-video sm:h-auto flex flex-col items-center justify-center text-muted-foreground bg-black">
                   <Tv className="w-16 h-16 mb-3 opacity-50" />
                   <p className="font-medium">Aucun flux disponible</p>
                   <p className="text-sm mt-1 opacity-70">Le flux de cette chaîne n'est pas encore configuré</p>
@@ -251,12 +249,12 @@ export default function TVChannelsPage() {
               )}
             </div>
             {selectedChannel.description && (
-              <div className="p-4 border-t border-border">
+              <div className="p-4 border-t border-border bg-card">
                 <p className="text-sm text-muted-foreground">{selectedChannel.description}</p>
               </div>
             )}
           </div>
-        </div>
+        </IframeModal>
       )}
     </div>
   );
