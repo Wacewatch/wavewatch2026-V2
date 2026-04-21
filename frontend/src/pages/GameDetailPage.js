@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import API from '../lib/api';
-import { Gamepad2, Play, ArrowLeft, Download } from 'lucide-react';
+import { Gamepad2, ArrowLeft, Download } from 'lucide-react';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import IframeModal from '../components/IframeModal';
@@ -11,7 +11,6 @@ export default function GameDetailPage() {
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showPlay, setShowPlay] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
 
   useEffect(() => {
@@ -28,7 +27,6 @@ export default function GameDetailPage() {
   if (loading) return <div className="container mx-auto px-4 py-12 text-center">Chargement...</div>;
   if (!item) return <div className="container mx-auto px-4 py-12 text-center">Jeu non trouve</div>;
 
-  const playUrl = item.play_url || item.game_url || item.stream_url;
   const dlUrl = item.download_url;
 
   return (
@@ -47,13 +45,8 @@ export default function GameDetailPage() {
           </div>
           {item.description && <p className="text-lg text-muted-foreground leading-relaxed">{item.description}</p>}
           <div className="flex flex-wrap gap-3 pt-2">
-            {playUrl && (
-              <button onClick={() => { setShowPlay(true); logHistory(); }} className="px-6 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium flex items-center gap-2" data-testid="game-play-btn">
-                <Play className="w-5 h-5" />Jouer
-              </button>
-            )}
             {dlUrl && (
-              <button onClick={() => setShowDownload(true)} className="px-6 py-3 rounded-lg border border-green-600 text-green-400 hover:bg-green-900/20 font-medium flex items-center gap-2" data-testid="game-download-btn">
+              <button onClick={() => { setShowDownload(true); logHistory(); }} className="px-6 py-3 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium flex items-center gap-2" data-testid="game-download-btn">
                 <Download className="w-5 h-5" />Telecharger
               </button>
             )}
@@ -65,19 +58,15 @@ export default function GameDetailPage() {
         </div>
       </div>
 
-      {showPlay && (
+      {showDownload && (
         <IframeModal
-          src={playUrl}
-          title={item.title}
-          onClose={() => setShowPlay(false)}
+          src={dlUrl}
+          title={`Telechargement - ${item.title}`}
+          onClose={() => setShowDownload(false)}
           icon={<Gamepad2 className="w-5 h-5 text-green-400" />}
           showOpenInNewTab
           borderColor="border-green-500/30"
-          iframeAllow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         />
-      )}
-      {showDownload && (
-        <IframeModal src={dlUrl} title={`Telechargement - ${item.title}`} onClose={() => setShowDownload(false)} showOpenInNewTab icon={<Download className="w-5 h-5 text-green-400" />} />
       )}
     </div>
   );

@@ -63,7 +63,7 @@ export default function AddToPlaylistButton({ contentId, contentType, title, pos
     e.preventDefault();
     if (!newName.trim()) return;
     try {
-      const { data } = await API.post('/api/playlists', { name: newName.trim(), description: '', is_public: false });
+      const { data } = await API.post('/api/playlists', { name: newName.trim(), description: '', is_public: true });
       const pid = data.playlist?._id;
       if (pid) {
         await API.post(`/api/playlists/${pid}/items`, { content_id: contentId, content_type: contentType, title, poster_path: posterPath, metadata: metadata || {} });

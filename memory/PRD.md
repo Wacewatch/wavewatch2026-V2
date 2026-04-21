@@ -254,3 +254,27 @@ Avant de déployer, l'opérateur doit :
 
 ### Tests
 - Backend 100% OK (pytest 9/9, /app/backend/tests/test_iteration32_bugfixes.py)
+
+## Update - Iteration 3 (2026-01-21)
+
+### Navigation
+- Retiré badges "NEW" des items du menu (Ebooks, Logiciels, Calendrier Sorties)
+- Retiré liens externes LiveWatch et Sports-Stream des menus (desktop + mobile)
+- Renommé "Musique" → "Musiques" partout dans les menus
+
+### Pages détail
+- **GameDetailPage** : bouton "Jouer" retiré, garde uniquement "Télécharger"
+- **MusicDetailPage / EbookDetailPage** : déjà conditionnels sur l'URL (pas de bouton si pas de lien) - confirmé en place
+- **ActorDetailPage** : Filmographie séparée en 2 sections distinctes "Films" et "Séries" (dédoublonnées, plus de limite slice 24)
+
+### Playlists
+- Nouvelle playlist : case "Public" cochée par défaut (dans PlaylistsPage + AddToPlaylistButton quick-create)
+
+### Calendrier
+- fetchEvents augmenté à 10 pages × 4 sources (upcoming/popular movies, on_the_air, discover TV) + 3 pages anime
+- Dédoublonnage global par id - vraiment tout afficher sans limite
+
+### Admin - Compteur live "En train de regarder"
+- Nouveau endpoint **GET /api/admin/watching-now** : retourne count + liste des users ayant lancé un play dans les 10 dernières minutes (dédoublonné par user_id)
+- Frontend : nouveau bloc rouge en haut du dashboard stats avec ping animé + liste scroll des watchers (titre, type, username, poster, heure)
+- Auto-refresh toutes les 15s

@@ -214,6 +214,8 @@ export default function AdminPage() {
 
   // Online users
   const [onlineStats, setOnlineStats] = useState({ online_now: 0, last_hour: 0, last_24h: 0 });
+  // Watching-now (live)
+  const [watchingNow, setWatchingNow] = useState({ count: 0, watchers: [] });
 
   // User edit dialog
   const [editingUser, setEditingUser] = useState(null);
@@ -302,9 +304,12 @@ export default function AdminPage() {
   // Load online stats and refresh periodically
   useEffect(() => {
     if (!user?.is_admin) return;
-    const loadOnline = () => API.get('/api/admin/online-users').then(({ data }) => setOnlineStats(data)).catch(() => {});
-    loadOnline();
-    const iv = setInterval(loadOnline, 15000);
+    const loadLive = () => {
+      API.get('/api/admin/online-users').then(({ data }) => setOnlineStats(data)).catch(() => {});
+      API.get('/api/admin/watching-now').then(({ data }) => setWatchingNow(data)).catch(() => {});
+    };
+    loadLive();
+    const iv = setInterval(loadLive, 15000);
     return () => clearInterval(iv);
   }, [user]);
 
@@ -508,21 +513,65 @@ export default function AdminPage() {
       {tab === 'stats' && stats && (
         <div className="space-y-6" data-testid="admin-stats">
           {/* Online Users Counter */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-center relative overflow-hidden" data-testid="watching-now-stat">
+              <span className="absolute top-2 right-2 flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+              </span>
+              <Play className="w-4 h-4 mx-auto mb-2 text-red-400" />
+              <p className="text-3xl font-bold text-red-400">{watchingNow.count}</p>
+              <p className="text-xs text-red-400/70">En train de regarder</p>
+            </div>
             <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
               <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2 animate-pulse" />
               <p className="text-3xl font-bold text-green-400">{onlineStats.online_now}</p>
-              <p className="text-sm text-green-400/70">En ligne maintenant</p>
+              <p className="text-xs text-green-400/70">En ligne maintenant</p>
             </div>
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-blue-400">{onlineStats.last_hour}</p>
-              <p className="text-sm text-blue-400/70">Derniere heure</p>
+              <p className="text-xs text-blue-400/70">Derniere heure</p>
             </div>
             <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4 text-center">
               <p className="text-3xl font-bold text-purple-400">{onlineStats.last_24h}</p>
-              <p className="text-sm text-purple-400/70">Dernieres 24h</p>
+              <p className="text-xs text-purple-400/70">Dernieres 24h</p>
             </div>
           </div>
+
+          {/* Live watchers list */}
+          {watchingNow.count > 0 && (
+            <div className="bg-card border border-red-500/20 rounded-xl overflow-hidden" data-testid="live-watchers-list">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-red-500/5">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Play className="w-4 h-4 text-red-400" />
+                  En direct - {watchingNow.count} utilisateur{watchingNow.count > 1 ? 's' : ''}
+                </h3>
+                <span className="text-[10px] uppercase tracking-wider text-red-400/70 font-mono">Rafraichi toutes les 15s</span>
+              </div>
+              <div className="divide-y divide-border max-h-72 overflow-y-auto">
+                {watchingNow.watchers.map((w, idx) => (
+                  <div key={`${w.user_id}-${idx}`} className="flex items-center gap-3 px-4 py-2.5">
+                    {w.poster_path ? (
+                      <img src={w.poster_path?.startsWith('http') ? w.poster_path : `https://image.tmdb.org/t/p/w92${w.poster_path}`} alt="" className="w-9 h-14 rounded object-cover bg-secondary" />
+                    ) : (
+                      <div className="w-9 h-14 rounded bg-secondary flex items-center justify-center"><Play className="w-4 h-4 text-muted-foreground" /></div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{w.username || 'Utilisateur'}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        <span className="uppercase mr-2 opacity-70">{w.content_type}</span>
+                        <span className="italic">{w.title || '—'}</span>
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {w.started_at ? new Date(w.started_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: 'Utilisateurs', val: stats.total_users, color: 'text-blue-400' },

@@ -23,53 +23,57 @@ export default function CalendarPage() {
 
   const fetchEvents = async () => {
     try {
-      // Fetch multiple pages to display ALL releases (no artificial limit)
-      const pagePromises = [];
-      for (let p = 1; p <= 5; p++) {
-        pagePromises.push(
+      // Fetch aggressive pagination to show every release (no artificial cap)
+      const PAGES = 10;
+      const promises = [];
+      for (let p = 1; p <= PAGES; p++) {
+        promises.push(
           API.get(`/api/tmdb/upcoming/movies?page=${p}`).catch(() => ({ data: { results: [] } })),
-          API.get(`/api/tmdb/discover/tv?sort_by=first_air_date.desc&page=${p}`).catch(() => ({ data: { results: [] } })),
+          API.get(`/api/tmdb/popular/movies?page=${p}`).catch(() => ({ data: { results: [] } })),
           API.get(`/api/tmdb/on-the-air?page=${p}`).catch(() => ({ data: { results: [] } })),
+          API.get(`/api/tmdb/discover/tv?sort_by=first_air_date.desc&page=${p}`).catch(() => ({ data: { results: [] } })),
         );
       }
-      pagePromises.push(API.get('/api/tmdb/trending/anime').catch(() => ({ data: { results: [] } })));
+      promises.push(API.get('/api/tmdb/trending/anime').catch(() => ({ data: { results: [] } })));
+      promises.push(API.get('/api/tmdb/popular/anime?page=1').catch(() => ({ data: { results: [] } })));
+      promises.push(API.get('/api/tmdb/popular/anime?page=2').catch(() => ({ data: { results: [] } })));
 
-      const all = await Promise.all(pagePromises);
-      // all[0..2]: page 1 movies/tv/onair, [3..5]: page 2, ... last: anime
-      const moviesResults = [];
-      const tvResults = [];
-      const onAirResults = [];
-      for (let p = 0; p < 5; p++) {
-        moviesResults.push(...(all[p * 3]?.data?.results || []));
-        tvResults.push(...(all[p * 3 + 1]?.data?.results || []));
-        onAirResults.push(...(all[p * 3 + 2]?.data?.results || []));
+      const all = await Promise.all(promises);
+      const moviesUpcoming = [];
+      const moviesPopular = [];
+      const tvOnAir = [];
+      const tvDiscover = [];
+      for (let p = 0; p < PAGES; p++) {
+        moviesUpcoming.push(...(all[p * 4]?.data?.results || []));
+        moviesPopular.push(...(all[p * 4 + 1]?.data?.results || []));
+        tvOnAir.push(...(all[p * 4 + 2]?.data?.results || []));
+        tvDiscover.push(...(all[p * 4 + 3]?.data?.results || []));
       }
-      const animeResults = all[all.length - 1]?.data?.results || [];
+      const animePages = all.slice(PAGES * 4);
+      const animeResults = animePages.flatMap(r => r?.data?.results || []);
 
-      // Dedupe by id
-      const dedup = (arr, key) => {
+      const dedup = (arr, key = 'id') => {
         const seen = new Set();
         return arr.filter(x => {
-          const k = x[key];
-          if (seen.has(k)) return false;
-          seen.add(k);
-          return true;
+          const k = x?.[key];
+          if (k == null || seen.has(k)) return false;
+          seen.add(k); return true;
         });
       };
 
-      const movieEvents = dedup(moviesResults, 'id').filter(m => m.release_date).map(m => ({
+      const movieEvents = dedup([...moviesUpcoming, ...moviesPopular]).filter(m => m.release_date).map(m => ({
         id: m.id, title: m.title, date: m.release_date, type: 'movie',
         poster_path: m.poster_path, vote_average: m.vote_average, overview: m.overview
       }));
-      const tvEvents = dedup(tvResults, 'id').filter(s => s.first_air_date).map(s => ({
+      const tvEvents = dedup(tvDiscover).filter(s => s.first_air_date).map(s => ({
         id: s.id, title: s.name, date: s.first_air_date, type: 'tv',
         poster_path: s.poster_path, vote_average: s.vote_average, overview: s.overview
       }));
-      const animeEvents = dedup(animeResults, 'id').filter(a => a.first_air_date).map(a => ({
+      const animeEvents = dedup(animeResults).filter(a => a.first_air_date).map(a => ({
         id: a.id, title: a.name, date: a.first_air_date, type: 'anime',
         poster_path: a.poster_path, vote_average: a.vote_average, overview: a.overview
       }));
-      const onAirEvents = dedup(onAirResults, 'id').filter(s => s.first_air_date).map(s => ({
+      const onAirEvents = dedup(tvOnAir).filter(s => s.first_air_date).map(s => ({
         id: s.id, title: s.name, date: s.first_air_date, type: 'episode',
         poster_path: s.poster_path, vote_average: s.vote_average, overview: s.overview
       }));

@@ -7,7 +7,7 @@ import ContentCard from '../components/ContentCard';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import { LoadingSpinner } from '../components/Loading';
-import { Heart } from 'lucide-react';
+import { Heart, Film, Tv } from 'lucide-react';
 
 export default function ActorDetailPage() {
   const { id } = useParams();
@@ -39,7 +39,13 @@ export default function ActorDetailPage() {
   if (loading) return <LoadingSpinner />;
   if (!person) return <div className="container mx-auto px-4 py-12 text-center">Acteur non trouve</div>;
 
-  const allCredits = [...(person.movie_credits?.cast || []), ...(person.tv_credits?.cast || [])].sort((a, b) => (b.popularity || 0) - (a.popularity || 0)).slice(0, 24);
+  // Dedupe and split filmography by type
+  const dedupe = (arr) => {
+    const seen = new Set();
+    return arr.filter((c) => { if (seen.has(c.id)) return false; seen.add(c.id); return true; });
+  };
+  const movieCredits = dedupe([...(person.movie_credits?.cast || [])]).sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  const tvCredits = dedupe([...(person.tv_credits?.cast || [])]).sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
 
   return (
     <div className="container mx-auto px-4 py-8" data-testid="actor-detail-page">
@@ -62,12 +68,33 @@ export default function ActorDetailPage() {
           <AddToPlaylistButton contentId={parseInt(id)} contentType="actor" title={person.name} posterPath={person.profile_path} />
         </div>
       </div>
-      {allCredits.length > 0 && (
-        <div><h2 className="text-2xl font-bold mb-4">Filmographie</h2>
+
+      {movieCredits.length > 0 && (
+        <div className="mb-10" data-testid="filmography-movies">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <Film className="w-6 h-6 text-red-400" />
+            Films <span className="text-sm font-normal text-muted-foreground">({movieCredits.length})</span>
+          </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {allCredits.map((c, i) => <ContentCard key={`${c.id}-${i}`} item={c} type={c.title ? 'movie' : 'tv'} />)}
+            {movieCredits.map((c, i) => <ContentCard key={`m-${c.id}-${i}`} item={c} type="movie" />)}
           </div>
         </div>
+      )}
+
+      {tvCredits.length > 0 && (
+        <div className="mb-10" data-testid="filmography-tv">
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            <Tv className="w-6 h-6 text-blue-400" />
+            Series <span className="text-sm font-normal text-muted-foreground">({tvCredits.length})</span>
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {tvCredits.map((c, i) => <ContentCard key={`t-${c.id}-${i}`} item={c} type="tv" />)}
+          </div>
+        </div>
+      )}
+
+      {movieCredits.length === 0 && tvCredits.length === 0 && (
+        <p className="text-center text-muted-foreground py-8">Aucune filmographie disponible</p>
       )}
     </div>
   );

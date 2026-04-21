@@ -1044,6 +1044,35 @@ async def get_online_users(user: dict = Depends(get_current_user)):
     last_24h = await db.online_users.count_documents({"last_seen": {"$gte": cutoff_24h}})
     return {"online_now": online_now, "last_hour": last_hour, "last_24h": last_24h}
 
+@app.get("/api/admin/watching-now")
+async def admin_watching_now(user: dict = Depends(get_current_user)):
+    """Return live count + list of users who pressed Play in last 10 minutes."""
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin requis")
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+    events = await db.activity_events.find(
+        {"type": "play", "created_at": {"$gte": cutoff}}
+    ).sort("created_at", -1).to_list(200)
+    # Deduplicate by user_id keeping latest event
+    seen = {}
+    for e in events:
+        uid = e.get("user_id") or e.get("username")
+        if uid not in seen:
+            seen[uid] = e
+    items = []
+    for e in seen.values():
+        items.append({
+            "user_id": e.get("user_id"),
+            "username": e.get("username"),
+            "title": e.get("title"),
+            "content_type": e.get("content_type"),
+            "content_id": e.get("content_id"),
+            "poster_path": e.get("poster_path"),
+            "started_at": e.get("created_at"),
+        })
+    items.sort(key=lambda x: x.get("started_at") or "", reverse=True)
+    return {"count": len(items), "watchers": items}
+
 # --- Admin edit user full form ---
 @app.get("/api/admin/users/{user_id}")
 async def get_single_user(user_id: str, admin: dict = Depends(get_current_user)):
