@@ -1,15 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
 
 /**
- * Shared Iframe Modal - Mobile responsive with fullscreen support.
+ * Shared Iframe Modal - CSS-based fullscreen toggle (port of Wavewatch2026 pattern).
  * Props:
- *  - src: iframe source URL (required)
+ *  - src: iframe source URL
  *  - title: header title (string)
  *  - onClose: close callback
- *  - icon: optional leading icon element (e.g. <Play />)
+ *  - icon: optional leading icon
  *  - showOpenInNewTab: optional ExternalLink button
- *  - borderColor: optional tailwind border color class (e.g. 'border-green-500/30')
+ *  - borderColor: optional tailwind border color class
  *  - iframeAllow: optional allow attr override
  *  - children: custom body (replaces iframe) for non-iframe content (e.g. radio audio)
  */
@@ -19,23 +19,12 @@ export default function IframeModal({
   onClose,
   icon = null,
   showOpenInNewTab = false,
-  borderColor = 'border-gray-800',
+  borderColor = 'border-gray-700',
   iframeAllow = 'autoplay; encrypted-media; fullscreen; picture-in-picture',
   children = null,
   testId = 'iframe-modal',
 }) {
-  const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    const handler = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', handler);
-    document.addEventListener('webkitfullscreenchange', handler);
-    return () => {
-      document.removeEventListener('fullscreenchange', handler);
-      document.removeEventListener('webkitfullscreenchange', handler);
-    };
-  }, []);
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -44,34 +33,21 @@ export default function IframeModal({
     return () => { document.body.style.overflow = original; };
   }, []);
 
-  // ESC to close
+  // ESC: exit fullscreen first, then close
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape' && !document.fullscreenElement) onClose?.();
+      if (e.key === 'Escape') {
+        if (isFullscreen) setIsFullscreen(false);
+        else onClose?.();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, isFullscreen]);
 
-  const toggleFullscreen = async () => {
-    const el = containerRef.current;
-    if (!el) return;
-    try {
-      if (!document.fullscreenElement) {
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-        else if (el.webkitEnterFullscreen) await el.webkitEnterFullscreen();
-      } else {
-        if (document.exitFullscreen) await document.exitFullscreen();
-        else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
-      }
-    } catch (err) {
-      // Fallback: try on iframe element for iOS Safari
-      const iframe = el.querySelector('iframe');
-      if (iframe && iframe.webkitEnterFullscreen) {
-        try { iframe.webkitEnterFullscreen(); } catch (_) {}
-      }
-    }
+  const toggleFullscreen = (e) => {
+    e.stopPropagation();
+    setIsFullscreen(f => !f);
   };
 
   if (!src && !children) return null;
@@ -83,12 +59,15 @@ export default function IframeModal({
       data-testid={testId}
     >
       <div
-        ref={containerRef}
-        className={`relative w-full h-full sm:h-auto sm:max-w-5xl sm:rounded-xl bg-black overflow-hidden flex flex-col ${isFullscreen ? '' : `sm:border ${borderColor}`}`}
+        className={`relative bg-black overflow-hidden flex flex-col ${
+          isFullscreen
+            ? 'w-screen h-screen max-w-none rounded-none border-0'
+            : `w-full h-full sm:h-[80vh] sm:max-w-6xl sm:w-[90vw] sm:rounded-lg sm:border ${borderColor}`
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3 border-b border-gray-800 bg-black/95 shrink-0">
+        <div className="flex items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3 border-b border-gray-700 bg-black/80 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             {icon}
             <h3 className="text-white text-sm sm:text-base font-medium truncate">{title}</h3>
@@ -99,7 +78,7 @@ export default function IframeModal({
                 href={src}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 text-gray-300 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
                 title="Ouvrir dans un nouvel onglet"
                 onClick={(e) => e.stopPropagation()}
                 data-testid="iframe-modal-open-newtab"
@@ -109,7 +88,7 @@ export default function IframeModal({
             )}
             <button
               onClick={toggleFullscreen}
-              className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 text-gray-300 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
               title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
               aria-label="Plein écran"
               data-testid="iframe-modal-fullscreen"
@@ -118,7 +97,7 @@ export default function IframeModal({
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              className="p-2 text-gray-300 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
               title="Fermer"
               aria-label="Fermer"
               data-testid="iframe-modal-close"
@@ -133,15 +112,13 @@ export default function IframeModal({
           {children ? (
             children
           ) : (
-            <div className="w-full h-full sm:aspect-video sm:h-auto">
-              <iframe
-                src={src}
-                title={title}
-                className="w-full h-full block"
-                allowFullScreen
-                allow={iframeAllow}
-              />
-            </div>
+            <iframe
+              src={src}
+              title={title}
+              className="w-full h-full block border-0"
+              allowFullScreen
+              allow={iframeAllow}
+            />
           )}
         </div>
       </div>

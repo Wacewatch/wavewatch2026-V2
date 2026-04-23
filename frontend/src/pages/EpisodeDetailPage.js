@@ -38,9 +38,15 @@ export default function EpisodeDetailPage({ isAnime = false }) {
   const markAsWatched = async () => {
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
     try {
-      await API.post('/api/user/history', { content_id: epContentId, content_type: 'episode', title: `S${seasonNumber}E${episodeNumber} - ${episode?.name || ''}`, poster_path: episode?.still_path });
-      setIsWatched(true);
-      toast({ title: 'Episode marque comme vu !' });
+      if (isWatched) {
+        await API.delete(`/api/user/history/${epContentId}/episode`);
+        setIsWatched(false);
+        toast({ title: 'Episode retire du vu' });
+      } else {
+        await API.post('/api/user/history', { content_id: epContentId, content_type: 'episode', title: `S${seasonNumber}E${episodeNumber} - ${episode?.name || ''}`, poster_path: episode?.still_path });
+        setIsWatched(true);
+        toast({ title: 'Episode marque comme vu !' });
+      }
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 

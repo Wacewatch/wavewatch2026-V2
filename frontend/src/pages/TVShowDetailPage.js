@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff, Download, Youtube } from 'lucide-react';
+import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff, Download, Youtube, Shuffle } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
@@ -60,9 +60,15 @@ export default function TVShowDetailPage() {
   const markAsWatched = async () => {
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
     try {
-      await API.post('/api/user/history', { content_id: parseInt(id), content_type: 'tv', title: show.name, poster_path: show.poster_path });
-      setIsWatched(true);
-      toast({ title: 'Marque comme vu' });
+      if (isWatched) {
+        await API.delete(`/api/user/history/${id}/tv`);
+        setIsWatched(false);
+        toast({ title: 'Retire du vu' });
+      } else {
+        await API.post('/api/user/history', { content_id: parseInt(id), content_type: 'tv', title: show.name, poster_path: show.poster_path });
+        setIsWatched(true);
+        toast({ title: 'Marque comme vu' });
+      }
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
@@ -87,6 +93,31 @@ export default function TVShowDetailPage() {
   const handleContinueWatching = () => {
     if (continueInfo) {
       navigate(`/tv-shows/${id}/season/${continueInfo.season}/episode/${continueInfo.episode}`);
+    }
+  };
+
+  // Episode aleatoire (saison aleatoire + episode aleatoire)
+  const [loadingRandom, setLoadingRandom] = useState(false);
+  const handleRandomEpisode = async () => {
+    if (!show?.seasons?.length) return;
+    setLoadingRandom(true);
+    try {
+      // Filter out season 0 (specials) unless it's the only one
+      const realSeasons = show.seasons.filter(s => s.season_number > 0 && s.episode_count > 0);
+      const pool = realSeasons.length > 0 ? realSeasons : show.seasons.filter(s => s.episode_count > 0);
+      if (pool.length === 0) { toast({ title: 'Aucun episode disponible', variant: 'destructive' }); return; }
+      const randomSeason = pool[Math.floor(Math.random() * pool.length)];
+      // Fetch that season to get real episode list
+      const { data: seasonData } = await API.get(`/api/tmdb/tv/${id}/season/${randomSeason.season_number}`);
+      const eps = seasonData?.episodes || [];
+      if (eps.length === 0) { toast({ title: 'Saison vide', variant: 'destructive' }); return; }
+      const randomEp = eps[Math.floor(Math.random() * eps.length)];
+      const basePath = window.location.pathname.includes('/anime/') ? 'anime' : 'tv-shows';
+      navigate(`/${basePath}/${id}/season/${randomSeason.season_number}/episode/${randomEp.episode_number}`);
+    } catch {
+      toast({ title: 'Erreur lors de la selection aleatoire', variant: 'destructive' });
+    } finally {
+      setLoadingRandom(false);
     }
   };
 
@@ -188,7 +219,10 @@ export default function TVShowDetailPage() {
                 </button>
               )}
               
-              <button onClick={() => { setShowStream(true); if (user?.auto_mark_watched !== false) markAsWatched(); }} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2"><Play className="w-5 h-5" />Regarder</button>
+              <button onClick={() => { setShowStream(true); if (user?.auto_mark_watched !== false && !isWatched) markAsWatched(); }} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2"><Play className="w-5 h-5" />Regarder</button>
+              <button onClick={handleRandomEpisode} disabled={loadingRandom} className="px-5 py-2.5 rounded-lg border border-purple-600 text-purple-400 hover:bg-purple-900/20 flex items-center gap-2 disabled:opacity-60" data-testid="random-episode-btn" title="Episode aleatoire">
+                <Shuffle className={`w-5 h-5 ${loadingRandom ? 'animate-spin' : ''}`} />Aleatoire
+              </button>
               <button onClick={() => setShowDownload(true)} className="px-5 py-2.5 rounded-lg border border-blue-600 text-blue-400 hover:bg-blue-900/20 flex items-center gap-2"><Download className="w-5 h-5" />Telecharger</button>
               <button onClick={() => setShowTrailer(true)} className="px-5 py-2.5 rounded-lg border border-orange-600 text-orange-400 hover:bg-orange-900/20 flex items-center gap-2"><Youtube className="w-5 h-5" />Bande-annonce</button>
               <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 ${isFavorite ? 'bg-yellow-900/20' : ''}`}>

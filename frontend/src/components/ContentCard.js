@@ -8,7 +8,13 @@ import API from '../lib/api';
 import ReactDOM from 'react-dom';
 
 // Global context for user content status (favorites + watched)
-const StatusContext = createContext({ favorites: new Set(), watched: new Set(), loaded: false });
+const StatusContext = createContext({
+  favorites: new Set(),
+  watched: new Set(),
+  loaded: false,
+  toggleWatchedLocal: () => {},
+  toggleFavoriteLocal: () => {},
+});
 
 export function StatusProvider({ children }) {
   const { user } = useAuth();
@@ -30,8 +36,28 @@ export function StatusProvider({ children }) {
     }
   }, [user]);
 
+  const toggleWatchedLocal = (key, value) => {
+    setWatched(prev => {
+      const n = new Set(prev);
+      if (value === undefined) {
+        if (n.has(key)) n.delete(key); else n.add(key);
+      } else if (value) n.add(key); else n.delete(key);
+      return n;
+    });
+  };
+
+  const toggleFavoriteLocal = (key, value) => {
+    setFavorites(prev => {
+      const n = new Set(prev);
+      if (value === undefined) {
+        if (n.has(key)) n.delete(key); else n.add(key);
+      } else if (value) n.add(key); else n.delete(key);
+      return n;
+    });
+  };
+
   return (
-    <StatusContext.Provider value={{ favorites, watched, loaded }}>
+    <StatusContext.Provider value={{ favorites, watched, loaded, toggleWatchedLocal, toggleFavoriteLocal }}>
       {children}
     </StatusContext.Provider>
   );
@@ -179,7 +205,7 @@ export function QuickPlaylistAdd({ contentId, contentType, title, posterPath, in
 export default function ContentCard({ item, type = 'movie', isAnime = false }) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { favorites, watched } = useContentStatus();
+  const { favorites, watched, toggleWatchedLocal } = useContentStatus();
   const title = item.title || item.name;
   const date = item.release_date || item.first_air_date;
   const year = date ? new Date(date).getFullYear() : 'N/A';
@@ -199,11 +225,17 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
     e.preventDefault(); e.stopPropagation();
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
     if (isWatched) {
+      // Toggle OFF optimistically
+      toggleWatchedLocal(key, false);
       API.delete(`/api/user/history/${item.id}/${contentType}`)
-        .then(() => toast({ title: 'Retire de l\'historique' })).catch(() => {});
+        .then(() => toast({ title: 'Retire de l\'historique' }))
+        .catch(() => { toggleWatchedLocal(key, true); toast({ title: 'Erreur', variant: 'destructive' }); });
     } else {
+      // Toggle ON optimistically
+      toggleWatchedLocal(key, true);
       API.post('/api/user/history', { content_id: item.id, content_type: contentType, title, poster_path: item.poster_path })
-        .then(() => toast({ title: 'Marque comme vu !' })).catch(() => {});
+        .then(() => toast({ title: 'Marque comme vu !' }))
+        .catch(() => { toggleWatchedLocal(key, false); toast({ title: 'Erreur', variant: 'destructive' }); });
     }
   };
 
