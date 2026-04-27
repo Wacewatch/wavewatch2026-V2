@@ -16,6 +16,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from contextlib import asynccontextmanager
+from cachetools import TTLCache
 
 MONGO_URL = os.environ.get("MONGO_URL")
 DB_NAME = os.environ.get("DB_NAME")
@@ -304,7 +305,7 @@ class UserRoleUpdate(BaseModel):
 async def register(req: RegisterRequest, request: Request, response: Response):
     email = req.email.strip().lower()
     # Rate-limit register by IP (max 30 registrations / 24h - relaxed for shared IPs / mobile carriers)
-    ip = request.client.host if request.client else "unknown"
+    ip = request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
     rl_key = f"register:{ip}"
     rl = await db.register_attempts.find_one({"identifier": rl_key})
     now = datetime.now(timezone.utc)
@@ -361,7 +362,7 @@ async def register(req: RegisterRequest, request: Request, response: Response):
 @app.post("/api/auth/login")
 async def login(req: LoginRequest, request: Request, response: Response):
     email = req.email.strip().lower()
-    ip = request.client.host if request.client else "unknown"
+    ip = request.headers.get("x-real-ip") or request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "unknown")
     identifier = f"{ip}:{email}"
     # Brute force check
     attempt = await db.login_attempts.find_one({"identifier": identifier})
@@ -415,9 +416,31 @@ async def refresh_token(request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 # ==================== TMDB PROXY ====================
+_tmdb_route_cache: TTLCache = TTLCache(maxsize=5000, ttl=86400)
+
 async def tmdb_fetch(endpoint: str, params: dict = None):
+    import time
     if not params:
         params = {}
+
+    cache_key = endpoint + str(sorted({k: v for k, v in params.items() if k != "api_key"}.items()))
+
+    if any(x in endpoint for x in ["/movie/", "/tv/", "/person/", "/collection/"]):
+        ttl = 86400
+    elif any(x in endpoint for x in ["/trending/", "/popular/", "/upcoming/", "/on_the_air"]):
+        ttl = 3600
+    elif "/discover/" in endpoint:
+        ttl = 1800
+    elif "/search/" in endpoint:
+        ttl = 600
+    else:
+        ttl = 3600
+
+    now = time.time()
+    cached = _tmdb_route_cache.get(cache_key)
+    if cached and (now - cached[0]) < ttl:
+        return cached[1]
+
     params["api_key"] = TMDB_API_KEY
     params.setdefault("language", "fr-FR")
     url = f"{TMDB_BASE}{endpoint}"
@@ -425,7 +448,10 @@ async def tmdb_fetch(endpoint: str, params: dict = None):
         resp = await client.get(url, params=params)
         if resp.status_code != 200:
             return {"results": [], "total_pages": 0, "total_results": 0, "page": 1}
-        return resp.json()
+        data = resp.json()
+
+    _tmdb_route_cache[cache_key] = (now, data)
+    return data
 
 @app.get("/api/tmdb/trending/movies")
 async def tmdb_trending_movies():
@@ -1343,7 +1369,7 @@ async def _supabase_get(path: str, params: dict = None):
         return r.json()
 
 # Small TMDB enrichment cache (in-memory, 10 min)
-_tmdb_cache: dict[str, tuple[float, dict]] = {}
+_tmdb_cache: TTLCache = TTLCache(maxsize=2000, ttl=600)
 async def _tmdb_meta(tmdb_id: int, media_type: str):
     import time
     key = f"{media_type}:{tmdb_id}"
@@ -1432,7 +1458,7 @@ async def get_recent_download_links(limit: int = 12):
     return {"items": unique_items, "count": len(unique_items)}
 
 # ---- Cached Supabase full-fetch loop (for grouping) ----
-_dl_cache: dict = {}
+_dl_cache: TTLCache = TTLCache(maxsize=500, ttl=1800)
 async def _fetch_all_download_links(filter_params: dict, max_rows: int = 20000):
     """Fetch ALL matching rows via Supabase with pagination. Returns list of dicts."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
