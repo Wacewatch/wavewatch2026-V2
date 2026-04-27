@@ -1,17 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Maximize2, Minimize2, ExternalLink } from 'lucide-react';
 
 /**
- * Shared Iframe Modal - CSS-based fullscreen toggle (port of Wavewatch2026 pattern).
- * Props:
- *  - src: iframe source URL
- *  - title: header title (string)
- *  - onClose: close callback
- *  - icon: optional leading icon
- *  - showOpenInNewTab: optional ExternalLink button
- *  - borderColor: optional tailwind border color class
- *  - iframeAllow: optional allow attr override
- *  - children: custom body (replaces iframe) for non-iframe content (e.g. radio audio)
+ * Shared Iframe Modal - Portal-based, mimique du comportement V1.
+ * IMPORTANT : on n'ajoute PAS d'attribut `allow` sur l'iframe.
+ * `allowFullScreen` seul suffit et délègue la permission en cascade
+ * aux iframes imbriquées (wwembed → zeus.php), ce qui est le comportement
+ * historique qui marchait. Ajouter `allow` casse cette délégation.
  */
 export default function IframeModal({
   src,
@@ -20,20 +16,17 @@ export default function IframeModal({
   icon = null,
   showOpenInNewTab = false,
   borderColor = 'border-gray-700',
-  iframeAllow = 'autoplay; encrypted-media; fullscreen; picture-in-picture',
   children = null,
   testId = 'iframe-modal',
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Lock body scroll while modal is open
   useEffect(() => {
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = original; };
   }, []);
 
-  // ESC: exit fullscreen first, then close
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -52,9 +45,9 @@ export default function IframeModal({
 
   if (!src && !children) return null;
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 z-[100] bg-black/90 flex items-stretch sm:items-center justify-center sm:p-4"
+      className="fixed inset-0 z-[9999] bg-black/90 flex items-stretch sm:items-center justify-center sm:p-4"
       onClick={onClose}
       data-testid={testId}
     >
@@ -89,8 +82,8 @@ export default function IframeModal({
             <button
               onClick={toggleFullscreen}
               className="p-2 text-gray-300 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
-              title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
-              aria-label="Plein écran"
+              title={isFullscreen ? 'Réduire' : 'Agrandir'}
+              aria-label="Agrandir"
               data-testid="iframe-modal-fullscreen"
             >
               {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
@@ -107,7 +100,7 @@ export default function IframeModal({
           </div>
         </div>
 
-        {/* Body */}
+        {/* Body - iframe SANS attribut allow, pour laisser allowFullScreen faire son travail */}
         <div className="flex-1 bg-black overflow-hidden">
           {children ? (
             children
@@ -117,11 +110,12 @@ export default function IframeModal({
               title={title}
               className="w-full h-full block border-0"
               allowFullScreen
-              allow={iframeAllow}
             />
           )}
         </div>
       </div>
     </div>
   );
+
+  return ReactDOM.createPortal(modal, document.body);
 }
