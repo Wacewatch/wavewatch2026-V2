@@ -13,7 +13,10 @@ export function AuthProvider({ children }) {
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
       const { data } = await API.get('/api/auth/me', config);
       setUser(data.user);
-    } catch {
+    } catch (err) {
+      if (!err.response) {
+        return;
+      }
       setUser(null);
       localStorage.removeItem('ww_token');
     } finally {
@@ -23,7 +26,12 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
-  // Heartbeat for online user tracking
+  useEffect(() => {
+    const handleLogout = () => setUser(null);
+    window.addEventListener('auth:logout', handleLogout);
+    return () => window.removeEventListener('auth:logout', handleLogout);
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     const sendHeartbeat = () => API.post('/api/user/heartbeat').catch(() => {});
@@ -31,6 +39,17 @@ export function AuthProvider({ children }) {
     const iv = setInterval(sendHeartbeat, 60000);
     return () => clearInterval(iv);
   }, [user]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const token = localStorage.getItem('ww_token');
+        if (token && !user) checkAuth();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [user, checkAuth]);
 
   const signIn = async (email, password) => {
     const { data } = await API.post('/api/auth/login', { email, password });
