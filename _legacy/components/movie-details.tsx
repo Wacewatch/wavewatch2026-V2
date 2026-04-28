@@ -144,8 +144,8 @@ export function MovieDetails({ movie, credits }: MovieDetailsProps) {
     ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}`
     : "/placeholder.svg?height=1080&width=1920"
 
-  const streamingUrl = `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-movie-${movie.id}`
-  const downloadUrl = `https://wwembed.wavewatch.xyz/api/v1/download/ww-movie-${movie.id}`
+  const streamingUrl = `https://wwembed.wavewatch.top/api/v1/streaming/ww-movie-${movie.id}`
+  const downloadUrl = `https://wwembed.wavewatch.top/api/v1/download/ww-movie-${movie.id}`
 
   const handleWatch = async () => {
     if (user) {

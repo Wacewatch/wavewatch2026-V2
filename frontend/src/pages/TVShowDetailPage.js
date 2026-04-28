@@ -142,8 +142,8 @@ export default function TVShowDetailPage() {
 
   const poster = show.poster_path ? `${TMDB_IMG}/w500${show.poster_path}` : 'https://placehold.co/500x750/1a1a2e/ffffff?text=No+Image';
   const backdrop = show.backdrop_path ? `${TMDB_IMG}/original${show.backdrop_path}` : '';
-  const streamUrl = `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-tv-${id}`;
-  const downloadUrl = `https://wwembed.wavewatch.xyz/api/v1/download/ww-tv-${id}`;
+  const streamUrl = `https://wwembed.wavewatch.top/api/v1/streaming/ww-tv-${id}`;
+  const downloadUrl = `https://wwembed.wavewatch.top/api/v1/download/ww-tv-${id}`;
   const getTrailerUrl = () => {
     const trailer = show?.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube') || show?.videos?.results?.find(v => v.site === 'YouTube');
     return trailer ? `https://www.youtube.com/embed/${trailer.key}?autoplay=1` : null;

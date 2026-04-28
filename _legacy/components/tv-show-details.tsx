@@ -135,8 +135,8 @@ export function TVShowDetails({ show, credits, isAnime = false }: TVShowDetailsP
     ? `https://image.tmdb.org/t/p/original${show.backdrop_path}`
     : "/placeholder.svg?height=1080&width=1920"
 
-  const streamingUrl = `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-tv-${show.id}`
-  const downloadUrl = `https://wwembed.wavewatch.xyz/api/v1/download/ww-tv-${show.id}`
+  const streamingUrl = `https://wwembed.wavewatch.top/api/v1/streaming/ww-tv-${show.id}`
+  const downloadUrl = `https://wwembed.wavewatch.top/api/v1/download/ww-tv-${show.id}`
 
   const handleRandomEpisode = () => {
     if (show.seasons && show.seasons.length > 0) {

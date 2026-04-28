@@ -71,8 +71,8 @@ export default function MovieDetailPage() {
   };
 
   const director = movie?.credits?.crew?.find(p => p.job === 'Director');
-  const streamUrl = `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-movie-${id}`;
-  const downloadUrl = `https://wwembed.wavewatch.xyz/api/v1/download/ww-movie-${id}`;
+  const streamUrl = `https://wwembed.wavewatch.top/api/v1/streaming/ww-movie-${id}`;
+  const downloadUrl = `https://wwembed.wavewatch.top/api/v1/download/ww-movie-${id}`;
 
   const getTrailerUrl = () => {
     const trailer = movie?.videos?.results?.find(v => v.type === 'Trailer' && v.site === 'YouTube') || movie?.videos?.results?.find(v => v.site === 'YouTube');

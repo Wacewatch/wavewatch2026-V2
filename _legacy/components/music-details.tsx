@@ -106,7 +106,7 @@ export function MusicDetails({ music }: MusicDetailsProps) {
     })
   }
 
-  const streamingUrl = music.streaming_url || `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-music-${music.id}`
+  const streamingUrl = music.streaming_url || `https://wwembed.wavewatch.top/api/v1/streaming/ww-music-${music.id}`
   const downloadUrl = music.download_url || streamingUrl // Utilise la même URL que streaming
 
   return (

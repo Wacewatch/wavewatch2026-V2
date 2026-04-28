@@ -101,8 +101,8 @@ export function EpisodeDetails({ episode, showId, seasonNumber, showData, isAnim
     ? `https://image.tmdb.org/t/p/original${stillPath}`
     : "/placeholder.svg?height=1080&width=1920"
 
-  const streamingUrl = `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-tv-${showId}-s${seasonNumber}-e${episodeNumber}`
-  const downloadUrl = `https://wwembed.wavewatch.xyz/api/v1/download/ww-tv-${showId}-s${seasonNumber}-e${episodeNumber}`
+  const streamingUrl = `https://wwembed.wavewatch.top/api/v1/streaming/ww-tv-${showId}-s${seasonNumber}-e${episodeNumber}`
+  const downloadUrl = `https://wwembed.wavewatch.top/api/v1/download/ww-tv-${showId}-s${seasonNumber}-e${episodeNumber}`
 
   const handleWatch = () => {
     const episodeId = `${showId}-${seasonNumber}-${episodeNumber}`

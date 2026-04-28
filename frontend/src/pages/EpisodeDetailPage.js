@@ -63,8 +63,8 @@ export default function EpisodeDetailPage({ isAnime = false }) {
   if (!episode) return <div className="container mx-auto px-4 py-12 text-center">Episode non trouve</div>;
 
   const basePath = isAnime ? 'anime' : 'tv-shows';
-  const streamUrl = `https://wwembed.wavewatch.xyz/api/v1/streaming/ww-tv-${id}-s${seasonNumber}-e${episodeNumber}`;
-  const downloadUrl = `https://wwembed.wavewatch.xyz/api/v1/download/ww-tv-${id}-s${seasonNumber}-e${episodeNumber}`;
+  const streamUrl = `https://wwembed.wavewatch.top/api/v1/streaming/ww-tv-${id}-s${seasonNumber}-e${episodeNumber}`;
+  const downloadUrl = `https://wwembed.wavewatch.top/api/v1/download/ww-tv-${id}-s${seasonNumber}-e${episodeNumber}`;
   const getTrailerUrl = () => {
     const vids = seriesInfo?.videos?.results || [];
     const trailer = vids.find(v => v.type === 'Trailer' && v.site === 'YouTube') || vids.find(v => v.site === 'YouTube');
