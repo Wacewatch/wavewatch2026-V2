@@ -76,7 +76,12 @@ export default function DiscoverPlaylistsPage() {
                         {p.items.slice(0, 4).map((item, idx) => (
                           <div key={idx} className="overflow-hidden">
                             {item.poster_path ? (
-                              <img src={`${TMDB_IMG}/w200${item.poster_path}`} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                              <img
+                                src={item.poster_path.startsWith('http') ? item.poster_path : `${TMDB_IMG}/w200${item.poster_path}`}
+                                alt=""
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/200x300/1e293b/64748b?text=%3F'; }}
+                              />
                             ) : (
                               <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
                                 <Film className="w-6 h-6 text-muted-foreground" />

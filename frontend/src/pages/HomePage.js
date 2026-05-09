@@ -254,7 +254,12 @@ function PublicPlaylistsRow() {
                     {p.items.slice(0, 4).map((item, idx) => (
                       <div key={idx} className="overflow-hidden">
                         {item.poster_path ? (
-                          <img src={`${TMDB_IMG}/w200${item.poster_path}`} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                          <img
+                            src={item.poster_path.startsWith('http') ? item.poster_path : `${TMDB_IMG}/w200${item.poster_path}`}
+                            alt=""
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/200x300/1e293b/64748b?text=%3F'; }}
+                          />
                         ) : <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />}
                       </div>
                     ))}
@@ -321,11 +326,11 @@ function LiveWatchPromo() {
           </div>
           <p className="text-sm text-muted-foreground mt-4 max-w-xl">Decouvrez plus de 40 000 chaines TV en direct provenant de 17 pays. Profitez de toutes les chaines nationales et payantes sans abonnement, le tout accessible gratuitement et instantanement.</p>
           <div className="flex gap-3 mt-5">
-            <a href="https://livewatch.sbs/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium transition-colors">
+            <a href="https://livewatch.top/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
               Acceder au site
             </a>
-            <a href="https://v2.livewatch.sbs/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-cyan-600/50 text-cyan-400 hover:bg-cyan-900/20 font-medium transition-colors text-sm">Serveur de secours</a>
+            <a href="https://v2.livewatch.top/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border border-cyan-600/50 text-cyan-400 hover:bg-cyan-900/20 font-medium transition-colors text-sm">Serveur de secours</a>
           </div>
           <p className="text-xs text-muted-foreground mt-3">France - Italie - Espagne - Royaume-Uni - Allemagne - Et 12 autres pays...</p>
         </div>

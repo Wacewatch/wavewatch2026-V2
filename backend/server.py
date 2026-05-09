@@ -818,10 +818,12 @@ async def delete_playlist(playlist_id: str, user: dict = Depends(get_current_use
 @app.get("/api/playlists/public/discover")
 async def discover_playlists(page: int = 1):
     skip = (page - 1) * 20
-    playlists = await db.playlists.find({"is_public": True}).sort("updated_at", -1).skip(skip).limit(20).to_list(20)
+    # Only public playlists with at least 1 item
+    query = {"is_public": True, "items.0": {"$exists": True}}
+    playlists = await db.playlists.find(query).sort("updated_at", -1).skip(skip).limit(20).to_list(20)
     for p in playlists:
         p["_id"] = str(p["_id"])
-    total = await db.playlists.count_documents({"is_public": True})
+    total = await db.playlists.count_documents(query)
     return {"playlists": playlists, "total": total}
 
 # ==================== FEEDBACK ====================
@@ -1439,7 +1441,7 @@ async def get_recent_download_links(limit: int = 12):
     limit = max(1, min(int(limit or 12), 50))
     # Fetch more than limit to allow deduplication, order by created_at desc
     params = _download_link_filters()
-    params["select"] = "tmdb_id,media_type,ww_id,source_name,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,created_at"
+    params["select"] = "tmdb_id,media_type,ww_id,source_name,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,created_at,submitted_by,profiles(username,role)"
     params["order"] = "created_at.desc"
     params["limit"] = str(limit * 5)
     rows = await _supabase_get("/download_links", params)
@@ -1451,6 +1453,10 @@ async def get_recent_download_links(limit: int = 12):
         if k in seen:
             continue
         seen.add(k)
+        # Flatten profile -> uploader_username / uploader_role
+        prof = r.pop("profiles", None) or {}
+        r["uploader_username"] = prof.get("username") or "Anonyme"
+        r["uploader_role"] = prof.get("role") or "user"
         unique_items.append(r)
         if len(unique_items) >= limit:
             break
@@ -2587,7 +2593,8 @@ async def update_playlist_colors(playlist_id: str, request: Request, user: dict 
 @app.get("/api/playlists/public/enhanced")
 async def get_public_playlists_enhanced(page: int = 1, limit: int = 20, sort_by: str = "recent", content_type_filter: str = ""):
     skip = (page - 1) * limit
-    query = {"is_public": True}
+    # Only public playlists with at least 1 item
+    query = {"is_public": True, "items.0": {"$exists": True}}
     
     # Determine sort
     sort_field = [("created_at", -1)]

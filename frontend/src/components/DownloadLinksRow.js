@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import ContentGrid from './ContentGrid';
 import { LoadingGrid } from './Loading';
-import { Download, Film, Tv, Clock, Globe } from 'lucide-react';
+import { Download, Film, Tv, Clock, Globe, User } from 'lucide-react';
 
 export function timeAgo(iso) {
   if (!iso) return '';
@@ -81,6 +81,14 @@ export function DownloadLinkCard({ item }) {
         </div>
         <div className="p-2">
           <p className="text-xs font-semibold truncate group-hover:text-primary transition-colors">{item.title}</p>
+          {item.uploader_username && (
+            <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5 truncate" title={`Uploadé par ${item.uploader_username}`}>
+              <User className="w-2.5 h-2.5 flex-shrink-0" />
+              <span className={`truncate ${item.uploader_role === 'admin' ? 'text-red-400' : item.uploader_role === 'uploader' ? 'text-blue-400' : ''}`}>
+                {item.uploader_username}
+              </span>
+            </p>
+          )}
           <div className="flex items-center gap-1.5 mt-1 text-[10px] font-medium">
             {item.language && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
