@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 33 backend testing for WaveWatch VIP Game admin config + admin list caps removed + personalised recommendations: 27/27 pytest tests pass. Verified GET /api/vip-game/config sanitises win_rate, GET /api/admin/vip-game/config returns full config (403 for non-admin), PUT /api/admin/vip-game/config persists every field (title/subtitle/win_rate/reward_type/reward_days/play_interval_hours/max_winners_per_day/winners_visible/wheel_segments/colors/messages/enabled), POST reset purges vip_games. Status endpoint returns the new shape {enabled, can_play, played_today, won, last_played_at, next_play_at, play_interval_hours}. Play with win_rate=100 grants is_vip + vip_expires_at on user, immediate replay returns 400 cooldown, enabled=false returns 403, and max_winners_per_day=1 caps further wins to won=False even with win_rate=100 (verified by admin winning first then user forced-loss). Winners list respects winners_visible and includes reward_type/reward_days. All 13 admin/list endpoints (users, staff-messages, content-requests, online-users, watching-now, cinema-rooms, tv-channels, radio-stations, music, games, retrogaming, admin/activities, admin/vip-codes) return 200 with no hard cap. /api/ebooks?limit=10000 and /api/software?limit=10000 work. Recommendations: fresh user => source='trending' with media_type populated; user with history (Inception 27205, Dark Knight 155) + favourite (Pulp Fiction 680) + dislike (Matrix 603) => source='personalised', and none of the 4 excluded ids leak in the 18 results. Config restored to defaults and vip_games reset after the test run.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration33_vip_game_recos.py",
+    "/app/test_reports/pytest/iteration33_results.xml"
+  ],
+  "action_items": [
+    "User asked in a follow-up: 'Sur l'onglet admin je veux pouvoir modifier ou supprimer un Avis de la communaute' - this is OUT OF SCOPE for this iteration. There are currently NO admin endpoints to update or delete a /api/platform-reviews entry (only POST/GET/GET mine exist around server.py:2717-2759). Main agent should add PUT /api/admin/platform-reviews/{id} and DELETE /api/admin/platform-reviews/{id} (require_admin), plus the matching admin UI in /app/frontend/src/pages/AdminPage.js to edit/delete community reviews."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now 3515 lines - still well over the 700-line guideline. Strongly recommend splitting into routers (auth, vip_game, recommendations, admin, content, etc.).",
+    "TMDB_API_KEY is hardcoded as a fallback in /app/backend/.env value but also still hardcoded in mark_all_episodes_watched (per iteration 32 review) - audit and remove all hardcoded keys.",
+    "VIP play endpoint imports 'random' inside the function body twice (lines 1478, 1481) - move import to module top.",
+    "vip-game/play does not log to activity_events while register/code_redeem/play do per iteration 32 - either standardise (log all sensitive events) or drop the inconsistency.",
+    "Admin platform-reviews CRUD missing: only POST/GET endpoints exist; no PUT/DELETE for admin moderation as requested by the user."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration33_vip_game_recos.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "n/a"},
+  "test_credentials": "Admin: admin@wavewatch.com / WaveWatch2026!. Test users created on the fly with @wavewatch.dev (pydantic email-validator rejects .test).",
+  "seed_data_creation": "Created 3 throwaway test users (TEST_iter33_*@wavewatch.dev). Inserted history entries for Inception (27205) and Dark Knight (155), one favourite (Pulp Fiction 680), one like (27205) and one dislike (603) for the recommendations test user. Brief mutation of vip_game_config and vip_games during the run; both restored to defaults after the suite (config back to win_rate=5/reward_type=vip/30 days/etc, vip_games collection emptied via /api/admin/vip-game/reset).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Pytest file: /app/backend/tests/test_iteration33_vip_game_recos.py - reusable for regression. Tests rely on @wavewatch.dev domain (not .test). VIP config helpers _set_cfg() and _reset_all() in the file leave the DB clean. /api/auth/me returns nested {'user': {...}}. /api/vip-game/winners returns a top-level list with {username, date, reward_type, reward_days}. Recommendations exclusion set covers history + favourites + dislikes (via _norm_pair). Source is 'trending' if no seeds, else 'personalised'. The follow-up user request to add admin moderation (modify/delete) for /api/platform-reviews is NOT yet implemented in backend or frontend.",
+  "rca of the issue": "Single intermediate failure was a test bug only: /api/auth/me returns {'user': {...}} (nested), the test was reading is_vip at the top level. Fixed by unwrapping the 'user' key before assertion."
+}

@@ -123,6 +123,16 @@ async def get_optional_user(request: Request) -> Optional[dict]:
     except HTTPException:
         return None
 
+async def require_admin(user: dict = Depends(get_current_user)):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin requis")
+    return user
+
+async def require_admin_or_uploader(user: dict = Depends(get_current_user)):
+    if not user.get("is_admin") and not user.get("is_uploader"):
+        raise HTTPException(status_code=403, detail="Admin ou uploader requis")
+    return user
+
 def serialize_user(user: dict) -> dict:
     u = {**user}
     if "_id" in u:
@@ -877,9 +887,9 @@ async def send_staff_message(req: StaffMessageRequest, user: dict = Depends(get_
 @app.get("/api/staff-messages")
 async def get_staff_messages(user: dict = Depends(get_current_user)):
     if user.get("is_admin"):
-        messages = await db.staff_messages.find().sort("created_at", -1).to_list(100)
+        messages = await db.staff_messages.find().sort("created_at", -1).to_list(length=None)
     else:
-        messages = await db.staff_messages.find({"user_id": user["_id"]}).sort("created_at", -1).to_list(100)
+        messages = await db.staff_messages.find({"user_id": user["_id"]}).sort("created_at", -1).to_list(length=None)
     for m in messages:
         m["_id"] = str(m["_id"])
     return {"messages": messages}
@@ -916,7 +926,7 @@ async def create_content_request(req: ContentRequestModel, user: dict = Depends(
 @app.get("/api/content-requests")
 async def get_content_requests(status: str = "all"):
     query = {} if status == "all" else {"status": status}
-    requests = await db.content_requests.find(query).sort("votes", -1).to_list(100)
+    requests = await db.content_requests.find(query).sort("votes", -1).to_list(length=None)
     for r in requests:
         r["_id"] = str(r["_id"])
     return {"requests": requests}
@@ -941,7 +951,7 @@ async def vote_content_request(request: Request, user: dict = Depends(get_curren
 async def admin_get_users(user: dict = Depends(get_current_user)):
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
-    users = await db.users.find({}, {"password_hash": 0}).to_list(500)
+    users = await db.users.find({}, {"password_hash": 0}).to_list(length=None)
     for u in users:
         u["_id"] = str(u["_id"])
     return {"users": users}
@@ -1080,7 +1090,7 @@ async def admin_watching_now(user: dict = Depends(get_current_user)):
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
     events = await db.activity_events.find(
         {"type": "play", "created_at": {"$gte": cutoff}}
-    ).sort("created_at", -1).to_list(200)
+    ).sort("created_at", -1).to_list(length=None)
     # Deduplicate by user_id keeping latest event
     seen = {}
     for e in events:
@@ -1132,7 +1142,7 @@ async def get_user_stats(user: dict = Depends(get_current_user)):
 # ==================== TV CHANNELS / RADIO ====================
 @app.get("/api/tv-channels")
 async def get_tv_channels():
-    channels = await db.tv_channels.find().to_list(500)
+    channels = await db.tv_channels.find().to_list(length=None)
     for c in channels:
         c["_id"] = str(c["_id"])
         c.setdefault("likes", 0)
@@ -1141,7 +1151,7 @@ async def get_tv_channels():
 
 @app.get("/api/radio-stations")
 async def get_radio_stations():
-    stations = await db.radio_stations.find().to_list(500)
+    stations = await db.radio_stations.find().to_list(length=None)
     for s in stations:
         s["_id"] = str(s["_id"])
         s.setdefault("likes", 0)
@@ -1270,12 +1280,18 @@ async def get_info_banner_admin(user: dict = Depends(get_current_user)):
 
 # ==================== EBOOKS / SOFTWARE ====================
 @app.get("/api/ebooks")
-async def get_ebooks(page: int = 1, category: Optional[str] = None):
+async def get_ebooks(page: int = 1, limit: int = 20, category: Optional[str] = None):
     query = {}
     if category:
         query["category"] = category
-    skip = (page - 1) * 20
-    ebooks = await db.ebooks.find(query).sort("created_at", -1).skip(skip).limit(20).to_list(20)
+    page = max(1, int(page or 1))
+    # limit<=0 -> return all (admin tabs)
+    if limit and int(limit) > 0:
+        limit = min(int(limit), 10000)
+        skip = (page - 1) * limit
+        ebooks = await db.ebooks.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    else:
+        ebooks = await db.ebooks.find(query).sort("created_at", -1).to_list(length=None)
     for e in ebooks:
         e["_id"] = str(e["_id"])
     total = await db.ebooks.count_documents(query)
@@ -1289,12 +1305,17 @@ async def get_ebooks(page: int = 1, category: Optional[str] = None):
     return {"ebooks": ebooks, "total": total}
 
 @app.get("/api/software")
-async def get_software(page: int = 1, category: Optional[str] = None):
+async def get_software(page: int = 1, limit: int = 20, category: Optional[str] = None):
     query = {}
     if category:
         query["category"] = category
-    skip = (page - 1) * 20
-    software = await db.software.find(query).sort("created_at", -1).skip(skip).limit(20).to_list(20)
+    page = max(1, int(page or 1))
+    if limit and int(limit) > 0:
+        limit = min(int(limit), 10000)
+        skip = (page - 1) * limit
+        software = await db.software.find(query).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+    else:
+        software = await db.software.find(query).sort("created_at", -1).to_list(length=None)
     for s in software:
         s["_id"] = str(s["_id"])
     total = await db.software.count_documents(query)
@@ -1308,47 +1329,214 @@ async def get_software(page: int = 1, category: Optional[str] = None):
     return {"software": software, "total": total}
 
 # ==================== VIP GAME ====================
+DEFAULT_VIP_GAME_CONFIG = {
+    "enabled": True,
+    "title": "Jeu VIP Gratuit",
+    "subtitle": "Tentez de gagner un statut VIP gratuit !",
+    "win_rate": 5.0,                # % chance to win on each play
+    "reward_type": "vip",            # "vip" or "vip_plus"
+    "reward_days": 30,               # duration of reward
+    "play_interval_hours": 24,       # cooldown between plays
+    "max_winners_per_day": 0,        # 0 = unlimited
+    "winners_visible": 10,           # number of winners to show in public list
+    "win_message": "Felicitations ! Vous avez gagne le VIP pour 30 jours !",
+    "lose_message": "Pas de chance, reessayez bientot !",
+    "wheel_segments": 8,
+    "primary_color": "#a855f7",
+    "secondary_color": "#ec4899",
+}
+
+async def _get_vip_game_config() -> dict:
+    doc = await db.site_settings.find_one({"key": "vip_game_config"})
+    cfg = dict(DEFAULT_VIP_GAME_CONFIG)
+    if doc and isinstance(doc.get("setting_value"), dict):
+        cfg.update(doc["setting_value"])
+    return cfg
+
+@app.get("/api/vip-game/config")
+async def vip_game_public_config():
+    cfg = await _get_vip_game_config()
+    # Public sanitized payload (hide win_rate to keep mystery)
+    return {
+        "enabled": bool(cfg.get("enabled", True)),
+        "title": cfg.get("title"),
+        "subtitle": cfg.get("subtitle"),
+        "reward_type": cfg.get("reward_type"),
+        "reward_days": int(cfg.get("reward_days") or 30),
+        "play_interval_hours": int(cfg.get("play_interval_hours") or 24),
+        "winners_visible": int(cfg.get("winners_visible") or 10),
+        "wheel_segments": int(cfg.get("wheel_segments") or 8),
+        "primary_color": cfg.get("primary_color"),
+        "secondary_color": cfg.get("secondary_color"),
+    }
+
+@app.get("/api/admin/vip-game/config")
+async def vip_game_admin_get_config(user: dict = Depends(require_admin)):
+    return {"config": await _get_vip_game_config()}
+
+@app.put("/api/admin/vip-game/config")
+async def vip_game_admin_update_config(request: Request, user: dict = Depends(require_admin)):
+    body = await request.json()
+    cfg = await _get_vip_game_config()
+    # Whitelist of editable fields
+    allowed = set(DEFAULT_VIP_GAME_CONFIG.keys())
+    for k, v in (body or {}).items():
+        if k in allowed:
+            cfg[k] = v
+    # Type sanity
+    cfg["enabled"] = bool(cfg.get("enabled", True))
+    try:
+        cfg["win_rate"] = max(0.0, min(100.0, float(cfg.get("win_rate", 5))))
+    except Exception:
+        cfg["win_rate"] = 5.0
+    for k_int in ("reward_days", "play_interval_hours", "max_winners_per_day", "winners_visible", "wheel_segments"):
+        try:
+            cfg[k_int] = max(0, int(cfg.get(k_int, 0)))
+        except Exception:
+            cfg[k_int] = DEFAULT_VIP_GAME_CONFIG.get(k_int, 0)
+    if cfg.get("reward_type") not in ("vip", "vip_plus"):
+        cfg["reward_type"] = "vip"
+    await db.site_settings.update_one(
+        {"key": "vip_game_config"},
+        {"$set": {"setting_value": cfg, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"success": True, "config": cfg}
+
+@app.post("/api/admin/vip-game/reset")
+async def vip_game_admin_reset(request: Request, user: dict = Depends(require_admin)):
+    """Reset cooldown for all users or a specific user."""
+    body = await request.json() if request.headers.get("content-length") and int(request.headers.get("content-length", "0")) > 0 else {}
+    target = (body or {}).get("user_id")
+    if target:
+        res = await db.vip_games.delete_many({"user_id": target})
+    else:
+        res = await db.vip_games.delete_many({})
+    return {"success": True, "deleted": res.deleted_count}
+
+def _vip_game_next_play_at(last_played_iso: str, interval_hours: int) -> Optional[str]:
+    if not last_played_iso:
+        return None
+    try:
+        last = datetime.fromisoformat(last_played_iso.replace("Z", "+00:00"))
+    except Exception:
+        return None
+    return (last + timedelta(hours=int(interval_hours or 24))).isoformat()
+
 @app.get("/api/vip-game/status")
 async def vip_game_status(user: dict = Depends(get_current_user)):
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    played = await db.vip_games.find_one({"user_id": user["_id"], "date": today})
-    return {"played_today": played is not None, "won": played.get("won", False) if played else False}
+    cfg = await _get_vip_game_config()
+    interval = int(cfg.get("play_interval_hours") or 24)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=interval)
+    last = await db.vip_games.find({"user_id": user["_id"]}).sort("played_at", -1).limit(1).to_list(1)
+    last = last[0] if last else None
+    can_play = True
+    next_play_at = None
+    if last:
+        try:
+            last_dt = datetime.fromisoformat(last["played_at"].replace("Z", "+00:00"))
+        except Exception:
+            last_dt = cutoff  # treat as long ago on bad data
+        if last_dt > cutoff:
+            can_play = False
+            next_play_at = _vip_game_next_play_at(last["played_at"], interval)
+    return {
+        "enabled": bool(cfg.get("enabled", True)),
+        "can_play": can_play and bool(cfg.get("enabled", True)),
+        "played_today": not can_play,  # backward compat
+        "won": (last or {}).get("won", False),
+        "last_played_at": (last or {}).get("played_at"),
+        "next_play_at": next_play_at,
+        "play_interval_hours": interval,
+    }
 
 @app.post("/api/vip-game/play")
 async def play_vip_game(user: dict = Depends(get_current_user)):
+    cfg = await _get_vip_game_config()
+    if not cfg.get("enabled", True):
+        raise HTTPException(status_code=403, detail="Le jeu VIP est actuellement desactive")
+    interval = int(cfg.get("play_interval_hours") or 24)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=interval)
+    last = await db.vip_games.find({"user_id": user["_id"]}).sort("played_at", -1).limit(1).to_list(1)
+    if last:
+        try:
+            last_dt = datetime.fromisoformat(last[0]["played_at"].replace("Z", "+00:00"))
+        except Exception:
+            last_dt = cutoff
+        if last_dt > cutoff:
+            next_at = _vip_game_next_play_at(last[0]["played_at"], interval)
+            raise HTTPException(status_code=400, detail=f"Vous avez deja joue. Revenez plus tard.|next={next_at}")
+
+    # Daily winners cap
+    max_winners = int(cfg.get("max_winners_per_day") or 0)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    played = await db.vip_games.find_one({"user_id": user["_id"], "date": today})
-    if played:
-        raise HTTPException(status_code=400, detail="Vous avez deja joue aujourd'hui")
-    import random
-    won = random.random() < 0.05  # 5% chance
-    result = {"user_id": user["_id"], "date": today, "won": won, "played_at": datetime.now(timezone.utc).isoformat()}
+    if max_winners > 0:
+        winners_today = await db.vip_games.count_documents({"won": True, "date": today})
+        if winners_today >= max_winners:
+            won = False
+        else:
+            import random
+            won = random.random() * 100.0 < float(cfg.get("win_rate", 5.0))
+    else:
+        import random
+        won = random.random() * 100.0 < float(cfg.get("win_rate", 5.0))
+
+    reward_type = cfg.get("reward_type", "vip")
+    reward_days = int(cfg.get("reward_days") or 30)
+    result = {
+        "user_id": user["_id"], "date": today, "won": won,
+        "reward_type": reward_type if won else None,
+        "reward_days": reward_days if won else None,
+        "played_at": datetime.now(timezone.utc).isoformat(),
+    }
     await db.vip_games.insert_one(result)
     if won:
-        await db.users.update_one(
-            {"_id": ObjectId(user["_id"])},
-            {"$set": {"is_vip": True, "vip_expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}}
-        )
-    return {"won": won, "message": "Felicitations ! Vous avez gagne le VIP pour 30 jours !" if won else "Pas de chance aujourd'hui, reessayez demain !"}
+        update = {}
+        expires = (datetime.now(timezone.utc) + timedelta(days=reward_days)).isoformat()
+        if reward_type == "vip_plus":
+            update["is_vip_plus"] = True
+            update["vip_plus_expires_at"] = expires
+        else:
+            update["is_vip"] = True
+            update["vip_expires_at"] = expires
+        await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": update})
+    return {
+        "won": won,
+        "reward_type": reward_type if won else None,
+        "reward_days": reward_days if won else None,
+        "message": (cfg.get("win_message") or "Felicitations !") if won else (cfg.get("lose_message") or "Pas de chance, reessayez bientot !"),
+        "next_play_at": _vip_game_next_play_at(result["played_at"], interval),
+    }
 
 @app.get("/api/vip-game/winners")
 async def vip_game_winners():
-    winners = await db.vip_games.find({"won": True}).sort("played_at", -1).limit(10).to_list(10)
+    cfg = await _get_vip_game_config()
+    limit = int(cfg.get("winners_visible") or 10)
+    winners = await db.vip_games.find({"won": True}).sort("played_at", -1).limit(limit).to_list(limit)
     result = []
     for w in winners:
-        user = await db.users.find_one({"_id": ObjectId(w["user_id"]) if isinstance(w["user_id"], str) else w["user_id"]}, {"username": 1})
-        result.append({"username": user.get("username", "Anonyme") if user else "Anonyme", "date": w["date"]})
+        try:
+            uid = ObjectId(w["user_id"]) if isinstance(w["user_id"], str) else w["user_id"]
+            u = await db.users.find_one({"_id": uid}, {"username": 1})
+        except Exception:
+            u = None
+        result.append({
+            "username": u.get("username", "Anonyme") if u else "Anonyme",
+            "date": w.get("date"),
+            "reward_type": w.get("reward_type") or "vip",
+            "reward_days": w.get("reward_days") or 30,
+        })
     return {"winners": result}
 
 # ==================== RETROGAMING SOURCES ====================
 @app.get("/api/retrogaming")
 async def get_retrogaming():
-    sources = await db.retrogaming_sources.find().to_list(500)
+    sources = await db.retrogaming_sources.find().to_list(length=None)
     for s in sources:
         s["_id"] = str(s["_id"])
     # Also check old collection name
     if not sources:
-        sources = await db.retrogaming.find().to_list(500)
+        sources = await db.retrogaming.find().to_list(length=None)
         for s in sources:
             s["_id"] = str(s["_id"])
     return {"sources": sources, "games": sources}
@@ -1916,7 +2104,7 @@ class CinemaRoomCreate(BaseModel):
 async def get_cinema_rooms(user: dict = Depends(get_current_user)):
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
-    rooms = await db.cinema_rooms.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    rooms = await db.cinema_rooms.find({}, {"_id": 0}).sort("created_at", -1).to_list(length=None)
     return {"rooms": rooms}
 
 @app.post("/api/admin/cinema-rooms")
@@ -1992,16 +2180,6 @@ async def get_achievements(user: dict = Depends(get_current_user)):
 
 # =================== ADMIN CONTENT CRUD ===================
 
-async def require_admin(user: dict = Depends(get_current_user)):
-    if not user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin requis")
-    return user
-
-async def require_admin_or_uploader(user: dict = Depends(get_current_user)):
-    if not user.get("is_admin") and not user.get("is_uploader"):
-        raise HTTPException(status_code=403, detail="Admin ou uploader requis")
-    return user
-
 # --- TV Channels CRUD ---
 @app.post("/api/admin/tv-channels")
 async def create_tv_channel(request: Request, user: dict = Depends(require_admin)):
@@ -2064,7 +2242,7 @@ async def create_music(request: Request, user: dict = Depends(require_admin_or_u
 
 @app.get("/api/music")
 async def get_music():
-    items = await db.music_content.find({"is_active": True}).sort("created_at", -1).to_list(200)
+    items = await db.music_content.find({"is_active": True}).sort("created_at", -1).to_list(length=None)
     for item in items:
         item["_id"] = str(item["_id"])
     return items
@@ -2106,7 +2284,7 @@ async def delete_software_item(soft_id: str, user: dict = Depends(require_admin)
 # --- Games CRUD ---
 @app.get("/api/games")
 async def get_games():
-    items = await db.games.find({"is_active": True}).sort("created_at", -1).to_list(200)
+    items = await db.games.find({"is_active": True}).sort("created_at", -1).to_list(length=None)
     for item in items:
         item["_id"] = str(item["_id"])
     return items
@@ -2302,49 +2480,172 @@ async def get_user_detailed_stats(user: dict = Depends(get_current_user)):
 # --- Recommendations based on history ---
 @app.get("/api/user/recommendations")
 async def get_user_recommendations(user: dict = Depends(get_current_user)):
+    """Personalised recommendations based on user history, favorites and ratings.
+
+    Excludes everything the user has already watched, favorited or marked as 'dislike'.
+    Mixes TMDB /similar + /recommendations + top-genres /discover for diversity.
+    """
     import httpx
     uid = user["_id"]
     tmdb_key = os.environ.get("TMDB_API_KEY")
     if not tmdb_key:
         return {"recommendations": []}
-    # Get user's watch history
-    history = await db.watch_history.find({"user_id": uid}).sort("watched_at", -1).to_list(20)
-    if not history:
-        # Fallback to trending
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(f"https://api.themoviedb.org/3/trending/movie/week?api_key={tmdb_key}&language=fr-FR", timeout=10.0)
-            data = resp.json()
-            return {"recommendations": data.get("results", [])[:12], "source": "trending"}
-    # Get similar movies based on last watched content
-    watched_ids = set()
-    recommendations = []
-    async with httpx.AsyncClient() as client:
-        for h in history[:5]:
-            cid = h.get("content_id")
-            ctype = h.get("content_type", "movie")
-            watched_ids.add(cid)
-            endpoint = "movie" if ctype == "movie" else "tv"
-            try:
-                resp = await client.get(f"https://api.themoviedb.org/3/{endpoint}/{cid}/similar?api_key={tmdb_key}&language=fr-FR&page=1", timeout=10.0)
-                similar = resp.json().get("results", [])
-                for s in similar[:4]:
-                    if s["id"] not in watched_ids and s["id"] not in [r["id"] for r in recommendations]:
-                        recommendations.append(s)
-                        watched_ids.add(s["id"])
-            except:
-                continue
-    if len(recommendations) < 6:
+
+    # ---------- Build "seen" exclusion set ----------
+    history = await db.watch_history.find({"user_id": uid}).sort("watched_at", -1).to_list(length=None)
+    favorites = await db.favorites.find({"user_id": uid}).to_list(length=None)
+    # Disliked content is also excluded (won't recommend things they hated)
+    dislikes = await db.user_ratings.find({"user_id": uid, "rating": "dislike"}).to_list(length=None)
+
+    def _norm_pair(content_id, content_type):
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(f"https://api.themoviedb.org/3/trending/movie/week?api_key={tmdb_key}&language=fr-FR", timeout=10.0)
-                for r in resp.json().get("results", []):
-                    if r["id"] not in watched_ids and r["id"] not in [x["id"] for x in recommendations]:
-                        recommendations.append(r)
-                        if len(recommendations) >= 12:
-                            break
-        except:
-            pass
-    return {"recommendations": recommendations[:12], "source": "similar"}
+            cid = int(content_id)
+        except Exception:
+            return None
+        ct = "tv" if (content_type or "").startswith("tv") or content_type == "episode" else "movie"
+        return (ct, cid)
+
+    seen_pairs: set = set()
+    for h in history:
+        p = _norm_pair(h.get("content_id"), h.get("content_type"))
+        if p:
+            seen_pairs.add(p)
+    for f in favorites:
+        p = _norm_pair(f.get("content_id"), f.get("content_type"))
+        if p:
+            seen_pairs.add(p)
+    for d in dislikes:
+        p = _norm_pair(d.get("content_id"), d.get("content_type"))
+        if p:
+            seen_pairs.add(p)
+
+    # ---------- Pick "seed" items: liked + recently watched + favorited ----------
+    likes = await db.user_ratings.find({"user_id": uid, "rating": "like"}).sort("created_at", -1).to_list(50)
+    seeds: list = []  # list of (content_type, content_id)
+    seen_seed = set()
+    def _add_seed(ct, cid):
+        try:
+            cid_i = int(cid)
+        except Exception:
+            return
+        ct_n = "tv" if (ct or "").startswith("tv") or ct == "episode" else "movie"
+        key = (ct_n, cid_i)
+        if key in seen_seed:
+            return
+        seen_seed.add(key)
+        seeds.append(key)
+    for liked in likes[:8]:
+        _add_seed(liked.get("content_type"), liked.get("content_id"))
+    for f in favorites[:8]:
+        _add_seed(f.get("content_type"), f.get("content_id"))
+    for h in history[:8]:
+        _add_seed(h.get("content_type"), h.get("content_id"))
+
+    if not seeds:
+        # Brand new user: trending mix
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                r = await client.get(f"https://api.themoviedb.org/3/trending/all/week?api_key={tmdb_key}&language=fr-FR")
+                results = r.json().get("results", [])[:24]
+            except Exception:
+                results = []
+        # Normalise media_type for trending/all
+        for it in results:
+            it["media_type"] = it.get("media_type") or ("tv" if it.get("name") and not it.get("title") else "movie")
+        return {"recommendations": results[:18], "source": "trending"}
+
+    # ---------- Aggregate similar/recommendations + genre discover ----------
+    out: list = []
+    out_keys: set = set()
+    genre_counter: dict = {}  # genre_id -> count
+
+    async def _fetch(client, url):
+        try:
+            r = await client.get(url, timeout=10.0)
+            if r.status_code == 200:
+                return r.json().get("results", []) or []
+        except Exception:
+            return []
+        return []
+
+    async with httpx.AsyncClient() as client:
+        # Step 1: For each seed, fetch similar + recommendations + capture genre_ids
+        for ct, cid in seeds[:10]:
+            ep = "movie" if ct == "movie" else "tv"
+            for kind in ("similar", "recommendations"):
+                url = f"https://api.themoviedb.org/3/{ep}/{cid}/{kind}?api_key={tmdb_key}&language=fr-FR&page=1"
+                items = await _fetch(client, url)
+                for it in items:
+                    it_id = it.get("id")
+                    if not it_id:
+                        continue
+                    it["media_type"] = ep
+                    key = (ep, int(it_id))
+                    if key in seen_pairs or key in out_keys:
+                        continue
+                    # accumulate genre weights
+                    for gid in (it.get("genre_ids") or []):
+                        genre_counter[gid] = genre_counter.get(gid, 0) + 1
+                    # keep with reasonable poster + vote
+                    if it.get("poster_path") and (it.get("vote_count") or 0) >= 20:
+                        out.append(it)
+                        out_keys.add(key)
+                    if len(out) >= 40:
+                        break
+                if len(out) >= 40:
+                    break
+            if len(out) >= 40:
+                break
+
+        # Step 2: Discover by top genres for more diversity (movies + TV)
+        if genre_counter and len(out) < 18:
+            top_genres = sorted(genre_counter.items(), key=lambda kv: -kv[1])[:3]
+            for ep in ("movie", "tv"):
+                gids = ",".join(str(g[0]) for g in top_genres)
+                url = f"https://api.themoviedb.org/3/discover/{ep}?api_key={tmdb_key}&language=fr-FR&sort_by=vote_average.desc&vote_count.gte=300&with_genres={gids}&page=1"
+                items = await _fetch(client, url)
+                for it in items:
+                    it_id = it.get("id")
+                    if not it_id:
+                        continue
+                    it["media_type"] = ep
+                    key = (ep, int(it_id))
+                    if key in seen_pairs or key in out_keys:
+                        continue
+                    if it.get("poster_path"):
+                        out.append(it)
+                        out_keys.add(key)
+                    if len(out) >= 30:
+                        break
+                if len(out) >= 30:
+                    break
+
+        # Step 3: Top-up with trending if still thin
+        if len(out) < 12:
+            url = f"https://api.themoviedb.org/3/trending/all/week?api_key={tmdb_key}&language=fr-FR"
+            items = await _fetch(client, url)
+            for it in items:
+                it_id = it.get("id")
+                if not it_id:
+                    continue
+                ep = it.get("media_type") or ("tv" if it.get("name") and not it.get("title") else "movie")
+                if ep not in ("movie", "tv"):
+                    continue
+                it["media_type"] = ep
+                key = (ep, int(it_id))
+                if key in seen_pairs or key in out_keys:
+                    continue
+                if it.get("poster_path"):
+                    out.append(it)
+                    out_keys.add(key)
+                if len(out) >= 18:
+                    break
+
+    # Final sort: prefer high vote_average then popularity
+    def _score(it):
+        return (it.get("vote_average") or 0) * 0.6 + min((it.get("popularity") or 0) / 100.0, 5.0) * 0.4
+    out.sort(key=_score, reverse=True)
+    return {"recommendations": out[:18], "source": "personalised"}
 
 
 # --- User Ratings (Like/Dislike) ---
@@ -2436,7 +2737,7 @@ async def submit_platform_review(request: Request, user: dict = Depends(get_curr
 @app.get("/api/platform-reviews")
 async def get_platform_reviews():
     # Exclude seeded demo reviews (user_id starts with "seed_user_")
-    reviews = await db.platform_reviews.find({"user_id": {"$not": {"$regex": "^seed_user_"}}}).sort("created_at", -1).to_list(500)
+    reviews = await db.platform_reviews.find({"user_id": {"$not": {"$regex": "^seed_user_"}}}).sort("created_at", -1).to_list(length=None)
     for r in reviews:
         r["_id"] = str(r["_id"])
     total = len(reviews)
@@ -2524,7 +2825,7 @@ async def get_admin_activities(user: dict = Depends(require_admin)):
             "created_at": a.get("created_at"),
         })
     # User/system events (register, code redeem, play)
-    events = await db.activity_events.find().sort("created_at", -1).to_list(200)
+    events = await db.activity_events.find().sort("created_at", -1).to_list(length=None)
     for e in events:
         items.append({
             "_id": str(e["_id"]),
@@ -2743,7 +3044,7 @@ async def generate_vip_code(request: Request, user: dict = Depends(require_admin
 
 @app.get("/api/admin/vip-codes")
 async def get_vip_codes(user: dict = Depends(require_admin)):
-    codes = await db.activation_codes.find().sort("created_at", -1).to_list(200)
+    codes = await db.activation_codes.find().sort("created_at", -1).to_list(length=None)
     for c in codes:
         c["_id"] = str(c["_id"])
     return {"codes": codes}

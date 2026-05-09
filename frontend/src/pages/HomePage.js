@@ -554,7 +554,7 @@ function RecommendationsRow() {
   return (
     <div data-testid="recommendations-section">
       <ContentGrid title="Recommandations pour vous" link="/dashboard" icon={<Sparkles className="w-5 h-5 text-pink-400" />}>
-        {items.map(item => <ContentCard key={item.id} item={item} type={item.title ? 'movie' : 'tv'} />)}
+        {items.map(item => <ContentCard key={`${item.media_type || (item.title ? 'movie' : 'tv')}-${item.id}`} item={item} type={item.media_type === 'tv' || (!item.title && item.name) ? 'tv' : 'movie'} />)}
       </ContentGrid>
     </div>
   );

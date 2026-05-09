@@ -269,6 +269,25 @@ export default function AdminPage() {
   const [dlConfig, setDlConfig] = useState({ enabled: true, title: 'Derniers liens de téléchargement', subtitle: 'Les derniers ajouts à la communauté', limit: 12, show_quality_badge: true });
   const [dlStats, setDlStats] = useState({ total: 0, last_24h: 0 });
 
+  // VIP Game configuration
+  const [vipGameCfg, setVipGameCfg] = useState({
+    enabled: true,
+    title: 'Jeu VIP Gratuit',
+    subtitle: 'Tentez de gagner un statut VIP gratuit !',
+    win_rate: 5.0,
+    reward_type: 'vip',
+    reward_days: 30,
+    play_interval_hours: 24,
+    max_winners_per_day: 0,
+    winners_visible: 10,
+    win_message: 'Felicitations ! Vous avez gagne le VIP pour 30 jours !',
+    lose_message: 'Pas de chance, reessayez bientot !',
+    wheel_segments: 8,
+    primary_color: '#a855f7',
+    secondary_color: '#ec4899',
+  });
+  const [vipGameSaving, setVipGameSaving] = useState(false);
+
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
 
   const loadData = useCallback((currentTab) => {
@@ -282,9 +301,9 @@ export default function AdminPage() {
       tvchannels: () => API.get('/api/tv-channels').then(({ data }) => setTvChannels(data.channels || [])),
       radio: () => API.get('/api/radio-stations').then(({ data }) => setRadioStations(data.stations || [])),
       music: () => API.get('/api/music').then(({ data }) => setMusicContent(Array.isArray(data) ? data : [])),
-      software: () => API.get('/api/software').then(({ data }) => setSoftwareItems(data.software || data.items || (Array.isArray(data) ? data : []))),
+      software: () => API.get('/api/software?limit=10000').then(({ data }) => setSoftwareItems(data.software || data.items || (Array.isArray(data) ? data : []))),
       games: () => API.get('/api/games').then(({ data }) => setGamesItems(Array.isArray(data) ? data : [])),
-      ebooks: () => API.get('/api/ebooks').then(({ data }) => setEbooksItems(data.ebooks || data.items || (Array.isArray(data) ? data : []))),
+      ebooks: () => API.get('/api/ebooks?limit=10000').then(({ data }) => setEbooksItems(data.ebooks || data.items || (Array.isArray(data) ? data : []))),
       retrogaming: () => API.get('/api/retrogaming').then(({ data }) => setRetrogaming(data.sources || [])),
       changelogs: () => API.get('/api/changelogs').then(({ data }) => setChangelogs(data || [])),
       requests: () => API.get('/api/content-requests').then(({ data }) => setRequests(data.requests || [])),
@@ -295,6 +314,7 @@ export default function AdminPage() {
         API.get('/api/download-links/config').then(({ data }) => { if (data?.config) setDlConfig(p => ({ ...p, ...data.config })); }),
         API.get('/api/admin/download-links/stats').then(({ data }) => setDlStats(data || { total: 0, last_24h: 0 })).catch(() => {}),
       ]),
+      vip_game: () => API.get('/api/admin/vip-game/config').then(({ data }) => { if (data?.config) setVipGameCfg(p => ({ ...p, ...data.config })); }),
     };
     if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
   }, [user]);
@@ -480,6 +500,7 @@ export default function AdminPage() {
     { id: 'vipcodes', label: 'Codes', icon: <Crown className="w-4 h-4" /> },
     { id: 'info_banner', label: 'Panneau', icon: <Send className="w-4 h-4" /> },
     { id: 'download_links', label: 'Téléchargements', icon: <FileText className="w-4 h-4" /> },
+    { id: 'vip_game', label: 'Jeu VIP', icon: <Crown className="w-4 h-4" /> },
     { id: 'tmdb', label: 'TMDB', icon: <Film className="w-4 h-4" /> },
   ];
 
@@ -1206,6 +1227,127 @@ export default function AdminPage() {
           <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
             <p className="text-sm text-emerald-400 font-medium">🔒 Sécurité : les clés Supabase (service role) sont uniquement côté backend</p>
             <p className="text-xs text-muted-foreground mt-1">Le frontend n'a jamais accès aux clés Supabase — toutes les requêtes passent par l'API WaveWatch (/api/download-links/*). Les jaquettes sont enrichies via le proxy TMDB.</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'vip_game' && (
+        <div className="space-y-6" data-testid="admin-vip-game">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2"><Crown className="w-5 h-5 text-yellow-400" />Configuration du Jeu VIP</h2>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={!!vipGameCfg.enabled} onChange={e => setVipGameCfg(p => ({ ...p, enabled: e.target.checked }))} className="w-4 h-4" data-testid="vip-game-enabled-toggle" />
+              <span className="text-sm font-medium">{vipGameCfg.enabled ? 'Jeu activé' : 'Jeu désactivé'}</span>
+            </label>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Affichage</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Titre du jeu</label>
+                <input type="text" value={vipGameCfg.title || ''} onChange={e => setVipGameCfg(p => ({ ...p, title: e.target.value }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-title" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Sous-titre / Slogan</label>
+                <input type="text" value={vipGameCfg.subtitle || ''} onChange={e => setVipGameCfg(p => ({ ...p, subtitle: e.target.value }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-subtitle" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Couleur primaire (roue)</label>
+                <input type="color" value={vipGameCfg.primary_color || '#a855f7'} onChange={e => setVipGameCfg(p => ({ ...p, primary_color: e.target.value }))} className="mt-1 w-full h-10 rounded-lg border border-input bg-background cursor-pointer" data-testid="vip-game-primary-color" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Couleur secondaire (roue)</label>
+                <input type="color" value={vipGameCfg.secondary_color || '#ec4899'} onChange={e => setVipGameCfg(p => ({ ...p, secondary_color: e.target.value }))} className="mt-1 w-full h-10 rounded-lg border border-input bg-background cursor-pointer" data-testid="vip-game-secondary-color" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Segments de la roue</label>
+                <input type="number" min={4} max={24} value={vipGameCfg.wheel_segments || 8} onChange={e => setVipGameCfg(p => ({ ...p, wheel_segments: parseInt(e.target.value) || 8 }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-segments" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Gagnants visibles dans le tableau</label>
+                <input type="number" min={0} max={100} value={vipGameCfg.winners_visible || 10} onChange={e => setVipGameCfg(p => ({ ...p, winners_visible: parseInt(e.target.value) || 10 }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-winners-visible" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Mécanique du jeu</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Probabilité de gain ({vipGameCfg.win_rate}%)</label>
+                <input type="range" min={0} max={100} step={0.5} value={vipGameCfg.win_rate || 0} onChange={e => setVipGameCfg(p => ({ ...p, win_rate: parseFloat(e.target.value) }))} className="mt-1 w-full" data-testid="vip-game-win-rate" />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>0%</span><span>50%</span><span>100%</span></div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Cooldown entre 2 parties (heures)</label>
+                <input type="number" min={1} max={720} value={vipGameCfg.play_interval_hours || 24} onChange={e => setVipGameCfg(p => ({ ...p, play_interval_hours: parseInt(e.target.value) || 24 }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-cooldown" />
+                <p className="text-[10px] text-muted-foreground mt-1">24 = 1x par jour, 168 = 1x par semaine</p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Type de récompense</label>
+                <select value={vipGameCfg.reward_type || 'vip'} onChange={e => setVipGameCfg(p => ({ ...p, reward_type: e.target.value }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-reward-type">
+                  <option value="vip">VIP</option>
+                  <option value="vip_plus">VIP+</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Durée de la récompense (jours)</label>
+                <input type="number" min={1} max={3650} value={vipGameCfg.reward_days || 30} onChange={e => setVipGameCfg(p => ({ ...p, reward_days: parseInt(e.target.value) || 30 }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-reward-days" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">Limite de gagnants par jour (0 = illimité)</label>
+                <input type="number" min={0} max={10000} value={vipGameCfg.max_winners_per_day || 0} onChange={e => setVipGameCfg(p => ({ ...p, max_winners_per_day: parseInt(e.target.value) || 0 }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-max-winners" />
+                <p className="text-[10px] text-muted-foreground mt-1">Au delà de cette limite, plus aucun gagnant n'est généré pour la journée.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+            <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wider">Messages</h3>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Message de victoire</label>
+              <input type="text" value={vipGameCfg.win_message || ''} onChange={e => setVipGameCfg(p => ({ ...p, win_message: e.target.value }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-win-message" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Message de défaite</label>
+              <input type="text" value={vipGameCfg.lose_message || ''} onChange={e => setVipGameCfg(p => ({ ...p, lose_message: e.target.value }))} className="mt-1 w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" data-testid="vip-game-lose-message" />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button disabled={vipGameSaving} onClick={async () => {
+              setVipGameSaving(true);
+              try {
+                const { data } = await API.put('/api/admin/vip-game/config', vipGameCfg);
+                if (data?.config) setVipGameCfg(p => ({ ...p, ...data.config }));
+                toast({ title: 'Configuration enregistrée' });
+              } catch (e) { toast({ title: 'Erreur', description: e.response?.data?.detail || 'Erreur', variant: 'destructive' }); }
+              setVipGameSaving(false);
+            }} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 disabled:opacity-50" data-testid="vip-game-save-btn">
+              <Save className="w-4 h-4" />{vipGameSaving ? 'Sauvegarde...' : 'Enregistrer'}
+            </button>
+            <button onClick={async () => {
+              if (!window.confirm('Réinitialiser le cooldown pour tous les utilisateurs ? Tout le monde pourra rejouer immédiatement.')) return;
+              try {
+                const { data } = await API.post('/api/admin/vip-game/reset', {});
+                toast({ title: 'Cooldown réinitialisé', description: `${data.deleted || 0} entrées supprimées` });
+              } catch (e) { toast({ title: 'Erreur', description: e.response?.data?.detail || 'Erreur', variant: 'destructive' }); }
+            }} className="px-4 py-2 rounded-lg border border-red-500/40 text-red-400 hover:bg-red-500/10 text-sm font-medium" data-testid="vip-game-reset-btn">
+              Réinitialiser le cooldown global
+            </button>
+            <a href="/vip-game" target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary inline-flex items-center gap-2">
+              Voir la page publique <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+
+          <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
+            <p className="text-sm text-yellow-400 font-medium">💡 À savoir</p>
+            <ul className="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
+              <li>La probabilité de gain est cachée côté frontend pour préserver la magie du tirage.</li>
+              <li>Avec une probabilité à 100%, tout joueur gagnera (utile pour des opérations spéciales / cadeaux).</li>
+              <li>La limite "gagnants par jour" est la sécurité ultime contre les abus si vous mettez un win_rate élevé.</li>
+            </ul>
           </div>
         </div>
       )}
