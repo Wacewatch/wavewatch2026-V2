@@ -345,3 +345,24 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
 - Marquage `edited_by_admin: True` confirmé en base
 - Endpoints non-authentifiés → 401, non-admin → 403
 
+
+
+## Iteration 34 - 2026-05-09 - Suppression bouton "Serveur de secours" + Pass responsive global
+
+### Changements
+- **LiveWatchPromo** : bouton "Serveur de secours" (lien vers v2.livewatch.top) supprimé dans :
+  - `/app/frontend/src/components/LiveWatchPromo.js`
+  - `/app/frontend/src/pages/HomePage.js` (composant inline)
+  - Bouton "Acceder au site" conservé seul, avec `data-testid="livewatch-access-btn"`
+- **Responsive global** :
+  - `index.css` : safety net `html, body { max-width: 100%; overflow-x: hidden }`, `img/video/iframe { max-width: 100% }`, container padding réduit < 640px
+  - `HomePage.js` SportsStreamPromo / LiveWatchPromo (inline) : padding/img/heading scalés `p-6 sm:p-8 md:p-12`, `text-2xl sm:text-3xl`, image `w-32 h-32 sm:w-40 sm:h-40 md:w-52`
+  - `HomePage.js` SubscriptionOffer : flex-wrap des CTA, grid features full-width sur mobile, alignements centrés
+  - `HomePage.js` FootballCalendarWidget : matchs flex-wrap, dates `w-16 sm:w-20`, ligue badge whitespace-nowrap
+  - `Footer.js` : barre de liens `flex-wrap` + alignement centré en mode colonne mobile
+
+### Vérifications
+- Mobile 390x800 : aucun overflow horizontal (scrollWidth == clientWidth == 390)
+- Tablet 768 : OK
+- Desktop 1920 : OK
+- HomePage, mobile menu, /movies, footer testés en mobile

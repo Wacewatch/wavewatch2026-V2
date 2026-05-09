@@ -39,12 +39,9 @@ export default function LiveWatchPromo() {
 
             <div className="flex flex-wrap justify-center md:justify-start gap-3">
               <a href="https://livewatch.top/" target="_blank" rel="noopener noreferrer"
-                className="px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-medium flex items-center gap-2 hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg shadow-cyan-500/25">
+                className="px-6 py-3 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-medium flex items-center gap-2 hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg shadow-cyan-500/25"
+                data-testid="livewatch-access-btn">
                 <ExternalLink className="w-4 h-4" />Accéder au site
-              </a>
-              <a href="https://v2.livewatch.top/" target="_blank" rel="noopener noreferrer"
-                className="px-6 py-3 rounded-lg border border-cyan-500/30 text-cyan-400 font-medium flex items-center gap-2 hover:bg-cyan-500/10 transition-all">
-                Serveur de secours
               </a>
             </div>
 

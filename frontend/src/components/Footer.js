@@ -94,9 +94,9 @@ export default function Footer() {
             )}
           </div>
         )}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div><Link to="/"><img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-12 w-auto object-contain" /></Link><p className="text-sm mt-1" style={textSecStyle}>Votre plateforme de streaming premium</p></div>
-          <div className="flex items-center gap-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div><Link to="/"><img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-12 w-auto object-contain mx-auto sm:mx-0" /></Link><p className="text-sm mt-1" style={textSecStyle}>Votre plateforme de streaming premium</p></div>
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             {[{ to: '/contact-staff', label: 'Ecrire au staff', icon: <Mail className="w-4 h-4 mr-1" /> }, { to: '/dns-vpn', label: 'DNS & VPN' }, { to: '/faq', label: 'FAQ' }, { to: '/changelogs', label: 'Nouveautes' }].map(l => (
               <Link key={l.to} to={l.to} className="text-sm hover:text-blue-400 transition-colors flex items-center" style={textSecStyle}>{l.icon}{l.label}</Link>
             ))}
