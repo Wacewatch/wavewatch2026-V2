@@ -278,3 +278,51 @@ Avant de déployer, l'opérateur doit :
 - Nouveau endpoint **GET /api/admin/watching-now** : retourne count + liste des users ayant lancé un play dans les 10 dernières minutes (dédoublonné par user_id)
 - Frontend : nouveau bloc rouge en haut du dashboard stats avec ping animé + liste scroll des watchers (titre, type, username, poster, heure)
 - Auto-refresh toutes les 15s
+
+## Iteration 33 - 2026-05-09 - VIP Game configurable + Limites admin + Recommandations améliorées
+
+### 1) Module "Derniers liens de téléchargement" - pseudo de l'uploader
+- Backend `/api/download-links/recent` : ajout du join `profiles(username,role)` Supabase + flatten en `uploader_username` / `uploader_role`
+- Frontend `DownloadLinksRow.js` : `DownloadLinkCard` affiche le pseudo de l'uploader sous le titre (couleur dynamique selon rôle: admin=rouge, uploader=bleu)
+
+### 2) Page Playlists Communauté - images cassées + masquer playlists vides
+- Backend `/api/playlists/public/enhanced` & `/api/playlists/public/discover` : filtre `items.0: {$exists: true}` (élimine les playlists 0 élément)
+- Frontend `DiscoverPlaylistsPage.js`, `PlaylistsPage.js`, `HomePage.js` (module communauté) : détection `poster_path.startsWith('http')` pour utiliser l'URL comme telle (logos chaînes TV/Radio Wikipedia) + onError fallback placeholder
+
+### 3) URL LiveWatch
+- `LiveWatchPromo.js` + bloc inline `HomePage.js` : `livewatch.sbs` → `livewatch.top` (et `v2.livewatch.sbs` → `v2.livewatch.top`)
+
+### 4) Jeu VIP entièrement paramétrable depuis l'admin
+- Backend : nouvelle clé `db.site_settings: vip_game_config` avec champs : enabled, title, subtitle, win_rate (%), reward_type (vip|vip_plus), reward_days, play_interval_hours (cooldown configurable), max_winners_per_day, winners_visible, win_message, lose_message, wheel_segments, primary_color, secondary_color
+- Endpoints : `GET /api/vip-game/config` (public, sanitisé), `GET /api/admin/vip-game/config` (admin), `PUT /api/admin/vip-game/config` (admin), `POST /api/admin/vip-game/reset` (purge cooldown global ou par user)
+- `/api/vip-game/play` : utilise win_rate + reward_type/days, applique `is_vip_plus` si reward_type=vip_plus, respecte max_winners_per_day, désactivable via enabled=false
+- `/api/vip-game/status` : retourne `{enabled, can_play, played_today, won, last_played_at, next_play_at, play_interval_hours}` (cooldown rolling au lieu de "1 fois par jour calendaire")
+- `/api/vip-game/winners` : limite par `winners_visible` au lieu de 10 hardcodé, expose reward_type/reward_days
+- Frontend AdminPage : nouvel onglet "Jeu VIP" avec formulaire complet (Affichage / Mécanique / Messages / actions Save+Reset)
+- Frontend VIPGamePage : roue dynamique (couleurs+segments depuis config), countdown h/m/s en temps réel, gère état désactivé, label récompense (VIP/VIP+)
+
+### 5) Suppression des limites dans tous les endpoints admin
+Passage de `to_list(N)` → `to_list(length=None)` sur :
+- `/api/admin/users` (avant 500), `/api/staff-messages` (100), `/api/content-requests` (100)
+- `/api/admin/watching-now` (200), `/api/admin/cinema-rooms` (100), `/api/admin/activities` (200), `/api/admin/vip-codes` (200)
+- `/api/tv-channels` (500), `/api/radio-stations` (500), `/api/retrogaming` (500)
+- `/api/music` (200), `/api/games` (200), `/api/platform-reviews` (500)
+- `/api/ebooks` & `/api/software` : ajout d'un paramètre `?limit=` (cap 10000) pour permettre à l'admin de récupérer la liste complète. AdminPage appelle avec `?limit=10000`.
+
+### 6) Recommandations pour vous - vraies recommandations personnalisées
+- Backend `/api/user/recommendations` réécrit :
+  - Construit un `seen_pairs` set excluant : watch_history + favorites + user_ratings(rating='dislike')
+  - Seeds = mix likes (récents) + favorites + history (jusqu'à ~24 graines uniques)
+  - Pour chaque seed: appelle `/movie/{id}/similar` ET `/movie/{id}/recommendations` (idem TV) → accumule genre_ids pondérés
+  - Étape 2 : `/discover/movie` + `/discover/tv` triés par vote_average sur les 3 genres dominants pour la diversité
+  - Étape 3 : top-up `/trending/all/week` si moins de 12 items
+  - Ranking final par score (vote_average × 0.6 + popularity × 0.4)
+  - Filtre poster_path requis et vote_count ≥ 20 (qualité)
+  - Ne ressort jamais un id présent dans seen_pairs (movies vus/favoris/disliked)
+  - source: 'trending' (nouvel utilisateur sans seeds) ou 'personalised'
+- Frontend `HomePage.js` RecommendationsRow : key fix + routing TV/Movie via item.media_type
+
+### Tests
+- Iteration 33 : 27/27 tests pytest pass (test_iteration33_vip_game_recos.py)
+- 100% backend success
+

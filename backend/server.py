@@ -1470,16 +1470,15 @@ async def play_vip_game(user: dict = Depends(get_current_user)):
     # Daily winners cap
     max_winners = int(cfg.get("max_winners_per_day") or 0)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    import random as _random
     if max_winners > 0:
         winners_today = await db.vip_games.count_documents({"won": True, "date": today})
         if winners_today >= max_winners:
             won = False
         else:
-            import random
-            won = random.random() * 100.0 < float(cfg.get("win_rate", 5.0))
+            won = _random.random() * 100.0 < float(cfg.get("win_rate", 5.0))
     else:
-        import random
-        won = random.random() * 100.0 < float(cfg.get("win_rate", 5.0))
+        won = _random.random() * 100.0 < float(cfg.get("win_rate", 5.0))
 
     reward_type = cfg.get("reward_type", "vip")
     reward_days = int(cfg.get("reward_days") or 30)
