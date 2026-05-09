@@ -6,7 +6,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://download-links-user.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://livewatch-responsive.preview.emergentagent.com')
 
 class TestHealthAndBasicEndpoints:
     """Basic health and connectivity tests"""
