@@ -326,3 +326,22 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
 - Iteration 33 : 27/27 tests pytest pass (test_iteration33_vip_game_recos.py)
 - 100% backend success
 
+
+## Iteration 33-bis - 2026-05-09 - Modération admin des avis communauté
+
+### Backend
+- `PUT /api/admin/platform-reviews/{review_id}` (require_admin) : édite message + scores (contenu/fonctionnalites/design clamped 1-10), marque `edited_by_admin: True` + `edited_at`
+- `DELETE /api/admin/platform-reviews/{review_id}` (require_admin) : supprime définitivement l'avis
+
+### Frontend (AdminPage)
+- Nouvel onglet **« Avis »** (icône MessageSquare, badge avec count)
+- Carte par avis : pseudo + badges (Admin/Uploader/VIP/VIP+/Modéré) + date + 3 scores
+- Boutons **Modifier** (édition inline avec textarea + 3 sliders 1-10) et **Supprimer** (avec confirmation)
+- Bandeau "Modéré" orange affiché si `edited_by_admin: true`
+- En tête : moyennes de la communauté (Contenu / Fonctionnalités / Design) + bouton Rafraîchir
+
+### Tests manuels
+- POST review → PUT admin (message + score) → DELETE admin = OK
+- Marquage `edited_by_admin: True` confirmé en base
+- Endpoints non-authentifiés → 401, non-admin → 403
+

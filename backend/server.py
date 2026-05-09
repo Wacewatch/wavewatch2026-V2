@@ -2760,6 +2760,44 @@ async def get_my_platform_review(user: dict = Depends(get_current_user)):
         review["_id"] = str(review["_id"])
     return {"review": review}
 
+@app.put("/api/admin/platform-reviews/{review_id}")
+async def admin_update_platform_review(review_id: str, request: Request, user: dict = Depends(require_admin)):
+    """Allow admins to moderate (edit) a community review's text/scores."""
+    try:
+        oid = ObjectId(review_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Identifiant invalide")
+    body = await request.json()
+    update = {}
+    if "message" in body:
+        update["message"] = (body.get("message") or "").strip()[:500]
+    for k in ("contenu_score", "fonctionnalites_score", "design_score"):
+        if k in body and body[k] is not None:
+            try:
+                update[k] = max(1, min(10, int(body[k])))
+            except Exception:
+                pass
+    if not update:
+        raise HTTPException(status_code=400, detail="Aucun champ a mettre a jour")
+    update["edited_by_admin"] = True
+    update["edited_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.platform_reviews.update_one({"_id": oid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Avis introuvable")
+    return {"success": True}
+
+@app.delete("/api/admin/platform-reviews/{review_id}")
+async def admin_delete_platform_review(review_id: str, user: dict = Depends(require_admin)):
+    """Allow admins to delete a community review."""
+    try:
+        oid = ObjectId(review_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Identifiant invalide")
+    res = await db.platform_reviews.delete_one({"_id": oid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Avis introuvable")
+    return {"success": True}
+
 # =================== USER MESSAGING ===================
 
 @app.post("/api/messages")

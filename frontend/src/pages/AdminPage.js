@@ -288,6 +288,12 @@ export default function AdminPage() {
   });
   const [vipGameSaving, setVipGameSaving] = useState(false);
 
+  // Community reviews moderation
+  const [reviews, setReviews] = useState([]);
+  const [reviewsAvgs, setReviewsAvgs] = useState({ contenu: 0, fonctionnalites: 0, design: 0 });
+  const [editingReview, setEditingReview] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ message: '', contenu_score: 5, fonctionnalites_score: 5, design_score: 5 });
+
   useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
 
   const loadData = useCallback((currentTab) => {
@@ -315,6 +321,10 @@ export default function AdminPage() {
         API.get('/api/admin/download-links/stats').then(({ data }) => setDlStats(data || { total: 0, last_24h: 0 })).catch(() => {}),
       ]),
       vip_game: () => API.get('/api/admin/vip-game/config').then(({ data }) => { if (data?.config) setVipGameCfg(p => ({ ...p, ...data.config })); }),
+      reviews: () => API.get('/api/platform-reviews').then(({ data }) => {
+        setReviews(data.reviews || []);
+        setReviewsAvgs(data.averages || { contenu: 0, fonctionnalites: 0, design: 0 });
+      }),
     };
     if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
   }, [user]);
@@ -501,6 +511,7 @@ export default function AdminPage() {
     { id: 'info_banner', label: 'Panneau', icon: <Send className="w-4 h-4" /> },
     { id: 'download_links', label: 'Téléchargements', icon: <FileText className="w-4 h-4" /> },
     { id: 'vip_game', label: 'Jeu VIP', icon: <Crown className="w-4 h-4" /> },
+    { id: 'reviews', label: 'Avis', icon: <MessageSquare className="w-4 h-4" />, count: reviews.length },
     { id: 'tmdb', label: 'TMDB', icon: <Film className="w-4 h-4" /> },
   ];
 
@@ -1349,6 +1360,119 @@ export default function AdminPage() {
               <li>La limite "gagnants par jour" est la sécurité ultime contre les abus si vous mettez un win_rate élevé.</li>
             </ul>
           </div>
+        </div>
+      )}
+
+      {tab === 'reviews' && (
+        <div className="space-y-6" data-testid="admin-reviews">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2"><MessageSquare className="w-5 h-5 text-blue-400" />Avis de la communauté</h2>
+            <button onClick={() => loadData('reviews')} className="px-3 py-1.5 rounded-lg text-xs border border-border hover:bg-secondary">Rafraîchir</button>
+          </div>
+
+          {/* Averages */}
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { key: 'contenu', label: 'Contenu', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
+              { key: 'fonctionnalites', label: 'Fonctionnalités', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+              { key: 'design', label: 'Design', color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+            ].map(s => (
+              <div key={s.key} className={`rounded-xl border p-4 ${s.bg}`}>
+                <p className={`text-3xl font-bold ${s.color}`}>{(reviewsAvgs[s.key] || 0).toFixed(1)}<span className="text-sm opacity-70">/10</span></p>
+                <p className={`text-xs ${s.color} opacity-80`}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Reviews list */}
+          {reviews.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">Aucun avis pour le moment</div>
+          ) : (
+            <div className="space-y-3">
+              {reviews.map(r => (
+                <div key={r._id} className="bg-card border border-border rounded-xl p-4" data-testid={`admin-review-${r._id}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold">{r.username || 'Anonyme'}</span>
+                      {r.is_admin && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Admin</span>}
+                      {r.is_uploader && !r.is_admin && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Uploader</span>}
+                      {r.is_vip_plus && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">VIP+</span>}
+                      {r.is_vip && !r.is_vip_plus && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">VIP</span>}
+                      {r.edited_by_admin && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">Modéré</span>}
+                      <span className="text-[11px] text-muted-foreground">{r.created_at ? new Date(r.created_at).toLocaleString('fr-FR') : ''}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => {
+                        setEditingReview(r._id);
+                        setReviewForm({
+                          message: r.message || '',
+                          contenu_score: r.contenu_score || 5,
+                          fonctionnalites_score: r.fonctionnalites_score || 5,
+                          design_score: r.design_score || 5,
+                        });
+                      }} className="px-2.5 py-1 rounded-lg text-xs border border-border hover:bg-secondary inline-flex items-center gap-1" data-testid={`review-edit-${r._id}`}>
+                        <Edit className="w-3 h-3" />Modifier
+                      </button>
+                      <button onClick={async () => {
+                        if (!window.confirm(`Supprimer définitivement l'avis de ${r.username || 'cet utilisateur'} ?`)) return;
+                        try {
+                          await API.delete(`/api/admin/platform-reviews/${r._id}`);
+                          toast({ title: 'Avis supprimé' });
+                          loadData('reviews');
+                        } catch (e) { toast({ title: 'Erreur', description: e.response?.data?.detail || 'Erreur', variant: 'destructive' }); }
+                      }} className="px-2.5 py-1 rounded-lg text-xs border border-red-500/40 text-red-400 hover:bg-red-500/10 inline-flex items-center gap-1" data-testid={`review-delete-${r._id}`}>
+                        <Trash2 className="w-3 h-3" />Supprimer
+                      </button>
+                    </div>
+                  </div>
+
+                  {editingReview === r._id ? (
+                    <div className="space-y-3">
+                      <textarea value={reviewForm.message} onChange={e => setReviewForm(f => ({ ...f, message: e.target.value.slice(0, 500) }))}
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background outline-none text-sm" rows={3} maxLength={500}
+                        data-testid={`review-edit-message-${r._id}`} />
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { key: 'contenu_score', label: 'Contenu' },
+                          { key: 'fonctionnalites_score', label: 'Fonctionnalités' },
+                          { key: 'design_score', label: 'Design' },
+                        ].map(s => (
+                          <div key={s.key}>
+                            <label className="text-xs font-medium text-muted-foreground">{s.label} ({reviewForm[s.key]}/10)</label>
+                            <input type="range" min={1} max={10} value={reviewForm[s.key]} onChange={e => setReviewForm(f => ({ ...f, [s.key]: parseInt(e.target.value) }))}
+                              className="w-full mt-1" data-testid={`review-edit-${s.key}-${r._id}`} />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={async () => {
+                          try {
+                            await API.put(`/api/admin/platform-reviews/${r._id}`, reviewForm);
+                            toast({ title: 'Avis modifié' });
+                            setEditingReview(null);
+                            loadData('reviews');
+                          } catch (e) { toast({ title: 'Erreur', description: e.response?.data?.detail || 'Erreur', variant: 'destructive' }); }
+                        }} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1" data-testid={`review-save-${r._id}`}>
+                          <Save className="w-3 h-3" />Enregistrer
+                        </button>
+                        <button onClick={() => setEditingReview(null)} className="px-3 py-1.5 rounded-lg text-xs border border-border hover:bg-secondary">Annuler</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-3 gap-3 mb-3 text-xs">
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1.5"><span className="text-emerald-400">Contenu</span> <b>{r.contenu_score}/10</b></div>
+                        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-1.5"><span className="text-blue-400">Fonctionnalités</span> <b>{r.fonctionnalites_score}/10</b></div>
+                        <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg px-3 py-1.5"><span className="text-purple-400">Design</span> <b>{r.design_score}/10</b></div>
+                      </div>
+                      {r.message && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{r.message}</p>}
+                      {!r.message && <p className="text-xs text-muted-foreground italic">(Aucun message texte)</p>}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
