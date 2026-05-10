@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import API from '../../lib/api';
-import { Calendar, Save, Trash2, Plus, X, Sparkles, Power } from 'lucide-react';
+import { Calendar, Save, Trash2, Plus, X, Sparkles, Power, Bell } from 'lucide-react';
+import SeasonalBannerPreview from '../SeasonalBannerPreview';
 
 const ICONS = ['Sparkles', 'Ghost', 'TreePine', 'Sun', 'Heart', 'Cake', 'Zap'];
 const THEMES_AUTO = ['halloween', 'christmas', 'estival', 'sakura', 'neon', 'cosmic', 'borealis', 'obsidian', 'cyberpunk', 'jade', 'ocean', 'midnight'];
@@ -18,6 +19,12 @@ function EventEditor({ initial, onSave, onCancel, onDelete }) {
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-foreground">{initial.id ? 'Modifier' : 'Nouveau'} l'événement</h3>
         <button onClick={onCancel} className="p-1 rounded hover:bg-foreground/10"><X className="w-4 h-4" /></button>
+      </div>
+
+      {/* Live preview */}
+      <div>
+        <span className="text-[10px] uppercase tracking-widest font-bold text-foreground/60 block mb-1">Aperçu live</span>
+        <SeasonalBannerPreview event={data} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -126,6 +133,15 @@ export default function EventsAdminPanel({ toast }) {
     await API.put(`/api/admin/seasonal-events/${e.id}`, { ...e, active: !e.active });
     load();
   };
+  const handleNotify = async (e) => {
+    if (!window.confirm(`Notifier tous les utilisateurs à propos de "${e.name}" ?`)) return;
+    try {
+      const { data } = await API.post(`/api/admin/seasonal-events/${e.id}/notify`);
+      toast?.({ title: 'Notification envoyée', description: `${data.sent} utilisateurs notifiés` });
+    } catch (err) {
+      toast?.({ title: 'Erreur', description: err.response?.data?.detail || 'Échec', variant: 'destructive' });
+    }
+  };
 
   if (loading) return <div className="text-center py-12 text-foreground/60">Chargement...</div>;
 
@@ -177,9 +193,14 @@ export default function EventsAdminPanel({ toast }) {
                 <span className="px-2 py-0.5 rounded-full font-bold" style={{ background: `${e.color}25`, color: e.color }}>×{e.xp_multiplier} XP</span>
                 {e.auto_theme && <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary">→ {e.auto_theme}</span>}
               </div>
-              <button onClick={() => setEditing(e)} className="mt-3 w-full text-xs font-bold py-1.5 rounded-lg bg-foreground/5 hover:bg-foreground/10 transition-colors">
-                Modifier
-              </button>
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => setEditing(e)} className="flex-1 text-xs font-bold py-1.5 rounded-lg bg-foreground/5 hover:bg-foreground/10 transition-colors">
+                  Modifier
+                </button>
+                <button onClick={() => handleNotify(e)} className="text-xs font-bold py-1.5 px-3 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 transition-colors flex items-center gap-1" title="Notifier tous les utilisateurs" data-testid={`notify-event-${e.slug}`}>
+                  <Bell className="w-3 h-3" />Notifier
+                </button>
+              </div>
             </div>
           </div>
         ))}

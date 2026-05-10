@@ -12,7 +12,7 @@ export default function ProfilePage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { xp, level, tier, rewards } = useUserXP(user);
+  const { xp, level, tier, rewards, xp_bonus } = useUserXP(user);
 
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -222,7 +222,7 @@ export default function ProfilePage() {
         {/* Right Sidebar */}
         <div className="space-y-6">
           {/* === NIVEAU XP === */}
-          <LevelCard xp={xp} level={level} testId="profile-level-card" />
+          <LevelCard xp={xp} level={level} xpBonus={xp_bonus} testId="profile-level-card" />
 
           {/* === RÉCOMPENSES PAR NIVEAU === */}
           <div className="rounded-2xl border border-border bg-card/85 backdrop-blur-xl p-5">

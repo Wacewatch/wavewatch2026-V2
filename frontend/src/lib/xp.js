@@ -81,7 +81,7 @@ export function useUserXP(user) {
     ]).then(([s1, s2]) => {
       const stats = s1.data || {};
       const detailed = s2.data || {};
-      const xp = computeXP({
+      const xpBase = computeXP({
         movies:    detailed.movies_watched || 0,
         shows:     detailed.shows_watched  || 0,
         likes:     detailed.likes_given    || 0,
@@ -89,8 +89,10 @@ export function useUserXP(user) {
         playlists: stats.playlists         || 0,
         hours:     Math.round((detailed.total_minutes_watched || 0) / 60),
       });
+      const xpBonus = parseInt(stats.xp_bonus || 0, 10) || 0;
+      const xp = xpBase + xpBonus;
       const level = getLevel(xp);
-      const out = { xp, level, tier: getTier(level), bounds: getLevelBounds(level), rewards: getRewards(level) };
+      const out = { xp, xp_base: xpBase, xp_bonus: xpBonus, level, tier: getTier(level), bounds: getLevelBounds(level), rewards: getRewards(level) };
       _xpCache.data = out; _xpCache.ts = Date.now();
       setData({ ...out, loading: false });
     });

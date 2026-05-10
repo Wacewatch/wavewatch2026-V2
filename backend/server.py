@@ -738,6 +738,31 @@ async def add_to_history(request: Request, user: dict = Depends(get_current_user
             "details": f"{user.get('username', 'Utilisateur')} a lance {type_labels.get(ctype, 'un contenu')} : {title}",
             "created_at": datetime.now(timezone.utc).isoformat()
         })
+        # Seasonal event bonus XP — only on first play
+        if not existing:
+            try:
+                evt = await _get_matching_active_event(ctype, body["content_id"])
+                if evt:
+                    base = _base_xp_for_action(ctype)
+                    mult = float(evt.get("xp_multiplier", 1) or 1)
+                    bonus = int(round(base * (mult - 1)))
+                    if bonus > 0:
+                        await db.xp_bonuses.insert_one({
+                            "user_id": user["_id"],
+                            "event_slug": evt.get("slug"),
+                            "event_id": str(evt.get("_id")),
+                            "content_type": ctype,
+                            "content_id": body["content_id"],
+                            "base_xp": base,
+                            "bonus_xp": bonus,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        })
+                        await db.users.update_one(
+                            {"_id": ObjectId(user["_id"])},
+                            {"$inc": {"xp_bonus": bonus}},
+                        )
+            except Exception:
+                pass
     return {"success": True}
 
 @app.post("/api/user/history/batch")
@@ -1191,7 +1216,22 @@ async def get_user_stats(user: dict = Depends(get_current_user)):
     fav_count = await db.favorites.count_documents({"user_id": user["_id"]})
     history_count = await db.watch_history.count_documents({"user_id": user["_id"]})
     playlist_count = await db.playlists.count_documents({"user_id": user["_id"]})
-    return {"favorites": fav_count, "watched": history_count, "playlists": playlist_count}
+    # Re-fetch user to get current xp_bonus (since cookie auth user may be stale)
+    udoc = await db.users.find_one({"_id": ObjectId(user["_id"])}, {"xp_bonus": 1})
+    xp_bonus = int((udoc or {}).get("xp_bonus", 0) or 0)
+    return {"favorites": fav_count, "watched": history_count, "playlists": playlist_count, "xp_bonus": xp_bonus}
+
+@app.get("/api/user/xp-bonuses")
+async def get_user_xp_bonuses(user: dict = Depends(get_current_user)):
+    """Return the recent xp_bonus entries for the user with totals per event."""
+    rows = await db.xp_bonuses.find({"user_id": user["_id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    by_event: dict = {}
+    total = 0
+    for r in rows:
+        slug = r.get("event_slug", "?")
+        by_event[slug] = by_event.get(slug, 0) + int(r.get("bonus_xp", 0))
+        total += int(r.get("bonus_xp", 0))
+    return {"total_bonus_xp": total, "by_event": by_event, "recent": rows[:50]}
 
 # ==================== TV CHANNELS / RADIO ====================
 @app.get("/api/tv-channels")
@@ -3834,6 +3874,48 @@ def _is_event_currently_active(evt, now=None):
     # span across year (e.g. Dec 20 - Jan 10)
     return (m, d) >= (ms, ds) or (m, d) <= (me, de)
 
+def _base_xp_for_action(action: str) -> int:
+    """Base XP per action type — must mirror lib/xp.js computeXP."""
+    return {"movie": 10, "tv": 15, "anime": 15, "episode": 15}.get(action, 0)
+
+async def _get_matching_active_event(content_type: str, content_id):
+    """Return the first currently active event whose bonus matches the content (by content_type and optionally TMDB genre).
+    None if no match. Caches active events in a tiny in-memory cache (60s)."""
+    import time
+    now = time.time()
+    cache = getattr(_get_matching_active_event, "_c", None)
+    if not cache or now - cache[0] > 60:
+        events = await db.seasonal_events.find({"active": True}).to_list(length=None)
+        active = [e for e in events if _is_event_currently_active(e)]
+        _get_matching_active_event._c = (now, active)
+    else:
+        active = cache[1]
+    for evt in active:
+        types = evt.get("bonus_content_types") or []
+        if types and content_type not in types:
+            continue
+        bonus_genres = evt.get("bonus_genres") or []
+        if bonus_genres:
+            # Need to fetch TMDB genres for this content
+            try:
+                if content_type == "movie":
+                    data = await tmdb_fetch(f"/movie/{int(content_id)}", {})
+                elif content_type in ("tv", "anime"):
+                    data = await tmdb_fetch(f"/tv/{int(content_id)}", {})
+                elif content_type == "episode":
+                    # episode content_id is "showid-sN-eN" — extract show id
+                    show_id = str(content_id).split("-")[0]
+                    data = await tmdb_fetch(f"/tv/{int(show_id)}", {})
+                else:
+                    continue
+                content_genres = {g.get("id") for g in (data.get("genres") or []) if isinstance(g, dict)}
+                if not (content_genres & set(bonus_genres)):
+                    continue
+            except Exception:
+                continue
+        return evt
+    return None
+
 @app.get("/api/seasonal-events/active")
 async def seasonal_events_active():
     events = await db.seasonal_events.find({"active": True}, {"_id": 1, "name": 1, "slug": 1, "description": 1, "icon": 1, "color": 1, "auto_theme": 1, "xp_multiplier": 1, "bonus_genres": 1, "bonus_content_types": 1, "month_start": 1, "day_start": 1, "month_end": 1, "day_end": 1, "active": 1}).to_list(length=None)
@@ -3897,6 +3979,29 @@ async def admin_seasonal_events_update(event_id: str, req: SeasonalEventInput, u
 @app.delete("/api/admin/seasonal-events/{event_id}")
 async def admin_seasonal_events_delete(event_id: str, user: dict = Depends(require_admin)):
     await db.seasonal_events.delete_one({"_id": event_id}); return {"ok": True}
+
+@app.post("/api/admin/seasonal-events/{event_id}/notify")
+async def admin_seasonal_events_notify(event_id: str, user: dict = Depends(require_admin)):
+    """Broadcast a notification to all users about this event."""
+    evt = await db.seasonal_events.find_one({"_id": event_id})
+    if not evt:
+        raise HTTPException(404, "Event not found")
+    title = f"🎉 Événement : {evt.get('name', '')}"
+    msg_parts = [evt.get("description") or ""]
+    mult = evt.get("xp_multiplier", 1)
+    if mult and mult > 1:
+        msg_parts.append(f"Bonus ×{mult} XP actif !")
+    message = " — ".join(p for p in msg_parts if p)
+    users_list = await db.users.find({}, {"_id": 1}).to_list(length=None)
+    for u in users_list:
+        await create_notification(str(u["_id"]), title, message, "event", "/leaderboard")
+    # log admin activity if helper exists
+    try:
+        await log_admin_activity(user.get("username", "admin"), "Notification événement", f"{evt.get('slug')} - {len(users_list)} users")
+    except Exception:
+        pass
+    return {"sent": len(users_list), "event": evt.get("slug")}
+
 
 # Background task: check new episodes periodically
 @app.on_event("startup")

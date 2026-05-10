@@ -1,0 +1,45 @@
+{
+  "summary": "Iteration 38 backend testing: notify endpoint, xp_bonus on history POST, and /api/user/xp-bonuses. Created fast pytest suite (no TMDB calls). All 10 tests passed in 4m26s.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration38_xp_bonus_notify_fast.py",
+    "/app/test_reports/pytest/iter38_fast.xml"
+  ],
+  "tests_executed": [
+    "TestNotify::test_unauth_returns_401 — POST without auth → 401 ✅",
+    "TestNotify::test_non_admin_returns_403 — POST as regular user → 403 ✅",
+    "TestNotify::test_missing_event_returns_404 — POST with bad id → 404 ✅",
+    "TestNotify::test_admin_broadcast_success — sent>=2, event=slug, fresh user receives event notification ✅",
+    "TestBonusXp::test_first_movie_grants_20_bonus — movie 550 + mult=3 → xp_bonus=20, by_event[slug]=20, recent[0]={base_xp:10,bonus_xp:20,content_type:movie,content_id:550} ✅",
+    "TestBonusXp::test_repost_within_1h_no_double — re-post same content → bonus stays 20, only 1 row in recent ✅",
+    "TestBonusXp::test_tv_content_type_skipped — tv when bonus_content_types=[movie] → no bonus ✅",
+    "TestBonusXp::test_clean_user_defaults — fresh user → xp_bonus=0, xp-bonuses={total:0,by_event:{},recent:[]} ✅",
+    "TestBonusEdgeCases::test_xp_multiplier_one_no_bonus — mult=1 → bonus=int(round(10*0))=0, no row inserted ✅",
+    "TestBonusEdgeCases::test_no_active_event_no_bonus — no matching event → no bonus ✅"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "_get_matching_active_event uses an in-memory 60s cache stored as function attribute. Across multiple uvicorn workers this would yield inconsistent bonus behavior; fine for single-worker dev, but worth flagging if production runs >1 worker.",
+    "Bonus XP block in add_to_history is wrapped in a bare `except Exception: pass` — silent failures will hide bugs. Consider logging the exception (logger.exception) so misconfigured events don't go unnoticed.",
+    "Notify endpoint loops `await create_notification` per user with no bulk insert — for large user bases (1000+) this is N round-trips. Consider db.notifications.insert_many() with broadcast docs.",
+    "Notify endpoint does not check `evt.get('active')` or whether the event window is currently active — admin can broadcast notifications for inactive/expired events. Likely intentional (admin-only) but worth confirming."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration38_xp_bonus_notify_fast.py (new)"
+  ],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "N/A (skipped per request)"},
+  "test_credentials": "Admin: admin@wavewatch.com / WaveWatch2026! (matches /app/memory/test_credentials.md)",
+  "seed_data_creation": "Each test creates its own seasonal event(s) prefixed with TEST_/test- and deletes them in teardown. Final purge confirmed 0 leftover test events.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Use test_iteration38_xp_bonus_notify_fast.py for regression. The matcher caches active events for 60s — every event create/delete is followed by time.sleep(65). Run takes ~4m26s. Genre-filter path (bonus_genres) is intentionally NOT tested here since it requires live TMDB calls; the older test_iteration38_xp_bonus_and_notify.py covers that path if needed. Today is May 10, 2026; events use month_start=5/day_start=1, month_end=5/day_end=31 to be currently active.",
+  "rca of the issue": "No issues found. All three feature paths (admin notify broadcast, bonus XP on history POST, /api/user/xp-bonuses listing) verified end-to-end against the deployed backend at REACT_APP_BACKEND_URL."
+}

@@ -5,7 +5,7 @@ import { getTier, getLevelBounds } from '../lib/xp';
 /**
  * Carte Niveau XP réutilisable (Dashboard, Profile, Leaderboard...).
  */
-export default function LevelCard({ xp, level, compact = false, testId = 'level-card' }) {
+export default function LevelCard({ xp, level, xpBonus = 0, compact = false, testId = 'level-card' }) {
   const tier = getTier(level);
   const { current, next } = getLevelBounds(level);
   const progressXP = xp - current;
@@ -51,6 +51,11 @@ export default function LevelCard({ xp, level, compact = false, testId = 'level-
           <p className="text-2xl font-black text-foreground mb-2">
             <span className="tabular-nums">{xp.toLocaleString('fr-FR')}</span>
             <span className="text-foreground/50 text-sm ml-1">XP</span>
+            {xpBonus > 0 && (
+              <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold align-middle" style={{ background: `${tier.hex}25`, color: tier.hex }} data-testid="level-card-bonus">
+                +{xpBonus.toLocaleString('fr-FR')} bonus événement
+              </span>
+            )}
           </p>
           <div className="relative h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
             <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"

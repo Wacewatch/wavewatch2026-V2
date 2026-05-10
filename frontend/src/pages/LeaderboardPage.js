@@ -9,7 +9,7 @@ import { useUserXP, REWARD_PALIERS, getTier } from '../lib/xp';
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
-  const { xp, level, tier } = useUserXP(user);
+  const { xp, level, tier, xp_bonus } = useUserXP(user);
   const [leaderboard, setLeaderboard] = useState([]);
   const [winners, setWinners] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +43,7 @@ export default function LeaderboardPage() {
         {user && (
           <div className="mb-6">
             <p className="text-[10px] font-bold uppercase tracking-widest text-foreground/60 mb-2 px-1">Mon rang personnel</p>
-            <LevelCard xp={xp} level={level} testId="my-level-card" />
+            <LevelCard xp={xp} level={level} xpBonus={xp_bonus} testId="my-level-card" />
           </div>
         )}
 
