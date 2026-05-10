@@ -1,0 +1,35 @@
+{
+  "summary": "Backend testing for iteration 37 (seasonal events CRUD) + non-regression of iteration 35 (recommendations diversity). Both test suites: 19/19 tests pass. The fix to GET /api/seasonal-events/active (including 'active' field in projection) is verified working - in May 2026 active returns null, creating a May event makes it active, deletion brings it back to null. Trending + personalised recommendations diversity (<50% overlap across 3 calls) is also confirmed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration37_seasonal_events.py",
+    "/app/backend/tests/test_iteration35_recommendations_diversity.py",
+    "/app/test_reports/pytest/iter37_seasonal.xml",
+    "/app/test_reports/pytest/iter35_diversity.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is now ~3958 lines; consider splitting into routers (events, recommendations, auth, users, admin) for maintainability - exceeds the 700-line guideline.",
+    "_is_event_currently_active uses datetime.now(timezone.utc) - if WaveWatch targets primarily a French audience, consider Europe/Paris for boundary days (Halloween Oct 31 23:30 Paris would be Oct 31 22:30 UTC = OK, but New Year crossing windows could matter). Low priority.",
+    "Seed seasonal-events docs use string `_id` which is correct, but the public list endpoint /api/seasonal-events does NOT include `bonus_genres` / `bonus_content_types` (only the /active endpoint does) - if frontend SeasonalBanner needs them in lists too, expose them. Currently fine since AutoThemeApplier uses /active.",
+    "Admin POST returns 200 (not 201) on creation - minor REST convention deviation but consistent with existing endpoints."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration37_seasonal_events.py (NEW)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "not tested (skipped per request)"},
+  "test_credentials": "admin@wavewatch.com / WaveWatch2026! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Test creates and cleans up TEST_-prefixed seasonal events using uuid suffixes; cleanup fixture deletes each created event. The test_delete_event_removes_from_active test deletes the event it creates inline. No leftover test data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 37 covers seasonal events CRUD + iteration 35 recos diversity non-regression - both green. Test files: /app/backend/tests/test_iteration37_seasonal_events.py (11 tests) and /app/backend/tests/test_iteration35_recommendations_diversity.py (8 tests). REACT_APP_BACKEND_URL must be exported when running pytest from /app (root .env not auto-loaded). Frontend components SeasonalBanner/AutoThemeApplier/EventsAdminPanel were NOT tested (explicit backend-only request).",
+  "rca of the issue": "The previous iteration 35 trending diversity bug and the seasonal events /active projection bug (active field excluded from MongoDB projection -> _is_event_currently_active always returned False) are both confirmed fixed by this run. Reproduction: prior to the fix, GET /api/seasonal-events/active would always return {event: null} even when an event covered the current date, because the projection in db.seasonal_events.find() omitted the 'active' field, so _is_event_currently_active short-circuited at `if not evt.get('active')`. Mitigation already applied: 'active': 1 added to the projection (server.py L3839)."
+}

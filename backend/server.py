@@ -3836,10 +3836,11 @@ def _is_event_currently_active(evt, now=None):
 
 @app.get("/api/seasonal-events/active")
 async def seasonal_events_active():
-    events = await db.seasonal_events.find({"active": True}, {"_id": 1, "name": 1, "slug": 1, "description": 1, "icon": 1, "color": 1, "auto_theme": 1, "xp_multiplier": 1, "bonus_genres": 1, "bonus_content_types": 1, "month_start": 1, "day_start": 1, "month_end": 1, "day_end": 1}).to_list(length=None)
+    events = await db.seasonal_events.find({"active": True}, {"_id": 1, "name": 1, "slug": 1, "description": 1, "icon": 1, "color": 1, "auto_theme": 1, "xp_multiplier": 1, "bonus_genres": 1, "bonus_content_types": 1, "month_start": 1, "day_start": 1, "month_end": 1, "day_end": 1, "active": 1}).to_list(length=None)
     for e in events:
         if _is_event_currently_active(e):
             e["id"] = e.pop("_id", None)
+            e.pop("active", None)
             return {"event": e}
     return {"event": None}
 
