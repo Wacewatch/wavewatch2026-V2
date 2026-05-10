@@ -799,3 +799,26 @@ Dans le menu thèmes Premium, les thèmes débloqués par niveau affichent un ba
 - Sitemap dynamique des films/séries (exposer top 1000 movies populaires depuis TMDB)
 - hreflang si support multi-langue (en/fr) un jour
 
+
+---
+
+## Iteration 38 — Playlists sort + Collections complètes (2026-01-10)
+
+### Bugs corrigés
+1. **`/discover/playlists` — Tri inopérant** : le pinning forcé `is_staff: -1` avant le sort écrasait toutes les options du menu. Supprimé → les 6 options (Plus récentes / anciennes / aimées / critiquées / grandes / Nom A→Z) réordonnent réellement la liste. Le badge STAFF reste visible sur les cartes.
+2. **Module "Playlists de la Communauté" (home)** : affichait toujours les mêmes playlists. Désormais affichage **aléatoire à chaque chargement** via nouveau `sort_by=random` (aggregation `$sample`).
+3. **`/collections` — 24 collections hardcodées** : remplacé par index TMDB complet (~140-150 collections uniques) construit depuis les 25 premières pages de `/movie/popular` + détails (`belongs_to_collection`). Tri par popularité (défaut), Nom A→Z, Nombre de films. Pagination 24/page. Search avec fallback `/search/collection` pour couverture maximale.
+
+### Endpoints touchés
+- `GET /api/playlists/public/enhanced` : ajout `sort_by=random` (via `$sample`), suppression du staff pinning
+- `GET /api/tmdb/collections/popular?page=&limit=&sort_by=popularity|name|size&q=` (NEW) — cache mémoire 24h, pré-chauffé au startup
+- Helper `_build_popular_collections_index` : 25 pages × 20 films, concurrence 30, ~17s à froid
+
+### Validation
+- Backend testing : 17/17 tests pytest ✅ (`/app/backend/tests/test_iteration38_playlists_collections.py`)
+- Playwright `/collections` : 144 collections, tri Nom A→Z fonctionne (10 Things → 28 → After → Aladdin → Alien…)
+- Frontend hot-reload OK, lint OK
+
+### Backlog
+- Persister l'index TMDB en Mongo (survie aux redémarrages)
+- Splitter `server.py` (~4277 lignes) en routers
