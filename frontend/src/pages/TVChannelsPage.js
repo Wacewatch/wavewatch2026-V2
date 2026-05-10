@@ -552,44 +552,44 @@ export default function TVChannelsPage() {
           ) : null}
         >
           <div className="flex flex-col h-full" data-testid="livewatch-player">
-            <div className="flex-1 bg-black">
+            {/* Bottom bar declared FIRST in markup but rendered last via order utilities to ensure it's never cut off */}
+            <div className="flex-1 min-h-0 bg-black order-1">
               {lwCurrentSrc ? (
-                <div className="w-full h-full sm:aspect-video sm:h-auto">
-                  <iframe
-                    key={lwIframeKey}
-                    src={lwCurrentSrc}
-                    title={lwSelected.channel.name}
-                    className="w-full h-full block"
-                    allowFullScreen
-                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-                    data-testid="livewatch-iframe"
-                  />
-                </div>
+                <iframe
+                  key={lwIframeKey}
+                  src={lwCurrentSrc}
+                  title={lwSelected.channel.name}
+                  className="w-full h-full block border-0"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+                  data-testid="livewatch-iframe"
+                />
               ) : (
-                <div className="w-full h-full sm:aspect-video sm:h-auto flex flex-col items-center justify-center text-muted-foreground bg-black">
+                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
                   <Tv className="w-16 h-16 mb-3 opacity-50" />
                   <p className="font-medium">Aucun flux disponible</p>
                 </div>
               )}
             </div>
-            <div className="p-3 border-t border-border bg-card flex flex-wrap items-center gap-3 justify-between">
-              <div className="text-xs text-muted-foreground">
-                Source actuelle : <span className="font-semibold text-foreground">{lwSelected.useBackup ? 'Backup' : 'Principal'}</span>
+            <div className="order-2 shrink-0 px-3 py-2.5 sm:px-4 sm:py-3 border-t border-border bg-card flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
+              <div className="text-[11px] sm:text-xs text-muted-foreground min-w-0 truncate">
+                Source : <span className="font-semibold text-foreground">{lwSelected.useBackup ? 'Backup' : 'Principal'}</span>
                 {lwSelected.channel.category && <> • {lwSelected.channel.category}</>}
                 {lwSelected.channel.quality && <> • {lwSelected.channel.quality}</>}
               </div>
               {lwSelected.channel.backup_embed_url && (
                 <button
                   onClick={toggleBackup}
-                  className={`h-9 px-4 rounded-lg font-semibold text-xs flex items-center gap-2 transition-colors ${
+                  className={`h-9 px-3 sm:px-4 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors shrink-0 ${
                     lwSelected.useBackup
                       ? 'bg-red-600 hover:bg-red-700 text-white'
-                      : 'bg-secondary hover:bg-secondary/80 border border-border text-foreground'
+                      : 'bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200'
                   }`}
                   data-testid="livewatch-backup-toggle"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  {lwSelected.useBackup ? 'Revenir au principal' : 'Charger lien backup'}
+                  <span className="hidden sm:inline">{lwSelected.useBackup ? 'Revenir au principal' : 'Charger lien backup'}</span>
+                  <span className="sm:hidden">{lwSelected.useBackup ? 'Principal' : 'Backup'}</span>
                 </button>
               )}
             </div>
