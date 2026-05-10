@@ -228,11 +228,19 @@ function PopularCollectionsRow() {
 
 function PublicPlaylistsRow() {
   const [playlists, setPlaylists] = useState([]);
+  const [shuffling, setShuffling] = useState(false);
+  const [seed, setSeed] = useState(0);
+
   useEffect(() => {
-    API.get('/api/playlists/public/enhanced?sort_by=random&limit=12').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {
+    API.get(`/api/playlists/public/enhanced?sort_by=random&limit=12&_=${seed}`).then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {
       API.get('/api/playlists/public/discover').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {});
-    });
-  }, []);
+    }).finally(() => setShuffling(false));
+  }, [seed]);
+
+  const reshuffle = () => {
+    setShuffling(true);
+    setSeed(s => s + 1);
+  };
 
   if (!playlists.length) return null;
 
@@ -242,7 +250,20 @@ function PublicPlaylistsRow() {
     <div data-testid="public-playlists-section">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Playlists de la Communaute</h2>
-        <Link to="/discover/playlists" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={reshuffle}
+            disabled={shuffling}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 hover:border-primary/50 transition-all disabled:opacity-50 disabled:cursor-wait"
+            data-testid="reshuffle-playlists-btn"
+            title="Mélanger à nouveau"
+          >
+            <Shuffle className={`w-3.5 h-3.5 ${shuffling ? 'animate-spin' : ''}`} />
+            Re-mélanger
+          </button>
+          <Link to="/discover/playlists" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
+        </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
         {playlists.slice(0, 6).map((p, i) => (
