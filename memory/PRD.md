@@ -595,3 +595,44 @@ Ajoutées dans `App.js` au niveau racine (z-index -10) avec pulse animée et cou
   - accent: `45 100% 35%` (yellow solarized)
   - ring: `18 80% 44%` (orange solarized)
   - Nav text-secondary cyan, gradient pin du sélecteur revu (cyan→yellow→orange)
+
+## Iteration 42 — 2026-05-10 — DMCA refondu + XP partout + Récompenses par niveau
+
+### 1️⃣ Solarized → "Récif"
+Renommé dans le menu thèmes pour mieux refléter sa palette (cyan profond + ambre + corail). Le slug `solarized` est conservé pour ne pas casser le localStorage des utilisateurs existants. Gradient du sélecteur ajusté en `from-cyan-800 via-amber-600 to-orange-700`.
+
+### 2️⃣ Page DMCA refondue (différente de Nakios)
+- Layout enrichi : hero avec encart "Mise à jour" daté + 4 stat-cards colorées (0 fichier, Liens, Sources, Conformité EU+DMCA)
+- Encart résumé avec icône Info
+- 4 sections numérotées 01-04 avec puces (au lieu de paragraphes)
+- FAQ rapide en accordéons (3 questions)
+- Encart "Responsabilité de l'utilisateur" (avertissement amber)
+- 2 CTA dans une grille (Contact staff / FAQ)
+- Footer note avec mention jurisprudence
+
+### 3️⃣ Système XP unifié — `lib/xp.js`
+Module partagé par toute l'app :
+- `computeXP(stats)` — formule unique
+- `getLevel(xp)`, `getLevelBounds(level)`, `getTier(level)`
+- `REWARD_PALIERS` — liste des récompenses par palier
+- `isThemeUnlockedByLevel(themeId, level)` — détection des thèmes débloqués
+- Hook React `useUserXP(user)` avec cache 60s pour éviter les re-fetch
+
+### 4️⃣ Composant `<LevelCard>` réutilisable
+Card niveau XP avec badge tier 3D, barre de progression et chips. Mode `compact` pour des affichages inline.
+
+### 5️⃣ XP visible partout
+- **DashboardPage** : grosse card niveau XP (existante, gardée)
+- **ProfilePage** : LevelCard en sidebar + **liste des 4 récompenses paliers** avec statut débloqué/verrouillé
+- **LeaderboardPage** (refondu themed) : LevelCard "Mon rang personnel" en haut, **section Système de niveaux** avec les 5 tiers + récompenses paliers + sources d'XP
+- **Navigation** : utilise `useUserXP` pour débloquer les thèmes selon le niveau
+
+### 6️⃣ Récompenses débloquées par niveau
+| Niveau | Récompense |
+|--------|-----------|
+| 5 | 🥉 Badge Bronze visible sur ton profil |
+| 10 | 🥈 Cadre Argent autour de l'avatar |
+| 20 | 🌌 Thème "Aurore Boréale" (VIP exceptionnel) **gratuit** |
+| 35 | 💎 Thème "Obsidienne" (VIP exceptionnel) **gratuit** |
+
+Dans le menu thèmes Premium, les thèmes débloqués par niveau affichent un badge **"LV"** vert/cyan (au lieu de l'étoile dorée VIP) et sont accessibles sans être VIP.

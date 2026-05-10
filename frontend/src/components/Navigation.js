@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
+import { useUserXP, isThemeUnlockedByLevel } from '../lib/xp';
 import API, { TMDB_IMG } from '../lib/api';
 import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette, Calendar, Trophy, Gamepad2, Music, Film, Tv, Users as UsersIcon, Sparkles } from 'lucide-react';
 import NotificationBell from './NotificationBell';
@@ -21,6 +22,7 @@ export default function Navigation() {
   const { user, signOut } = useAuth();
   const { theme, setTheme, THEMES, EXCEPTIONAL_THEMES, LIMITED_THEMES, PREMIUM_THEMES } = useTheme();
   const { toast } = useToast();
+  const { level: userLevel } = useUserXP(user);
   const navigate = useNavigate();
   const navRef = useRef(null);
 
@@ -273,15 +275,17 @@ export default function Navigation() {
                     </p>
                     <div className="grid grid-cols-2 gap-1.5">
                       {PREMIUM_THEMES.map(t => {
-                        const locked = (t.requiresVipPlus && !user.is_vip_plus && !user.is_admin) || (t.requiresVip && !user.is_vip && !user.is_vip_plus && !user.is_admin);
+                        const lvlUnlocked = isThemeUnlockedByLevel(t.id, userLevel);
+                        const locked = !lvlUnlocked && ((t.requiresVipPlus && !user.is_vip_plus && !user.is_admin) || (t.requiresVip && !user.is_vip && !user.is_vip_plus && !user.is_admin));
                         return (
-                          <button key={t.id} onClick={() => handleThemeChange(t.id, t.requiresVip, t.requiresVipPlus)}
+                          <button key={t.id} onClick={() => handleThemeChange(t.id, !lvlUnlocked && t.requiresVip, !lvlUnlocked && t.requiresVipPlus)}
                             className={`flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-white/5 relative ${theme === t.id ? 'ring-2 ring-cyan-400' : ''} ${locked ? 'opacity-50' : ''} ${t.exceptional ? 'border border-amber-400/30' : ''}`}
                             data-testid={`theme-${t.id}`}>
                             <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient} shadow-md ${t.hasAnimation ? 'animate-pulse' : ''} ${t.exceptional ? 'ring-1 ring-amber-300/50' : ''}`} />
                             <span className="text-xs font-semibold" style={textStyle}>{t.name}</span>
                             {t.requiresVipPlus && <Crown className="w-3 h-3 text-purple-300" />}
-                            {t.exceptional && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-extrabold bg-gradient-to-r from-amber-400 to-orange-500 text-black rounded shadow-md">★</span>}
+                            {lvlUnlocked && <span className="absolute -top-1 -left-1 px-1 py-0.5 text-[8px] font-extrabold bg-gradient-to-r from-emerald-400 to-cyan-400 text-black rounded shadow-md">LV</span>}
+                            {t.exceptional && !lvlUnlocked && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-extrabold bg-gradient-to-r from-amber-400 to-orange-500 text-black rounded shadow-md">★</span>}
                           </button>
                         );
                       })}

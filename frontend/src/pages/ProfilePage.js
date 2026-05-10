@@ -3,13 +3,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../lib/api';
-import { User, Save, Camera, Calendar, MapPin, Edit, Crown, Shield, Mail, X, Lock, MessageSquare, ArrowLeft, Trash2 } from 'lucide-react';
+import { User, Save, Camera, Calendar, MapPin, Edit, Crown, Shield, Mail, X, Lock, MessageSquare, ArrowLeft, Trash2, Star, Trophy, Award } from 'lucide-react';
 import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
+import LevelCard from '../components/LevelCard';
+import { useUserXP, REWARD_PALIERS, isThemeUnlockedByLevel } from '../lib/xp';
 
 export default function ProfilePage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { xp, level, tier, rewards } = useUserXP(user);
 
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -218,6 +221,38 @@ export default function ProfilePage() {
 
         {/* Right Sidebar */}
         <div className="space-y-6">
+          {/* === NIVEAU XP === */}
+          <LevelCard xp={xp} level={level} testId="profile-level-card" />
+
+          {/* === RÉCOMPENSES PAR NIVEAU === */}
+          <div className="rounded-2xl border border-border bg-card/85 backdrop-blur-xl p-5">
+            <h2 className="text-sm font-black uppercase tracking-widest mb-3 flex items-center gap-2" style={{ color: tier.hex }}>
+              <Trophy className="w-4 h-4" />Récompenses
+            </h2>
+            <div className="space-y-2">
+              {REWARD_PALIERS.map(p => {
+                const unlocked = level >= p.level;
+                return (
+                  <div key={p.id} className={`flex items-start gap-2.5 p-2.5 rounded-xl border ${unlocked ? 'border-emerald-400/40 bg-emerald-500/10' : 'border-border bg-background/40 opacity-60'}`}
+                    data-testid={`reward-${p.id}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${unlocked ? 'bg-gradient-to-br from-emerald-400 to-cyan-500 shadow-lg shadow-emerald-500/30' : 'bg-foreground/10'}`}>
+                      {unlocked ? <Award className="w-4 h-4 text-white" /> : <Lock className="w-3.5 h-3.5 text-foreground/40" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold flex items-center gap-1.5">
+                        <span className={unlocked ? 'text-foreground' : 'text-foreground/60'}>{p.name}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold ${unlocked ? 'bg-emerald-400/20 text-emerald-300' : 'bg-foreground/5 text-foreground/40'}`}>
+                          Niv. {p.level}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-foreground/60 leading-snug">{p.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* VIP Status */}
           <div className="bg-card border border-border rounded-xl p-6">
             <h2 className="text-lg font-bold mb-3 flex items-center gap-2"><Crown className="w-5 h-5 text-yellow-400" />Statut</h2>

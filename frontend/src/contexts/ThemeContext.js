@@ -18,7 +18,7 @@ const THEMES = [
 
 // Thèmes EXCEPTIONNELS gratuits (2)
 const EXCEPTIONAL_THEMES = [
-  { id: 'solarized', name: 'Solarized',   gradient: 'from-cyan-900 via-yellow-700 to-orange-800', isNew: true, exceptional: true },
+  { id: 'solarized', name: 'Récif',       gradient: 'from-cyan-800 via-amber-600 to-orange-700', isNew: true, exceptional: true },
   { id: 'nordic',    name: 'Nordique',    gradient: 'from-slate-700 via-blue-300 to-slate-500', isNew: true, exceptional: true },
 ];
 
