@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import API from '../lib/api';
 import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 import { LoadingSpinner } from '../components/Loading';
+import SEOHead from '../components/SEOHead';
 import { Sparkles, Ghost, TreePine, Sun, Heart, Cake, Zap, Calendar as CalIcon, Clock, Trophy } from 'lucide-react';
 
 const ICON_MAP = { Ghost, TreePine, Sun, Heart, Cake, Sparkles, Zap };
@@ -23,6 +24,63 @@ function daysUntil(e, now) {
   const startThis = new Date(y, e.month_start - 1, e.day_start);
   const candidate = startThis < now ? new Date(y + 1, e.month_start - 1, e.day_start) : startThis;
   return Math.ceil((candidate - now) / (1000 * 60 * 60 * 24));
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+/** Compute the next occurrence (start, end) of a recurring annual event as ISO 8601 dates. */
+function nextOccurrence(e, now) {
+  const y = now.getFullYear();
+  const startThis = new Date(Date.UTC(y, e.month_start - 1, e.day_start, 0, 0, 0));
+  let endThis;
+  if ((e.month_start, e.day_start) <= (e.month_end, e.day_end)) {
+    endThis = new Date(Date.UTC(y, e.month_end - 1, e.day_end, 23, 59, 59));
+  } else {
+    endThis = new Date(Date.UTC(y + 1, e.month_end - 1, e.day_end, 23, 59, 59));
+  }
+  if (endThis < now) {
+    return {
+      start: new Date(Date.UTC(y + 1, e.month_start - 1, e.day_start, 0, 0, 0)),
+      end: new Date(Date.UTC(y + 2, e.month_end - 1, e.day_end, 23, 59, 59)),
+    };
+  }
+  return { start: startThis, end: endThis };
+}
+
+function buildEventJsonLd(e, now, origin) {
+  const { start, end } = nextOccurrence(e, now);
+  const isoStart = `${start.getUTCFullYear()}-${pad(start.getUTCMonth() + 1)}-${pad(start.getUTCDate())}`;
+  const isoEnd = `${end.getUTCFullYear()}-${pad(end.getUTCMonth() + 1)}-${pad(end.getUTCDate())}`;
+  const inProgress = start <= now && now <= end;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: `${e.name} — WaveWatch`,
+    description: e.description || `Événement saisonnier ${e.name} sur WaveWatch avec bonus ×${e.xp_multiplier} XP.`,
+    startDate: isoStart,
+    endDate: isoEnd,
+    eventStatus: inProgress ? 'https://schema.org/EventScheduled' : 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+    location: {
+      '@type': 'VirtualLocation',
+      url: `${origin}/events`,
+    },
+    organizer: {
+      '@type': 'Organization',
+      name: 'WaveWatch',
+      url: origin,
+    },
+    isAccessibleForFree: true,
+    inLanguage: 'fr-FR',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'EUR',
+      availability: 'https://schema.org/InStock',
+      url: `${origin}/events`,
+      validFrom: isoStart,
+    },
+  };
 }
 
 export default function EventsPage() {
@@ -48,8 +106,30 @@ export default function EventsPage() {
 
   if (loading) return <ThemedPage testId="events-page"><div className="container mx-auto px-4 py-16"><LoadingSpinner /></div></ThemedPage>;
 
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://wavewatch.top';
+  // ItemList JSON-LD wrapping all events for richer snippets
+  const itemListLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Événements saisonniers WaveWatch',
+    description: 'Calendrier des événements saisonniers de WaveWatch avec bonus XP.',
+    numberOfItems: events.length,
+    itemListElement: sorted.map((e, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: buildEventJsonLd(e, now, origin),
+    })),
+  };
+  const allEventsLd = sorted.map(e => buildEventJsonLd(e, now, origin));
+
   return (
     <ThemedPage testId="events-page">
+      <SEOHead
+        title="Événements saisonniers — Halloween, Noël, Été | WaveWatch"
+        description="Profite de bonus XP et de thèmes exclusifs pendant les événements saisonniers WaveWatch : Halloween (×3 XP), Noël (×3 XP), Été (×2 XP), Saint-Valentin et anniversaire de la plateforme."
+        canonicalPath="/events"
+        jsonLd={[itemListLd, ...allEventsLd]}
+      />
       <div className="container mx-auto px-4 py-8 space-y-8">
         <ThemedHero
           badge="Événements WaveWatch"

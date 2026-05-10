@@ -4003,6 +4003,54 @@ async def admin_seasonal_events_notify(event_id: str, user: dict = Depends(requi
     return {"sent": len(users_list), "event": evt.get("slug")}
 
 
+# =================== SEO: sitemap.xml + robots.txt ===================
+from fastapi.responses import Response as FastAPIResponse
+
+@app.get("/api/sitemap.xml")
+async def sitemap_xml():
+    """Public sitemap including main pages + active seasonal events."""
+    base = os.environ.get("PUBLIC_BASE_URL", "https://wavewatch.top").rstrip("/")
+    today = datetime.now(timezone.utc).date().isoformat()
+    static_paths = [
+        ("", "1.0", "daily"),
+        ("/events", "0.9", "weekly"),
+        ("/movies", "0.8", "daily"),
+        ("/tv-shows", "0.8", "daily"),
+        ("/anime", "0.8", "daily"),
+        ("/calendar", "0.7", "daily"),
+        ("/leaderboard", "0.6", "weekly"),
+        ("/dns-vpn", "0.5", "monthly"),
+        ("/faq", "0.5", "monthly"),
+        ("/changelogs", "0.5", "weekly"),
+        ("/dmca", "0.4", "yearly"),
+        ("/login", "0.4", "yearly"),
+        ("/register", "0.4", "yearly"),
+    ]
+    urls_xml = "".join(
+        f"<url><loc>{base}{p}</loc><lastmod>{today}</lastmod><changefreq>{cf}</changefreq><priority>{pr}</priority></url>"
+        for p, pr, cf in static_paths
+    )
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{urls_xml}"
+        "</urlset>"
+    )
+    return FastAPIResponse(content=body, media_type="application/xml")
+
+@app.get("/api/robots.txt")
+async def robots_txt():
+    base = os.environ.get("PUBLIC_BASE_URL", "https://wavewatch.top").rstrip("/")
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin\n"
+        "Disallow: /api/admin\n"
+        f"Sitemap: {base}/api/sitemap.xml\n"
+    )
+    return FastAPIResponse(content=body, media_type="text/plain")
+
+
 # Background task: check new episodes periodically
 @app.on_event("startup")
 async def start_episode_checker():

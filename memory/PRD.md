@@ -750,3 +750,52 @@ Dans le menu thèmes Premium, les thèmes débloqués par niveau affichent un ba
 - Test visuel Dashboard + Profile en parallèle : **mêmes valeurs XP/niveau** (0 XP / Niv 1 sur le compte de preview) ✅
 - BonusXPCard rendue en empty state sur les deux pages (admin pas eu de bonus)
 
+
+## Iteration 46 — 2026-05-10 — SEO complet : JSON-LD Schema.org + sitemap + robots
+
+### 1️⃣ Composant SEO réutilisable
+- `components/SEOHead.js` : hook léger sans dépendance (pas de react-helmet)
+  - Pose dynamiquement `<title>`, `<meta name=description>`, `<meta property=og:title|og:description>`, `<meta name=twitter:title>`, `<link rel=canonical>` et un ou plusieurs `<script type="application/ld+json">`
+  - Restore les valeurs précédentes au unmount → propre pour navigation SPA
+
+### 2️⃣ JSON-LD sur /events (Schema.org Event)
+- 1 `Organization` global (depuis index.html)
+- 1 `ItemList` qui wrap tous les événements (numberOfItems + itemListElement)
+- 1 `Event` par événement avec :
+  - `name`, `description`, `startDate`/`endDate` ISO 8601 (calculé sur la prochaine occurrence annuelle récurrente)
+  - `eventStatus: EventScheduled`, `eventAttendanceMode: OnlineEventAttendanceMode`
+  - `location: VirtualLocation` (URL `/events`)
+  - `organizer: Organization WaveWatch`
+  - `offers` (gratuit, EUR, InStock)
+  - `isAccessibleForFree: true`, `inLanguage: fr-FR`
+- 7 scripts JSON-LD au total sur la page (1 ItemList + 5 Event + 1 Organization global) → Google Rich Results compatible
+
+### 3️⃣ Meta tags globales (`public/index.html`)
+- `description` enrichie + `robots: index, follow`
+- **Open Graph** complet : og:site_name, og:type, og:title, og:description, og:image, og:locale
+- **Twitter Card** : summary_large_image
+- **JSON-LD Organization** statique (présent sur toutes les pages, indépendant de React)
+
+### 4️⃣ Sitemap & Robots backend
+- `GET /api/sitemap.xml` : liste les 13 pages principales (home, /events, /movies, /tv-shows, /anime, /calendar, /leaderboard, /dns-vpn, /faq, /changelogs, /dmca, /login, /register) avec `lastmod` du jour, `changefreq` et `priority` adaptés
+- `GET /api/robots.txt` : `Allow: /`, `Disallow: /admin` + `/api/admin`, lien vers le sitemap
+- Variable d'env `PUBLIC_BASE_URL` (par défaut `https://wavewatch.top`) pour personnaliser l'URL du sitemap
+
+### Validation
+- Lint OK (EventsPage.js, SEOHead.js)
+- Test E2E Playwright sur `/events` :
+  - Title correct ("Événements saisonniers — Halloween, Noël, Été | WaveWatch")
+  - Meta description posée
+  - Canonical URL posée (avec window.location.origin)
+  - 7 scripts JSON-LD détectés
+  - 1er Event LD complet (name, startDate=2026-07-01, endDate=2026-08-31, organizer, offers)
+  - ItemList avec numberOfItems=5
+- Test root `/` : Organization LD présent (statique depuis index.html), og:title posé
+- Tests curl sitemap.xml + robots.txt → réponses XML/text valides ✅
+
+### Backlog SEO (P2)
+- Ajouter image hero (og:image override) par page importante
+- Schema `Movie`/`TVSeries` sur les détails (déjà servis par TMDB, à mapper)
+- Sitemap dynamique des films/séries (exposer top 1000 movies populaires depuis TMDB)
+- hreflang si support multi-langue (en/fr) un jour
+
