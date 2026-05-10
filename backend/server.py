@@ -1149,6 +1149,54 @@ async def get_tv_channels():
         c.setdefault("dislikes", 0)
     return {"channels": channels}
 
+# ---- LiveWatch external proxy (avoids CORS) ----
+_livewatch_cache: dict = {"countries": None, "countries_at": 0, "channels": {}}
+LIVEWATCH_BASE = "https://livewatch.top/api/embed"
+
+@app.get("/api/livewatch/countries")
+async def livewatch_countries():
+    import time
+    now = time.time()
+    if _livewatch_cache["countries"] and (now - _livewatch_cache["countries_at"] < 3600):
+        return _livewatch_cache["countries"]
+    try:
+        async with httpx.AsyncClient(timeout=20) as hc:
+            r = await hc.get(LIVEWATCH_BASE, params={"type": "tv", "country": "all"})
+            r.raise_for_status()
+            data = r.json()
+        out = {
+            "countries": data.get("countries", []),
+            "per_country": data.get("per_country", []),
+            "total": data.get("total", 0),
+        }
+        _livewatch_cache["countries"] = out
+        _livewatch_cache["countries_at"] = now
+        return out
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LiveWatch indisponible: {e}")
+
+@app.get("/api/livewatch/channels")
+async def livewatch_channels(country: str):
+    import time
+    now = time.time()
+    cached = _livewatch_cache["channels"].get(country)
+    if cached and (now - cached["at"] < 1800):
+        return cached["data"]
+    try:
+        async with httpx.AsyncClient(timeout=30) as hc:
+            r = await hc.get(LIVEWATCH_BASE, params={"type": "tv", "country": country})
+            r.raise_for_status()
+            data = r.json()
+        out = {
+            "country": data.get("country", country),
+            "total": data.get("total", 0),
+            "channels": data.get("channels", []),
+        }
+        _livewatch_cache["channels"][country] = {"data": out, "at": now}
+        return out
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LiveWatch indisponible: {e}")
+
 @app.get("/api/radio-stations")
 async def get_radio_stations():
     stations = await db.radio_stations.find().to_list(length=None)

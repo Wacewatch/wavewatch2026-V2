@@ -437,3 +437,10 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
 ### Verifications
 - Backend testé via curl : sort_by=likes, stats endpoint, filters → tous OK
 - Visuel testé via Playwright : desktop 1440 + mobile 390 → cohérent, vibrant, moderne
+
+## [2026-01-10] LiveWatch external TV source
+- Added toggle on /tv-channels: WaveWatch (local DB, default) + LiveWatch (external API https://livewatch.top)
+- Backend proxies (cached, avoid CORS):
+  - GET /api/livewatch/countries -> 17 countries with totals
+  - GET /api/livewatch/channels?country=X -> channels with embed_url + backup_embed_url
+- LiveWatch flow: country selector first -> channels grid -> iframe player with backup-toggle button
