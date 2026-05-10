@@ -674,3 +674,40 @@ Dans le menu thèmes Premium, les thèmes débloqués par niveau affichent un ba
   - test_iteration37_seasonal_events.py (11/11) : list public, active null hors saison, create+active toggling, update, delete, admin auth, validation
   - test_iteration35_recommendations_diversity.py (8/8) : non-régression diversité personnalisée + trending
 - Test visuel via Playwright : événement de test "Saison du Test" créé → bandeau rose s'affiche en haut + thème sakura auto-appliqué ✅
+
+
+## Iteration 44 — 2026-05-10 — Live preview admin + Bonus XP événements + Notification broadcast
+
+### 1️⃣ Aperçu live du bandeau dans le formulaire admin
+- Nouveau composant `components/SeasonalBannerPreview.js` : version pure render (sans state ni API call) qui prend `event` en prop et reproduit le visuel du `SeasonalBanner`
+- `EventsAdminPanel.js` injecte `<SeasonalBannerPreview event={data} />` en haut de l'`EventEditor` → l'admin voit le rendu en temps réel au fur et à mesure qu'il édite (couleur, multiplicateur, nom, description, icône)
+
+### 2️⃣ Bonus XP événements vraiment appliqué côté backend
+**Helpers** (server.py L3819-3865) :
+- `_base_xp_for_action(action)` : movie=10, tv/anime/episode=15 (mirroir de `lib/xp.js#computeXP`)
+- `_get_matching_active_event(content_type, content_id)` : cache 60s, retourne le 1er événement actif dont `bonus_content_types` matche le type ET (si `bonus_genres` non vide) intersecte les genres TMDB du contenu
+
+**Hook dans POST /api/user/history** (L727-770) :
+- Lors d'un premier visionnage (existing=False), si match → insertion dans `db.xp_bonuses` `{user_id, event_slug, event_id, content_type, content_id, base_xp, bonus_xp, created_at}` + `users.{uid}.xp_bonus += bonus_xp` (atomique via $inc)
+- bonus_xp = round(base × (multiplier - 1)) → multiplier=3 sur movie = +20 XP
+
+**Nouveaux endpoints** :
+- `GET /api/user/stats` retourne maintenant `xp_bonus` (re-fetch user pour garantir fraîcheur)
+- `GET /api/user/xp-bonuses` : `{total_bonus_xp, by_event: {slug: total}, recent: [...]}`
+
+**Frontend** :
+- `lib/xp.js#useUserXP` ajoute `xp_bonus` (depuis stats) au XP de base → niveau calculé sur `xp_total = xp_base + xp_bonus`
+- `components/LevelCard.js` affiche un badge inline **"+N bonus événement"** quand `xpBonus > 0`
+- ProfilePage et LeaderboardPage propagent `xp_bonus` à `<LevelCard>`
+
+### 3️⃣ Broadcast notification événement
+- `POST /api/admin/seasonal-events/{event_id}/notify` (admin) : crée une notification "🎉 Événement : {name} — {description} — Bonus ×N XP actif !" pour TOUS les utilisateurs (link → `/leaderboard`)
+- Bouton **"Notifier"** (icône Bell) ajouté sur chaque card d'événement dans l'admin avec confirm dialog
+- Réponse `{sent: int, event: slug}` + log `admin_activities`
+
+### Validation
+- Testing agent iteration 38 : **10/10 tests pytest pass (100%)**
+  - Notify : 401/403/404/admin-success ✅
+  - Bonus XP : first watch +20, no double bonus on re-post, tv-skipped-when-types-movie, mult=1 no bonus, no active event no bonus, fresh user defaults
+- Test visuel admin : aperçu live se met à jour en temps réel ✅
+- Test E2E curl : event mai → notify 5 users → fresh user POST history movie 550 → xp_bonus=20 ✅
