@@ -56,6 +56,7 @@ import EbookDetailPage from './pages/EbookDetailPage';
 import SoftwareDetailPage from './pages/SoftwareDetailPage';
 import DownloadLinksPage from './pages/DownloadLinksPage';
 import DMCAPage from './pages/DMCAPage';
+import EventsPage from './pages/EventsPage';
 import SeasonalBanner from './components/SeasonalBanner';
 import AutoThemeApplier from './components/AutoThemeApplier';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -131,6 +132,7 @@ export default function App() {
                   <Route path="/faq" element={<FAQPage />} />
                   <Route path="/dns-vpn" element={<DNSVPNPage />} />
                   <Route path="/dmca" element={<DMCAPage />} />
+                  <Route path="/events" element={<EventsPage />} />
                   <Route path="/contact-staff" element={<ContactStaffPage />} />
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />

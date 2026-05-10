@@ -711,3 +711,42 @@ Dans le menu thèmes Premium, les thèmes débloqués par niveau affichent un ba
   - Bonus XP : first watch +20, no double bonus on re-post, tv-skipped-when-types-movie, mult=1 no bonus, no active event no bonus, fresh user defaults
 - Test visuel admin : aperçu live se met à jour en temps réel ✅
 - Test E2E curl : event mai → notify 5 users → fresh user POST history movie 550 → xp_bonus=20 ✅
+
+## Iteration 45 — 2026-05-10 — Page /events publique + Carte bonus + FIX désync XP Dashboard/Profile
+
+### 🐛 Bug fix CRITIQUE — XP différent entre Dashboard et Profile
+**Symptôme** : Le Dashboard affichait 1960 XP / Niv 5, le Profile affichait 115 XP / Niv 2 pour le même utilisateur.
+**Cause** :
+- `useUserXP` (utilisé par Profile/Leaderboard) appelait l'URL inexistante `/api/user/stats/detailed` → 404 silencieux → seules favorites/playlists comptaient
+- L'URL correcte est `/api/user/detailed-stats` (avec tiret, ce qu'utilise DashboardPage)
+- Le champ aussi était wrong : `total_minutes_watched` n'existe pas, c'est `total_watch_time` (en minutes)
+- En plus DashboardPage avait sa propre formule XP locale dupliquée → risque de divergence
+**Fix** :
+1. `lib/xp.js#useUserXP` : URL corrigée + champ `total_watch_time` + `total_likes` (au lieu de `likes_given`)
+2. `DashboardPage` : suppression de la formule XP locale, utilise désormais `useUserXP(user)` + `getLevelBounds(level)` → **source unique partagée avec Profile/Leaderboard**
+3. Dashboard affiche aussi le bonus XP événement à côté du XP total
+
+### 1️⃣ Nouvelle page publique /events
+- `pages/EventsPage.js` : page calendrier sans authentification, accessible à tous les visiteurs
+- Hero gradient avec 3 stat-cards (Événements actifs / À venir / Bonus XP max)
+- Section "Actifs maintenant" avec ping animé vert si au moins 1 événement en cours
+- Section "Prochains événements" triés par jours restants — calculés via fenêtre récurrente annuelle
+- Cards événement avec : icône colorée gradient, plage de dates ("15-31 octobre" / "1 juillet → 31 août"), countdown ("Dans X mois/jours/aujourd'hui"), description, pills `×N XP` + thème auto
+- CTA inscription en bas de page (accroche marketing : "Rejoins la fête 🎉")
+- Lien dans le Footer (icône Sparkles)
+- Lien depuis `SeasonalBanner` "En savoir plus" → `/events` (au lieu de `/leaderboard`)
+- Notification broadcast événement → link `/events` (au lieu de `/leaderboard`)
+
+### 2️⃣ Composant `BonusXPCard` (Dashboard + Profile)
+- `components/BonusXPCard.js` : agrège `/api/user/xp-bonuses`
+- État vide : message d'incitation "Aucun bonus pour le moment. Regarde du contenu pendant un événement actif…"
+- État rempli : total + liste des 5 événements top + détail dépliable des 10 dernières actions (content_type, content_id, event_slug, +N XP)
+- Mode `compact` pour la sidebar du Profile, mode normal pour Dashboard
+- Intégré sur DashboardPage (sous la card niveau XP) et ProfilePage (sidebar droite, sous LevelCard)
+
+### Validation
+- Lint OK sur tous les fichiers modifiés (xp.js, EventsPage, BonusXPCard, DashboardPage, ProfilePage)
+- Test visuel `/events` : 5 cards trier par "Dans X mois", stats correctes, CTA inscription visible ✅
+- Test visuel Dashboard + Profile en parallèle : **mêmes valeurs XP/niveau** (0 XP / Niv 1 sur le compte de preview) ✅
+- BonusXPCard rendue en empty state sur les deux pages (admin pas eu de bonus)
+

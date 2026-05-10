@@ -31,6 +31,7 @@ export default function Footer() {
   }, [messagesWithText.length]);
 
   const links = [
+    { to: '/events',        label: 'Événements',      icon: Sparkles },
     { to: '/contact-staff', label: 'Écrire au staff', icon: Mail },
     { to: '/dns-vpn',       label: 'DNS & VPN',       icon: ShieldQuestion },
     { to: '/faq',           label: 'FAQ',             icon: HelpCircle },

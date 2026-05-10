@@ -7,6 +7,7 @@ import { User, Save, Camera, Calendar, MapPin, Edit, Crown, Shield, Mail, X, Loc
 import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 import LevelCard from '../components/LevelCard';
 import { useUserXP, REWARD_PALIERS, isThemeUnlockedByLevel } from '../lib/xp';
+import BonusXPCard from '../components/BonusXPCard';
 
 export default function ProfilePage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
@@ -223,6 +224,9 @@ export default function ProfilePage() {
         <div className="space-y-6">
           {/* === NIVEAU XP === */}
           <LevelCard xp={xp} level={level} xpBonus={xp_bonus} testId="profile-level-card" />
+
+          {/* === MES BONUS ÉVÉNEMENT === */}
+          <BonusXPCard compact />
 
           {/* === RÉCOMPENSES PAR NIVEAU === */}
           <div className="rounded-2xl border border-border bg-card/85 backdrop-blur-xl p-5">

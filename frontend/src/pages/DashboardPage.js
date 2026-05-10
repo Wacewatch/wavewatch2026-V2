@@ -6,6 +6,8 @@ import API, { TMDB_IMG } from '../lib/api';
 import ContentCard from '../components/ContentCard';
 import { Heart, Eye, ListMusic, Crown, Star, Clock, Award, MessageSquare, Film, Tv, Trophy, ChevronRight, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Zap, Calendar, TrendingUp, BarChart3, Users, Sparkles } from 'lucide-react';
 import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
+import { useUserXP, getLevelBounds } from '../lib/xp';
+import BonusXPCard from '../components/BonusXPCard';
 
 function RatingBar({ label, value, onChange }) {
   const getColor = (i) => {
@@ -171,33 +173,12 @@ export default function DashboardPage() {
   }).join(' ');
   const sparkArea = `M0,${sparkH} L${sparkPoints.replace(/ /g, ' L')} L${sparkW},${sparkH} Z`;
 
-  // === SYSTÈME DE NIVEAU XP ===
-  const totalLikes = (detailedStats?.likes_given || 0);
-  const totalPlaylists = (stats?.playlists || 0);
-  const xp = Math.floor(
-    (detailedStats?.movies_watched || 0) * 10
-    + (detailedStats?.shows_watched || 0) * 15
-    + totalLikes * 2
-    + (stats?.favorites || 0) * 5
-    + totalPlaylists * 20
-    + totalHours * 0.5
-  );
-  // Formule : niveau N atteint à N²×100 XP. niveau actuel = floor(sqrt(xp/100))+1
-  const level = Math.floor(Math.sqrt(xp / 100)) + 1;
-  const xpForCurrentLevel = (level - 1) * (level - 1) * 100;
-  const xpForNextLevel = level * level * 100;
+  // === SYSTÈME DE NIVEAU XP — source unique partagée avec Profile/Leaderboard ===
+  const { xp, level, tier, xp_bonus } = useUserXP(user);
+  const { current: xpForCurrentLevel, next: xpForNextLevel } = getLevelBounds(level);
   const progressXP = xp - xpForCurrentLevel;
   const neededXP = xpForNextLevel - xpForCurrentLevel;
   const progressPct = Math.min(100, Math.round((progressXP / neededXP) * 100));
-
-  const getTier = (lvl) => {
-    if (lvl >= 36) return { name: 'Diamant',  hex: '#67e8f9', from: '#b9f2ff', to: '#6e9cdb', glow: 'rgba(186, 247, 255, 0.5)' };
-    if (lvl >= 21) return { name: 'Platine',  hex: '#a7c5e8', from: '#c8e0f0', to: '#4682b4', glow: 'rgba(167, 197, 232, 0.5)' };
-    if (lvl >= 11) return { name: 'Or',       hex: '#fcd34d', from: '#ffd700', to: '#d4af37', glow: 'rgba(252, 211, 77, 0.5)' };
-    if (lvl >= 6)  return { name: 'Argent',   hex: '#cbd5e1', from: '#e2e8f0', to: '#94a3b8', glow: 'rgba(203, 213, 225, 0.4)' };
-    return                { name: 'Bronze',   hex: '#d97706', from: '#cd7f32', to: '#92400e', glow: 'rgba(217, 119, 6, 0.5)' };
-  };
-  const tier = getTier(level);
 
   return (
     <ThemedPage testId="dashboard-page">
@@ -264,6 +245,11 @@ export default function DashboardPage() {
                 <p className="text-2xl md:text-3xl font-black text-foreground">
                   <span className="tabular-nums">{xp.toLocaleString('fr-FR')}</span>
                   <span className="text-foreground/50 text-base ml-1">XP</span>
+                  {xp_bonus > 0 && (
+                    <span className="ml-2 inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold align-middle" style={{ background: `${tier.hex}25`, color: tier.hex }} data-testid="dashboard-xp-bonus">
+                      +{xp_bonus.toLocaleString('fr-FR')} bonus
+                    </span>
+                  )}
                 </p>
               </div>
               <div className="text-right">
@@ -304,6 +290,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* === MES BONUS ÉVÉNEMENT === */}
+      <BonusXPCard />
 
       {/* === ACTIVITÉ ENGAGEMENT === */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" data-testid="activity-block">

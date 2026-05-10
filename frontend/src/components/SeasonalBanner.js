@@ -31,7 +31,7 @@ export default function SeasonalBanner() {
           <p className="text-sm font-bold text-foreground">{event.name}</p>
           <p className="text-xs text-foreground/70 truncate hidden md:block">{event.description}</p>
         </div>
-        <Link to="/leaderboard" className="text-[11px] font-bold px-3 py-1 rounded-full border transition-colors flex-shrink-0"
+        <Link to="/events" className="text-[11px] font-bold px-3 py-1 rounded-full border transition-colors flex-shrink-0"
           style={{ borderColor: `${c}55`, color: c, background: `${c}15` }}>
           En savoir plus
         </Link>

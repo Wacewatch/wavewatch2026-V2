@@ -3994,7 +3994,7 @@ async def admin_seasonal_events_notify(event_id: str, user: dict = Depends(requi
     message = " — ".join(p for p in msg_parts if p)
     users_list = await db.users.find({}, {"_id": 1}).to_list(length=None)
     for u in users_list:
-        await create_notification(str(u["_id"]), title, message, "event", "/leaderboard")
+        await create_notification(str(u["_id"]), title, message, "event", "/events")
     # log admin activity if helper exists
     try:
         await log_admin_activity(user.get("username", "admin"), "Notification événement", f"{evt.get('slug')} - {len(users_list)} users")

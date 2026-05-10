@@ -77,17 +77,17 @@ export function useUserXP(user) {
     }
     Promise.all([
       API.get('/api/user/stats').catch(() => ({ data: {} })),
-      API.get('/api/user/stats/detailed').catch(() => ({ data: {} })),
+      API.get('/api/user/detailed-stats').catch(() => ({ data: {} })),
     ]).then(([s1, s2]) => {
       const stats = s1.data || {};
       const detailed = s2.data || {};
       const xpBase = computeXP({
         movies:    detailed.movies_watched || 0,
         shows:     detailed.shows_watched  || 0,
-        likes:     detailed.likes_given    || 0,
+        likes:     detailed.total_likes    || 0,
         favorites: stats.favorites         || 0,
         playlists: stats.playlists         || 0,
-        hours:     Math.round((detailed.total_minutes_watched || 0) / 60),
+        hours:     Math.round((detailed.total_watch_time || 0) / 60),
       });
       const xpBonus = parseInt(stats.xp_bonus || 0, 10) || 0;
       const xp = xpBase + xpBonus;
