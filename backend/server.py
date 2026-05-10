@@ -2972,50 +2972,199 @@ async def update_playlist_colors(playlist_id: str, request: Request, user: dict 
 # =================== PUBLIC PLAYLISTS ENHANCED ===================
 
 @app.get("/api/playlists/public/enhanced")
-async def get_public_playlists_enhanced(page: int = 1, limit: int = 20, sort_by: str = "recent", content_type_filter: str = ""):
-    skip = (page - 1) * limit
-    # Only public playlists with at least 1 item
-    query = {"is_public": True, "items.0": {"$exists": True}}
-    
-    # Determine sort
-    sort_field = [("created_at", -1)]
-    if sort_by == "likes":
-        sort_field = [("likes_count_cached", -1), ("created_at", -1)]
+async def get_public_playlists_enhanced(
+    page: int = 1,
+    limit: int = 20,
+    sort_by: str = "recent",
+    q: str = "",
+    creator_role: str = "all",      # all | staff | vip | standard
+    content_type_filter: str = "",  # comma-separated: movie,tv,music,game,ebook,software,episode
+    min_items: int = 0,
+):
+    """Public playlists with rich filtering & sorting via aggregation pipeline.
+
+    Sort: recent | oldest | likes | dislikes | size | name
+    """
+    skip = max(0, (page - 1) * limit)
+    limit = max(1, min(60, limit))
+
+    pipeline: list = []
+    base_match = {"is_public": True, "items.0": {"$exists": True}}
+
+    # Filter by item count
+    if min_items and min_items > 0:
+        base_match["$expr"] = {"$gte": [{"$size": {"$ifNull": ["$items", []]}}, int(min_items)]}
+
+    # Filter by content_type (any item matches one of the requested types)
+    if content_type_filter:
+        types = [t.strip() for t in content_type_filter.split(",") if t.strip()]
+        if types:
+            base_match["items.content_type"] = {"$in": types}
+
+    # Free-text search on name + description
+    if q:
+        q_safe = re.escape(q.strip())
+        if q_safe:
+            base_match["$or"] = [
+                {"name": {"$regex": q_safe, "$options": "i"}},
+                {"description": {"$regex": q_safe, "$options": "i"}},
+            ]
+
+    pipeline.append({"$match": base_match})
+
+    # Add computed fields: items_count + lookup creator + count likes/dislikes
+    pipeline.append({"$addFields": {
+        "items_count": {"$size": {"$ifNull": ["$items", []]}},
+        "_id_str": {"$toString": "$_id"},
+    }})
+
+    # Lookup creator user
+    pipeline.append({"$lookup": {
+        "from": "users",
+        "let": {"uid": "$user_id"},
+        "pipeline": [
+            {"$match": {"$expr": {"$or": [
+                {"$eq": [{"$toString": "$_id"}, {"$toString": "$$uid"}]},
+                {"$eq": ["$_id", "$$uid"]},
+            ]}}},
+            {"$project": {"username": 1, "is_admin": 1, "is_uploader": 1, "is_vip": 1, "is_vip_plus": 1}},
+        ],
+        "as": "creator",
+    }})
+    pipeline.append({"$addFields": {"creator": {"$arrayElemAt": ["$creator", 0]}}})
+
+    # Filter by creator_role
+    if creator_role == "staff":
+        pipeline.append({"$match": {"$or": [{"creator.is_admin": True}, {"creator.is_uploader": True}]}})
+    elif creator_role == "vip":
+        pipeline.append({"$match": {"$or": [{"creator.is_vip": True}, {"creator.is_vip_plus": True}]}})
+    elif creator_role == "standard":
+        pipeline.append({"$match": {
+            "creator.is_admin": {"$ne": True},
+            "creator.is_uploader": {"$ne": True},
+            "creator.is_vip": {"$ne": True},
+            "creator.is_vip_plus": {"$ne": True},
+        }})
+
+    # Lookup likes/dislikes count from user_ratings
+    pipeline.append({"$lookup": {
+        "from": "user_ratings",
+        "let": {"pid": "$_id_str"},
+        "pipeline": [
+            {"$match": {"$expr": {"$and": [
+                {"$eq": ["$content_id", "$$pid"]},
+                {"$eq": ["$content_type", "playlist"]},
+                {"$eq": ["$rating", "like"]},
+            ]}}},
+            {"$count": "n"},
+        ],
+        "as": "_likes",
+    }})
+    pipeline.append({"$lookup": {
+        "from": "user_ratings",
+        "let": {"pid": "$_id_str"},
+        "pipeline": [
+            {"$match": {"$expr": {"$and": [
+                {"$eq": ["$content_id", "$$pid"]},
+                {"$eq": ["$content_type", "playlist"]},
+                {"$eq": ["$rating", "dislike"]},
+            ]}}},
+            {"$count": "n"},
+        ],
+        "as": "_dislikes",
+    }})
+    pipeline.append({"$addFields": {
+        "likes_count": {"$ifNull": [{"$arrayElemAt": ["$_likes.n", 0]}, 0]},
+        "dislikes_count": {"$ifNull": [{"$arrayElemAt": ["$_dislikes.n", 0]}, 0]},
+        "is_staff": {"$or": [
+            {"$ifNull": ["$creator.is_admin", False]},
+            {"$ifNull": ["$creator.is_uploader", False]},
+        ]},
+    }})
+
+    # Sort: staff always pinned on top, then per sort_by
+    sort_field = {"created_at": -1}
+    if sort_by == "oldest":
+        sort_field = {"created_at": 1}
+    elif sort_by == "likes":
+        sort_field = {"likes_count": -1, "created_at": -1}
+    elif sort_by == "dislikes":
+        sort_field = {"dislikes_count": -1, "created_at": -1}
     elif sort_by == "size":
-        sort_field = [("items_count_cached", -1), ("created_at", -1)]
-    
-    playlists = await db.playlists.find(query).sort(sort_field).skip(skip).limit(limit).to_list(limit)
-    result_uploaders = []
-    result_others = []
-    
-    for p in playlists:
-        p["_id"] = str(p["_id"])
-        # Get user info
-        try:
-            uid = ObjectId(p["user_id"]) if isinstance(p["user_id"], str) else p["user_id"]
-            u = await db.users.find_one({"_id": uid}, {"username": 1, "is_admin": 1, "is_vip": 1, "is_vip_plus": 1, "is_uploader": 1})
-        except:
-            u = None
-        if u:
-            p["user_info"] = {"username": u.get("username"), "is_admin": u.get("is_admin", False), "is_vip": u.get("is_vip", False), "is_vip_plus": u.get("is_vip_plus", False), "is_uploader": u.get("is_uploader", False)}
-            p["username"] = u.get("username")
-        # Count likes/dislikes
-        likes = await db.user_ratings.count_documents({"content_id": p["_id"], "content_type": "playlist", "rating": "like"})
-        dislikes = await db.user_ratings.count_documents({"content_id": p["_id"], "content_type": "playlist", "rating": "dislike"})
-        p["likes_count"] = likes
-        p["dislikes_count"] = dislikes
-        p["items_count"] = len(p.get("items", []))
-        
-        # Separate uploaders/admins from others (uploaders always first)
-        if u and (u.get("is_uploader") or u.get("is_admin")):
-            result_uploaders.append(p)
-        else:
-            result_others.append(p)
-    
-    # Uploaders first, then others
-    result = result_uploaders + result_others
-    total = await db.playlists.count_documents(query)
-    return {"playlists": result, "total": total, "page": page}
+        sort_field = {"items_count": -1, "created_at": -1}
+    elif sort_by == "name":
+        sort_field = {"name": 1}
+    # Always pin staff first
+    full_sort = {"is_staff": -1, **sort_field}
+    pipeline.append({"$sort": full_sort})
+
+    # Total count via $facet
+    pipeline.append({"$facet": {
+        "items": [{"$skip": skip}, {"$limit": limit}],
+        "total": [{"$count": "n"}],
+    }})
+
+    cursor = db.playlists.aggregate(pipeline)
+    docs = await cursor.to_list(1)
+    bundle = docs[0] if docs else {"items": [], "total": []}
+    raw = bundle.get("items", [])
+    total = (bundle.get("total") or [{}])[0].get("n", 0)
+
+    # Project response
+    result = []
+    for p in raw:
+        u = p.get("creator") or {}
+        result.append({
+            "_id": str(p["_id"]),
+            "name": p.get("name"),
+            "description": p.get("description") or "",
+            "color": p.get("color"),
+            "gradient": p.get("gradient"),
+            "items": p.get("items", [])[:8],
+            "items_count": p.get("items_count", 0),
+            "likes_count": p.get("likes_count", 0),
+            "dislikes_count": p.get("dislikes_count", 0),
+            "created_at": p.get("created_at"),
+            "updated_at": p.get("updated_at"),
+            "username": u.get("username") if u else None,
+            "user_info": {
+                "username": u.get("username"),
+                "is_admin": bool(u.get("is_admin")),
+                "is_uploader": bool(u.get("is_uploader")),
+                "is_vip": bool(u.get("is_vip")),
+                "is_vip_plus": bool(u.get("is_vip_plus")),
+            } if u else None,
+        })
+
+    return {"playlists": result, "total": total, "page": page, "limit": limit}
+
+
+@app.get("/api/playlists/public/stats")
+async def get_public_playlists_stats():
+    """Aggregate stats for the Discover page hero (totals + content type counts)."""
+    base = {"is_public": True, "items.0": {"$exists": True}}
+    total = await db.playlists.count_documents(base)
+    contributors = len(await db.playlists.distinct("user_id", base))
+    items_pipe = [
+        {"$match": base},
+        {"$project": {"n": {"$size": {"$ifNull": ["$items", []]}}}},
+        {"$group": {"_id": None, "total": {"$sum": "$n"}}},
+    ]
+    items_total = 0
+    async for d in db.playlists.aggregate(items_pipe):
+        items_total = d.get("total", 0)
+    # Counts by content_type across all public playlists
+    types_pipe = [
+        {"$match": base},
+        {"$unwind": "$items"},
+        {"$group": {"_id": "$items.content_type", "n": {"$sum": 1}}},
+        {"$project": {"_id": 0, "type": "$_id", "n": 1}},
+    ]
+    by_type = []
+    async for d in db.playlists.aggregate(types_pipe):
+        if d.get("type"):
+            by_type.append(d)
+    return {"total_playlists": total, "total_contributors": contributors, "total_items": items_total, "by_type": by_type}
 
 
 # =================== WEBSOCKET & NOTIFICATIONS ===================
