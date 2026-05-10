@@ -366,3 +366,28 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
 - Tablet 768 : OK
 - Desktop 1920 : OK
 - HomePage, mobile menu, /movies, footer testés en mobile
+
+
+## Iteration 35 - 2026-05-09 - Suivi épisodes vus + widget reprise + correctifs
+
+### Backend
+- **Nouveau** : `POST /api/user/tv-progress/{show_id}/unmark-all-watched` (auth) — supprime `tv_progress` + `watch_history` (série + tous épisodes liés). Inverse exact de `mark-all-watched`.
+- (existant) `GET /api/user/tv-progress/{id}` renvoie `{watched_episodes: { "<season>": { "<ep>": bool } }, continue_watching}`
+- (existant) `POST .../episode {season, episode, watched}` met à jour la progression d'un épisode
+
+### Frontend
+- **EpisodeDetailPage** : `markAsWatched` synchronise désormais `tv_progress` + `watch_history` simultanément (POST .../episode + POST/DELETE /history). L'auto-mark sur "Regarder" coche bien l'épisode partout (page saison, barre de progression série).
+- **SeasonDetailPage** : correction du parsing de `watched_episodes` (format imbriqué nested au lieu de clés "season-ep"). Les pastilles vertes "Vu" s'affichent maintenant correctement.
+- **TVShowDetailPage** : 
+  - Ancien bouton "Reprendre" remplacé par un widget riche **ResumeWidget** affichant le dernier épisode vu + une CTA contextuelle :
+    - `next-episode` : Revoir + Voir l'épisode suivant (S{x}E{y})
+    - `next-season` : Revoir + Commencer la saison suivante
+    - `finished` : Trophy + message "vous avez tout vu" + Revoir
+    - `wait` : icône calendrier + date du prochain épisode + countdown ("dans X jours/semaines/mois") + Revoir
+    - `wait-unknown` : "à jour, aucune date annoncée" + Revoir
+- **ContentCard** : sur le hover d'une série, le bouton "Marquer vu" appelle maintenant `/tv-progress/{id}/mark-all-watched` (et `/unmark-all-watched` pour annuler). Toggle inverse propre.
+- **HomePage SportsStreamPromo + components/SportsStreamPromo** : URL bouton "Accéder au site" → `https://livewatch.top/` (au lieu de sports-stream.sbs)
+
+### Tests
+- Iteration 34 (testing agent) : 11/11 backend tests pass — cycle mark-all → unmark-all → episode toggle validé end-to-end
+- Tests E2E manuels via Playwright : widget Resume affiché en mode `next-episode` (S1E3 vu → S1E4 proposé) ET `finished` (S8E6 vu → message GoT terminé), URL Sports = livewatch.top
