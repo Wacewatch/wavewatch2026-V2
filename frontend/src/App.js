@@ -56,6 +56,8 @@ import EbookDetailPage from './pages/EbookDetailPage';
 import SoftwareDetailPage from './pages/SoftwareDetailPage';
 import DownloadLinksPage from './pages/DownloadLinksPage';
 import DMCAPage from './pages/DMCAPage';
+import SeasonalBanner from './components/SeasonalBanner';
+import AutoThemeApplier from './components/AutoThemeApplier';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { StatusProvider } from './components/ContentCard';
 import './App.css';
@@ -90,6 +92,8 @@ export default function App() {
                   style={{ background: 'radial-gradient(closest-side, hsl(var(--ring) / 0.4), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
               </div>
               <ScrollToTop />
+              <AutoThemeApplier />
+              <SeasonalBanner />
               <Navigation />
               <main className="flex-1">
                 <Routes>

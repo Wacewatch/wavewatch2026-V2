@@ -3,9 +3,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import API from '../lib/api';
-import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X, ExternalLink, UserPlus, Key, Play } from 'lucide-react';
+import { Shield, Users, BarChart3, MessageSquare, Settings, Crown, Trash2, Film, Eye, EyeOff, Plus, Edit, Tv, Radio, Music, Monitor, Gamepad2, BookOpen, Save, Search, ChevronLeft, ChevronRight, Send, FileText, X, ExternalLink, UserPlus, Key, Play, Calendar, Sparkles } from 'lucide-react';
 import ModuleOrderManager from '../components/ModuleOrderManager';
 import { InfoPanelView } from '../components/InfoBanner';
+import EventsAdminPanel from '../components/admin/EventsAdminPanel';
 
 const USERS_PER_PAGE = 15;
 
@@ -513,6 +514,7 @@ export default function AdminPage() {
     { id: 'vip_game', label: 'Jeu VIP', icon: <Crown className="w-4 h-4" /> },
     { id: 'reviews', label: 'Avis', icon: <MessageSquare className="w-4 h-4" />, count: reviews.length },
     { id: 'tmdb', label: 'TMDB', icon: <Film className="w-4 h-4" /> },
+    { id: 'events', label: 'Événements', icon: <Calendar className="w-4 h-4" /> },
   ];
 
   const moduleLabels = {
@@ -1474,6 +1476,10 @@ export default function AdminPage() {
             </div>
           )}
         </div>
+      )}
+
+      {tab === 'events' && (
+        <EventsAdminPanel toast={toast} />
       )}
     </div>
   );

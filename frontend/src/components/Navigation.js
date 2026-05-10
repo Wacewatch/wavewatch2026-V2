@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { useUserXP, isThemeUnlockedByLevel } from '../lib/xp';
+import UserAvatar from './UserAvatar';
 import API, { TMDB_IMG } from '../lib/api';
 import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette, Calendar, Trophy, Gamepad2, Music, Film, Tv, Users as UsersIcon, Sparkles } from 'lucide-react';
 import NotificationBell from './NotificationBell';
@@ -86,6 +87,7 @@ export default function Navigation() {
       return;
     }
     setTheme(themeId);
+    localStorage.setItem('ww_theme_user_set', '1');
     toast({ title: 'Theme change', description: 'Le theme a ete change avec succes' });
     setThemeOpen(false);
   };
@@ -304,11 +306,8 @@ export default function Navigation() {
                 <button onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="relative h-10 px-2 sm:px-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 flex items-center gap-2 transition-all"
                   data-testid="user-menu-btn">
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-500 via-fuchsia-500 to-purple-600 flex items-center justify-center font-extrabold text-white text-xs shadow-lg shadow-red-500/30">
-                    {(user.username || 'U')[0].toUpperCase()}
-                  </div>
-                  {user.is_vip && <Crown className="w-3 h-3 absolute -top-1 -right-1 text-yellow-400 drop-shadow-lg" />}
-                  {user.is_admin && <Shield className="w-2.5 h-2.5 absolute top-0 left-0 text-red-400 drop-shadow" />}
+                  <UserAvatar user={user} level={userLevel} size={28} />
+                  {user.is_admin && <Shield className="w-3 h-3 absolute -top-1 -left-1 text-red-400 drop-shadow" />}
                   <span className="text-sm font-semibold hidden xl:inline" style={textStyle}>{user.username}</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform hidden sm:inline ${userMenuOpen ? 'rotate-180' : ''}`} style={textSecStyle} />
                 </button>

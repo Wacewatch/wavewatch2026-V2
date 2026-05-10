@@ -12,7 +12,7 @@ from typing import Optional, List, Any
 from fastapi import FastAPI, HTTPException, Request, Response, Depends, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, Field
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from contextlib import asynccontextmanager
@@ -199,6 +199,59 @@ async def seed_default_content():
     if await db.platform_reviews.count_documents({}) == 0:
         pass  # No seed - only real user reviews are shown
 
+async def seed_seasonal_events():
+    """Seed default seasonal events if collection empty."""
+    if await db.seasonal_events.count_documents({}) > 0:
+        return
+    defaults = [
+        {
+            "_id": "evt_halloween", "name": "Halloween", "slug": "halloween",
+            "description": "Mois de l'horreur ! Triple XP sur les films d'horreur et thrillers.",
+            "icon": "Ghost", "color": "#f97316", "auto_theme": "halloween",
+            "month_start": 10, "day_start": 15, "month_end": 10, "day_end": 31,
+            "xp_multiplier": 3.0, "bonus_genres": [27, 9648, 53],
+            "bonus_content_types": ["movie", "tv"],
+            "active": True, "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "_id": "evt_christmas", "name": "Noël", "slug": "christmas",
+            "description": "Magie de Noël ! Triple XP sur les films familiaux et romantiques.",
+            "icon": "TreePine", "color": "#10b981", "auto_theme": "christmas",
+            "month_start": 12, "day_start": 1, "month_end": 12, "day_end": 31,
+            "xp_multiplier": 3.0, "bonus_genres": [10751, 10749, 16],
+            "bonus_content_types": ["movie", "tv"],
+            "active": True, "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "_id": "evt_summer", "name": "Été WaveWatch", "slug": "summer",
+            "description": "Vibe estivale ! Double XP toute la saison.",
+            "icon": "Sun", "color": "#f59e0b", "auto_theme": "estival",
+            "month_start": 7, "day_start": 1, "month_end": 8, "day_end": 31,
+            "xp_multiplier": 2.0, "bonus_genres": [],
+            "bonus_content_types": ["movie", "tv", "anime"],
+            "active": True, "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "_id": "evt_valentine", "name": "Saint-Valentin", "slug": "valentine",
+            "description": "Mois de l'amour ! Double XP sur les films romantiques.",
+            "icon": "Heart", "color": "#ec4899", "auto_theme": "sakura",
+            "month_start": 2, "day_start": 7, "month_end": 2, "day_end": 14,
+            "xp_multiplier": 2.0, "bonus_genres": [10749],
+            "bonus_content_types": ["movie", "tv"],
+            "active": True, "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+        {
+            "_id": "evt_anniversary", "name": "Anniversaire WaveWatch", "slug": "anniversary",
+            "description": "Célébration spéciale ! XP ×5 pendant 7 jours.",
+            "icon": "Cake", "color": "#a855f7", "auto_theme": "neon",
+            "month_start": 3, "day_start": 15, "month_end": 3, "day_end": 21,
+            "xp_multiplier": 5.0, "bonus_genres": [],
+            "bonus_content_types": ["movie", "tv", "anime"],
+            "active": True, "created_at": datetime.now(timezone.utc).isoformat(),
+        },
+    ]
+    await db.seasonal_events.insert_many(defaults)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.users.create_index("email", unique=True)
@@ -211,6 +264,7 @@ async def lifespan(app: FastAPI):
     await db.content_requests.create_index("user_id")
     await seed_admin()
     await seed_default_content()
+    await seed_seasonal_events()
     yield
 
 app = FastAPI(title="WaveWatch API", lifespan=lifespan)
@@ -3765,6 +3819,83 @@ async def check_new_episodes(user: dict = Depends(get_optional_user)):
         pass
 
     return results
+
+# =================== SEASONAL EVENTS ===================
+
+def _is_event_currently_active(evt, now=None):
+    """Check if event is in its active window (recurrent annually)."""
+    if not evt.get("active"): return False
+    now = now or datetime.now(timezone.utc)
+    m, d = now.month, now.day
+    ms, ds = evt.get("month_start", 1), evt.get("day_start", 1)
+    me, de = evt.get("month_end", 12), evt.get("day_end", 31)
+    if (ms, ds) <= (me, de):
+        return (ms, ds) <= (m, d) <= (me, de)
+    # span across year (e.g. Dec 20 - Jan 10)
+    return (m, d) >= (ms, ds) or (m, d) <= (me, de)
+
+@app.get("/api/seasonal-events/active")
+async def seasonal_events_active():
+    events = await db.seasonal_events.find({"active": True}, {"_id": 1, "name": 1, "slug": 1, "description": 1, "icon": 1, "color": 1, "auto_theme": 1, "xp_multiplier": 1, "bonus_genres": 1, "bonus_content_types": 1, "month_start": 1, "day_start": 1, "month_end": 1, "day_end": 1}).to_list(length=None)
+    for e in events:
+        if _is_event_currently_active(e):
+            e["id"] = e.pop("_id", None)
+            return {"event": e}
+    return {"event": None}
+
+@app.get("/api/seasonal-events")
+async def seasonal_events_list():
+    events = await db.seasonal_events.find({}, {"_id": 1, "name": 1, "slug": 1, "description": 1, "icon": 1, "color": 1, "auto_theme": 1, "xp_multiplier": 1, "month_start": 1, "day_start": 1, "month_end": 1, "day_end": 1, "active": 1}).to_list(length=None)
+    out = []
+    for e in events:
+        e["id"] = e.pop("_id", None)
+        e["currently_active"] = _is_event_currently_active(e)
+        out.append(e)
+    return {"events": out}
+
+@app.get("/api/admin/seasonal-events")
+async def admin_seasonal_events_list(user: dict = Depends(require_admin)):
+    events = await db.seasonal_events.find({}).to_list(length=None)
+    for e in events:
+        e["id"] = e.pop("_id", None)
+        e["currently_active"] = _is_event_currently_active(e)
+    return {"events": events}
+
+class SeasonalEventInput(BaseModel):
+    name: str
+    slug: str
+    description: Optional[str] = ""
+    icon: Optional[str] = "Sparkles"
+    color: Optional[str] = "#a855f7"
+    auto_theme: Optional[str] = None
+    month_start: int = Field(ge=1, le=12)
+    day_start: int = Field(ge=1, le=31)
+    month_end: int = Field(ge=1, le=12)
+    day_end: int = Field(ge=1, le=31)
+    xp_multiplier: float = Field(default=1.0, ge=0.5, le=10)
+    bonus_genres: Optional[List[int]] = []
+    bonus_content_types: Optional[List[str]] = []
+    active: bool = True
+
+@app.post("/api/admin/seasonal-events")
+async def admin_seasonal_events_create(req: SeasonalEventInput, user: dict = Depends(require_admin)):
+    import uuid
+    doc = req.dict()
+    doc["_id"] = f"evt_{uuid.uuid4().hex[:8]}"
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.seasonal_events.insert_one(doc)
+    doc["id"] = doc.pop("_id"); return {"event": doc}
+
+@app.put("/api/admin/seasonal-events/{event_id}")
+async def admin_seasonal_events_update(event_id: str, req: SeasonalEventInput, user: dict = Depends(require_admin)):
+    update = req.dict()
+    res = await db.seasonal_events.update_one({"_id": event_id}, {"$set": update})
+    if res.matched_count == 0: raise HTTPException(404, "Event not found")
+    return {"ok": True}
+
+@app.delete("/api/admin/seasonal-events/{event_id}")
+async def admin_seasonal_events_delete(event_id: str, user: dict = Depends(require_admin)):
+    await db.seasonal_events.delete_one({"_id": event_id}); return {"ok": True}
 
 # Background task: check new episodes periodically
 @app.on_event("startup")
