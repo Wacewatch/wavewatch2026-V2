@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import API, { TMDB_IMG } from '../lib/api';
-import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette, Calendar, Trophy, Gamepad2, Music, Film, Tv, Users as UsersIcon } from 'lucide-react';
+import { Search, Menu, X, User, LogOut, Crown, Shield, ChevronDown, Palette, Calendar, Trophy, Gamepad2, Music, Film, Tv, Users as UsersIcon, Sparkles } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 
 export default function Navigation() {
@@ -88,65 +88,84 @@ export default function Navigation() {
     setThemeOpen(false);
   };
 
-  const navStyle = { backgroundColor: 'hsl(var(--nav-bg))', borderColor: 'hsl(var(--nav-border))' };
-  const textStyle = { color: 'hsl(var(--nav-text))' };
-  const textSecStyle = { color: 'hsl(var(--nav-text-secondary))' };
-  const dropBg = { backgroundColor: 'hsl(var(--nav-dropdown-bg))', borderColor: 'hsl(var(--nav-border))' };
+  const navStyle = {
+    background: 'linear-gradient(180deg, rgba(5,11,24,0.92) 0%, rgba(10,15,28,0.85) 100%)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+  };
+  const textStyle = { color: 'rgba(255,255,255,0.92)' };
+  const textSecStyle = { color: 'rgba(255,255,255,0.55)' };
+  const dropBg = {
+    background: 'linear-gradient(180deg, rgba(11,18,32,0.98) 0%, rgba(7,12,23,0.98) 100%)',
+    borderColor: 'rgba(255,255,255,0.1)',
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+  };
 
   const DropdownItem = ({ to, children, onClick, external, badge }) => {
-    const cls = "block w-full text-left px-4 py-2 text-sm hover:opacity-80 transition-opacity flex items-center justify-between";
+    const cls = "block w-full text-left px-4 py-2.5 text-sm transition-all flex items-center justify-between hover:bg-white/5 hover:pl-5 group";
     if (external) return (
       <a href={to} target="_blank" rel="noopener noreferrer" className={cls} style={textStyle} onClick={() => { setContentOpen(false); setMediaOpen(false); setUserMenuOpen(false); }}>
-        {children}{badge && <span className="ml-2 px-2 py-0.5 text-xs font-bold text-white rounded bg-gradient-to-r from-yellow-500 to-orange-500">{badge}</span>}
+        <span className="flex items-center gap-2">{children}</span>{badge && <span className="ml-2 px-2 py-0.5 text-[10px] font-extrabold text-white rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 shadow-lg shadow-orange-500/30">{badge}</span>}
       </a>
     );
     if (onClick) return <button className={cls} style={textStyle} onClick={() => { onClick(); setUserMenuOpen(false); }}>{children}</button>;
     return (
       <Link to={to} className={cls} style={textStyle} onClick={() => { setContentOpen(false); setMediaOpen(false); setUserMenuOpen(false); }}>
-        {children}{badge && <span className="ml-2 px-2 py-0.5 text-xs font-bold text-white rounded bg-gradient-to-r from-yellow-500 to-orange-500">{badge}</span>}
+        <span className="flex items-center gap-2">{children}</span>{badge && <span className="ml-2 px-2 py-0.5 text-[10px] font-extrabold text-white rounded-full bg-gradient-to-r from-yellow-500 to-orange-500 shadow-lg shadow-orange-500/30">{badge}</span>}
       </Link>
     );
   };
+
+  const NavLink = ({ open, onClick, label, testId }) => (
+    <button onClick={onClick}
+      className={`flex items-center gap-1.5 h-10 px-3 rounded-xl font-semibold text-sm transition-all ${
+        open ? 'bg-white/10 text-white shadow-inner' : 'text-white/80 hover:text-white hover:bg-white/5'
+      }`}
+      data-testid={testId}>
+      {label} <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+    </button>
+  );
 
   return (
     <nav ref={navRef} className="sticky top-0 z-50 border-b" style={navStyle} data-testid="main-navigation">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
-          <Link to="/" className="flex items-center flex-shrink-0 group" data-testid="logo-link">
-            <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-10 md:h-14 w-auto object-contain" />
+          <Link to="/" className="flex items-center flex-shrink-0 group transition-all hover:scale-[1.02]" data-testid="logo-link">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-fuchsia-500 to-purple-600 blur-xl opacity-40 group-hover:opacity-70 transition-opacity" />
+              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="relative h-10 md:h-14 w-auto object-contain drop-shadow-[0_4px_18px_rgba(239,68,68,0.5)]" />
+            </div>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden lg:flex items-center space-x-6">
+          <div className="hidden lg:flex items-center space-x-1">
             <div className="relative">
-              <button onClick={() => { setContentOpen(!contentOpen); setMediaOpen(false); }} className="flex items-center font-medium transition-all" style={textStyle} data-testid="content-dropdown">
-                Contenu <ChevronDown className="w-4 h-4 ml-1" />
-              </button>
+              <NavLink open={contentOpen} onClick={() => { setContentOpen(!contentOpen); setMediaOpen(false); }} label="Contenu" testId="content-dropdown" />
               {contentOpen && (
-                <div className="absolute top-full left-0 mt-2 w-48 rounded-lg border shadow-xl py-1 z-50" style={dropBg}>
-                  <DropdownItem to="/movies">Films</DropdownItem>
-                  <DropdownItem to="/tv-shows">Series</DropdownItem>
-                  <DropdownItem to="/anime">Animes</DropdownItem>
-                  <DropdownItem to="/actors">Acteurs</DropdownItem>
-                  <div className="border-t my-1" style={{ borderColor: 'hsl(var(--nav-border))' }} />
-                  <DropdownItem to="/music">Musiques</DropdownItem>
-                  <DropdownItem to="/games">Jeux</DropdownItem>
-                  <DropdownItem to="/ebooks">Ebooks</DropdownItem>
-                  <DropdownItem to="/logiciels">Logiciels</DropdownItem>
+                <div className="absolute top-full left-0 mt-2 w-52 rounded-2xl border shadow-2xl shadow-black/50 py-1.5 z-50 overflow-hidden" style={dropBg}>
+                  <DropdownItem to="/movies"><Film className="w-4 h-4 text-red-400" />Films</DropdownItem>
+                  <DropdownItem to="/tv-shows"><Tv className="w-4 h-4 text-blue-400" />Séries</DropdownItem>
+                  <DropdownItem to="/anime"><Tv className="w-4 h-4 text-pink-400" />Animes</DropdownItem>
+                  <DropdownItem to="/actors"><UsersIcon className="w-4 h-4 text-amber-400" />Acteurs</DropdownItem>
+                  <div className="border-t my-1" style={{ borderColor: 'rgba(255,255,255,0.08)' }} />
+                  <DropdownItem to="/music"><Music className="w-4 h-4 text-fuchsia-400" />Musique</DropdownItem>
+                  <DropdownItem to="/games"><Gamepad2 className="w-4 h-4 text-emerald-400" />Jeux</DropdownItem>
+                  <DropdownItem to="/ebooks"><Calendar className="w-4 h-4 text-orange-400" />Ebooks</DropdownItem>
+                  <DropdownItem to="/logiciels"><Calendar className="w-4 h-4 text-cyan-400" />Logiciels</DropdownItem>
                 </div>
               )}
             </div>
             <div className="relative">
-              <button onClick={() => { setMediaOpen(!mediaOpen); setContentOpen(false); }} className="flex items-center font-medium transition-all" style={textStyle} data-testid="media-dropdown">
-                Medias <ChevronDown className="w-4 h-4 ml-1" />
-              </button>
+              <NavLink open={mediaOpen} onClick={() => { setMediaOpen(!mediaOpen); setContentOpen(false); }} label="Médias" testId="media-dropdown" />
               {mediaOpen && (
-                <div className="absolute top-full left-0 mt-2 w-56 rounded-lg border shadow-xl py-1 z-50" style={dropBg}>
-                  <DropdownItem to="/tv-channels">Chaines TV</DropdownItem>
-                  <DropdownItem to="/radio">Radio FM</DropdownItem>
-                  <DropdownItem to="/retrogaming">Retrogaming</DropdownItem>
-                  <DropdownItem to="/calendar">Calendrier Sorties</DropdownItem>
-                  <DropdownItem to="/discover/playlists">Decouvrir des Playlists</DropdownItem>
+                <div className="absolute top-full left-0 mt-2 w-60 rounded-2xl border shadow-2xl shadow-black/50 py-1.5 z-50 overflow-hidden" style={dropBg}>
+                  <DropdownItem to="/tv-channels"><Tv className="w-4 h-4 text-red-400" />Chaînes TV</DropdownItem>
+                  <DropdownItem to="/radio"><Music className="w-4 h-4 text-cyan-400" />Radio FM</DropdownItem>
+                  <DropdownItem to="/retrogaming"><Gamepad2 className="w-4 h-4 text-emerald-400" />Retrogaming</DropdownItem>
+                  <DropdownItem to="/calendar"><Calendar className="w-4 h-4 text-blue-400" />Calendrier</DropdownItem>
+                  <DropdownItem to="/discover/playlists"><Trophy className="w-4 h-4 text-purple-400" />Playlists</DropdownItem>
                 </div>
               )}
             </div>
@@ -154,36 +173,38 @@ export default function Navigation() {
 
           {/* Search */}
           <form onSubmit={handleSearch} className="hidden md:flex items-center flex-1 max-w-md mx-4" ref={searchRef}>
-            <div className="relative w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={textSecStyle} />
-              <input type="text" placeholder="Rechercher films, series, acteurs..." value={searchQuery} onChange={onSearchChange}
+            <div className="relative w-full group">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-red-500/0 via-fuchsia-500/0 to-blue-500/0 opacity-0 group-focus-within:opacity-100 group-focus-within:from-red-500/40 group-focus-within:via-fuchsia-500/40 group-focus-within:to-blue-500/40 blur-md transition-all" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 z-10" />
+              <input type="text" placeholder="Rechercher films, séries, acteurs…" value={searchQuery} onChange={onSearchChange}
                 onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
-                className="w-full pl-12 pr-4 h-11 rounded-full border transition-colors outline-none"
-                style={{ backgroundColor: 'hsl(var(--nav-hover))', borderColor: 'hsl(var(--nav-border))', color: 'hsl(var(--nav-text))' }}
+                className="relative w-full pl-11 pr-4 h-11 rounded-full border outline-none text-sm font-medium transition-all placeholder:text-white/40"
+                style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.95)' }}
                 data-testid="search-input" />
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 rounded-xl border shadow-2xl overflow-hidden z-50" style={dropBg} data-testid="search-suggestions">
+                <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl border shadow-2xl shadow-black/50 overflow-hidden z-50" style={dropBg} data-testid="search-suggestions">
                   {suggestions.map(s => (
                     <button key={`${s.media_type}-${s.id}`} onClick={() => handleSuggestionClick(s)}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:opacity-80 transition-opacity" style={textStyle}>
-                      <div className="w-9 h-13 flex-shrink-0 rounded overflow-hidden bg-muted">
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition-colors" style={textStyle}>
+                      <div className="w-9 h-13 flex-shrink-0 rounded overflow-hidden bg-white/5">
                         {s.poster_path ? <img src={`${TMDB_IMG}/w92${s.poster_path}`} alt="" className="w-full h-full object-cover" /> :
-                          <div className="w-full h-full flex items-center justify-center">{s.media_type === 'person' ? <UsersIcon className="w-4 h-4 text-muted-foreground" /> : <Film className="w-4 h-4 text-muted-foreground" />}</div>}
+                          <div className="w-full h-full flex items-center justify-center">{s.media_type === 'person' ? <UsersIcon className="w-4 h-4 text-white/40" /> : <Film className="w-4 h-4 text-white/40" />}</div>}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{s.title}</p>
+                        <p className="text-sm font-semibold truncate">{s.title}</p>
                         <div className="flex items-center gap-2 text-xs" style={textSecStyle}>
-                          {s.media_type === 'movie' && <span className="flex items-center gap-1"><Film className="w-3 h-3" />Film</span>}
-                          {s.media_type === 'tv' && <span className="flex items-center gap-1"><Tv className="w-3 h-3" />Serie</span>}
-                          {s.media_type === 'person' && <span className="flex items-center gap-1"><UsersIcon className="w-3 h-3" />Acteur</span>}
+                          {s.media_type === 'movie' && <span className="flex items-center gap-1 text-red-300"><Film className="w-3 h-3" />Film</span>}
+                          {s.media_type === 'tv' && <span className="flex items-center gap-1 text-blue-300"><Tv className="w-3 h-3" />Série</span>}
+                          {s.media_type === 'person' && <span className="flex items-center gap-1 text-amber-300"><UsersIcon className="w-3 h-3" />Acteur</span>}
                           {s.year && <span>{s.year}</span>}
                         </div>
                       </div>
                     </button>
                   ))}
                   <button onClick={() => { navigate(`/search?q=${encodeURIComponent(searchQuery)}`); setShowSuggestions(false); }}
-                    className="w-full px-4 py-2.5 text-sm text-center border-t font-medium" style={{ ...textStyle, borderColor: 'hsl(var(--nav-border))' }}>
-                    Voir tous les resultats
+                    className="w-full px-4 py-2.5 text-xs font-bold text-center border-t hover:bg-white/5 transition-colors uppercase tracking-wider"
+                    style={{ ...textStyle, borderColor: 'rgba(255,255,255,0.08)' }}>
+                    Voir tous les résultats
                   </button>
                 </div>
               )}
@@ -194,9 +215,10 @@ export default function Navigation() {
           <div className="flex items-center space-x-2 md:space-x-3">
             {/* Theme picker */}
             <div className="relative">
-              <button onClick={() => setThemeOpen(!themeOpen)} className="h-10 w-10 rounded-full border-2 flex items-center justify-center transition-colors hover:opacity-80"
-                style={{ borderColor: 'hsl(var(--nav-border))' }} data-testid="theme-picker-btn">
-                <Palette className="w-4 h-4" style={textStyle} />
+              <button onClick={() => setThemeOpen(!themeOpen)}
+                className="h-10 w-10 rounded-full flex items-center justify-center transition-all bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 hover:scale-105"
+                data-testid="theme-picker-btn">
+                <Palette className="w-4 h-4 text-white/85" />
               </button>
               {themeOpen && (
                 <div className="absolute right-0 top-full mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-lg border shadow-xl p-3 z-50" style={dropBg}>
@@ -251,18 +273,22 @@ export default function Navigation() {
             {user ? (
               <div className="relative">
                 <button onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="relative h-10 w-10 rounded-full border-2 flex items-center justify-center transition-colors hover:opacity-80"
-                  style={{ borderColor: 'hsl(var(--nav-border))' }} data-testid="user-menu-btn">
-                  <User className="w-4 h-4" style={textStyle} />
-                  {user.is_vip && <Crown className="w-3 h-3 absolute -top-1 -right-1 text-yellow-400" />}
-                  {user.is_admin && <Shield className="w-2.5 h-2.5 absolute top-0 left-0 text-red-400" />}
+                  className="relative h-10 px-2 sm:px-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 flex items-center gap-2 transition-all"
+                  data-testid="user-menu-btn">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-red-500 via-fuchsia-500 to-purple-600 flex items-center justify-center font-extrabold text-white text-xs shadow-lg shadow-red-500/30">
+                    {(user.username || 'U')[0].toUpperCase()}
+                  </div>
+                  {user.is_vip && <Crown className="w-3 h-3 absolute -top-1 -right-1 text-yellow-400 drop-shadow-lg" />}
+                  {user.is_admin && <Shield className="w-2.5 h-2.5 absolute top-0 left-0 text-red-400 drop-shadow" />}
+                  <span className="text-sm font-semibold hidden xl:inline" style={textStyle}>{user.username}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform hidden sm:inline ${userMenuOpen ? 'rotate-180' : ''}`} style={textSecStyle} />
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border shadow-xl py-1 z-50" style={dropBg}>
-                    <div className="px-4 py-2 border-b" style={{ borderColor: 'hsl(var(--nav-border))' }}>
-                      <p className="text-sm font-medium" style={textStyle}>{user.username || 'Utilisateur'}</p>
-                      <p className="text-xs" style={textSecStyle}>
-                        {user.is_admin ? 'Administrateur' : user.is_vip_plus ? 'VIP Plus' : user.is_vip ? 'VIP' : 'Standard'}
+                  <div className="absolute right-0 top-full mt-2 w-60 rounded-2xl border shadow-2xl shadow-black/50 py-1.5 z-50 overflow-hidden" style={dropBg}>
+                    <div className="px-4 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                      <p className="text-sm font-bold" style={textStyle}>{user.username || 'Utilisateur'}</p>
+                      <p className="text-xs flex items-center gap-1 mt-0.5" style={textSecStyle}>
+                        {user.is_admin ? <><Shield className="w-3 h-3 text-red-400" /> Administrateur</> : user.is_vip_plus ? <><Crown className="w-3 h-3 text-yellow-400" /> VIP Plus</> : user.is_vip ? <><Crown className="w-3 h-3 text-yellow-400" /> VIP</> : 'Standard'}
                       </p>
                     </div>
                     <DropdownItem to="/dashboard">Tableau de bord</DropdownItem>
@@ -270,25 +296,26 @@ export default function Navigation() {
                     <DropdownItem to="/history">Historique</DropdownItem>
                     <DropdownItem to="/playlists">Mes playlists</DropdownItem>
                     <DropdownItem to="/profile">Profil</DropdownItem>
-                    {!user.is_vip && <DropdownItem to="/subscription"><span className="text-yellow-400 flex items-center"><Crown className="w-4 h-4 mr-2" />Devenir VIP</span></DropdownItem>}
+                    {!user.is_vip && <DropdownItem to="/subscription"><span className="text-yellow-400 flex items-center gap-2"><Crown className="w-4 h-4" />Devenir VIP</span></DropdownItem>}
                     {(user.is_admin || user.is_uploader) && (
-                      <DropdownItem to="/admin"><span className="text-red-400 flex items-center"><Shield className="w-4 h-4 mr-2" />Administration</span></DropdownItem>
+                      <DropdownItem to="/admin"><span className="text-red-400 flex items-center gap-2"><Shield className="w-4 h-4" />Administration</span></DropdownItem>
                     )}
+                    <div className="border-t my-1" style={{ borderColor: 'rgba(255,255,255,0.08)' }} />
                     <DropdownItem onClick={() => { handleSignOut(); setUserMenuOpen(false); }}>
-                      <span className="flex items-center"><LogOut className="w-4 h-4 mr-2" />Deconnexion</span>
+                      <span className="flex items-center gap-2"><LogOut className="w-4 h-4" />Déconnexion</span>
                     </DropdownItem>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="hidden md:flex items-center space-x-2">
-                <Link to="/login" className="px-4 py-2 text-sm font-medium rounded-lg transition-colors hover:opacity-80" style={textStyle} data-testid="login-btn">Connexion</Link>
-                <Link to="/register" className="px-4 py-2 text-sm font-medium rounded-lg" style={{ backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }} data-testid="register-btn">Inscription</Link>
+              <div className="hidden md:flex items-center gap-2">
+                <Link to="/login" className="h-10 px-4 rounded-full text-sm font-semibold transition-all hover:bg-white/5 flex items-center" style={textStyle} data-testid="login-btn">Connexion</Link>
+                <Link to="/register" className="h-10 px-4 rounded-full text-sm font-bold bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow-lg shadow-red-500/40 hover:shadow-red-500/60 hover:scale-[1.03] active:scale-95 transition-all flex items-center" data-testid="register-btn">Inscription</Link>
               </div>
             )}
 
             {/* Mobile menu btn */}
-            <button className="h-10 w-10 lg:hidden flex items-center justify-center" onClick={() => setIsMenuOpen(!isMenuOpen)} data-testid="mobile-menu-btn">
+            <button className="h-10 w-10 lg:hidden flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-white/10 transition-colors" onClick={() => setIsMenuOpen(!isMenuOpen)} data-testid="mobile-menu-btn">
               {isMenuOpen ? <X className="w-5 h-5" style={textStyle} /> : <Menu className="w-5 h-5" style={textStyle} />}
             </button>
           </div>
@@ -297,53 +324,58 @@ export default function Navigation() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden overflow-y-auto" style={{ backgroundColor: 'hsl(var(--nav-bg) / 0.98)' }}>
+        <div className="fixed inset-0 z-50 lg:hidden overflow-y-auto" style={{ background: 'linear-gradient(180deg, rgba(5,11,24,0.98), rgba(11,18,32,0.98))', backdropFilter: 'blur(24px)' }}>
           <div className="container mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-6">
-              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-10 w-auto object-contain" />
-              <button onClick={() => setIsMenuOpen(false)}><X className="w-6 h-6" style={textStyle} /></button>
+              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-10 w-auto object-contain drop-shadow-[0_4px_18px_rgba(239,68,68,0.5)]" />
+              <button onClick={() => setIsMenuOpen(false)} className="h-10 w-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors">
+                <X className="w-5 h-5" style={textStyle} />
+              </button>
             </div>
             <form onSubmit={handleSearch} className="mb-6">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={textSecStyle} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
                 <input type="text" placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 h-10 rounded-lg border outline-none" style={{ backgroundColor: 'hsl(var(--nav-hover))', borderColor: 'hsl(var(--nav-border))', color: 'hsl(var(--nav-text))' }} />
+                  className="w-full pl-11 pr-4 h-11 rounded-full border bg-white/5 outline-none text-sm font-medium placeholder:text-white/40"
+                  style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.95)' }} />
               </div>
             </form>
             {!user ? (
-              <div className="flex flex-col space-y-2 mb-6">
-                <Link to="/login" onClick={() => setIsMenuOpen(false)} className="w-full py-2.5 text-center rounded-lg font-medium" style={{ backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>Connexion</Link>
-                <Link to="/register" onClick={() => setIsMenuOpen(false)} className="w-full py-2.5 text-center rounded-lg border font-medium" style={{ borderColor: 'hsl(var(--nav-border))', color: 'hsl(var(--nav-text))' }}>Inscription</Link>
+              <div className="flex flex-col gap-2 mb-6">
+                <Link to="/login" onClick={() => setIsMenuOpen(false)} className="w-full py-3 text-center rounded-xl font-bold bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/30">Connexion</Link>
+                <Link to="/register" onClick={() => setIsMenuOpen(false)} className="w-full py-3 text-center rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 font-bold text-sm" style={textStyle}>Inscription</Link>
               </div>
             ) : (
-              <div className="mb-6 space-y-1">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--nav-hover))' }}><User className="w-5 h-5" style={textStyle} /></div>
-                  <div><p className="font-medium" style={textStyle}>{user.username}</p><p className="text-xs" style={textSecStyle}>{user.is_admin ? 'Admin' : 'Membre'}</p></div>
+              <div className="mb-6">
+                <div className="flex items-center gap-3 mb-3 p-3 rounded-2xl bg-white/5 border border-white/10">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 via-fuchsia-500 to-purple-600 flex items-center justify-center font-extrabold text-white text-base shadow-lg shadow-red-500/30">{(user.username || 'U')[0].toUpperCase()}</div>
+                  <div className="flex-1"><p className="font-bold" style={textStyle}>{user.username}</p><p className="text-xs flex items-center gap-1 mt-0.5" style={textSecStyle}>{user.is_admin ? <><Shield className="w-3 h-3 text-red-400" /> Admin</> : user.is_vip ? <><Crown className="w-3 h-3 text-yellow-400" /> VIP</> : 'Membre'}</p></div>
                 </div>
-                {[{to:'/dashboard',label:'Tableau de bord'},{to:'/favorites',label:'Mes favoris'},{to:'/history',label:'Historique'},{to:'/playlists',label:'Mes playlists'},{to:'/profile',label:'Profil'}].map(l => (
-                  <Link key={l.to} to={l.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{l.label}</Link>
-                ))}
-                {(user.is_admin || user.is_uploader) && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg text-red-400">Administration</Link>}
-                <button onClick={handleSignOut} className="block w-full text-left py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>Deconnexion</button>
+                <div className="space-y-1">
+                  {[{to:'/dashboard',label:'Tableau de bord'},{to:'/favorites',label:'Mes favoris'},{to:'/history',label:'Historique'},{to:'/playlists',label:'Mes playlists'},{to:'/profile',label:'Profil'}].map(l => (
+                    <Link key={l.to} to={l.to} onClick={() => setIsMenuOpen(false)} className="block py-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors" style={textStyle}>{l.label}</Link>
+                  ))}
+                  {(user.is_admin || user.is_uploader) && <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 py-2.5 px-3 rounded-xl text-red-400 hover:bg-red-500/10"><Shield className="w-4 h-4" />Administration</Link>}
+                  <button onClick={handleSignOut} className="flex items-center gap-2 w-full text-left py-2.5 px-3 rounded-xl hover:bg-white/5" style={textStyle}><LogOut className="w-4 h-4" />Déconnexion</button>
+                </div>
               </div>
             )}
-            <div className="border-t pt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
-              <p className="text-sm font-semibold mb-2" style={textStyle}>Contenu</p>
-              {[{to:'/movies',l:'Films'},{to:'/tv-shows',l:'Series'},{to:'/anime',l:'Animes'},{to:'/actors',l:'Acteurs'},{to:'/music',l:'Musiques'},{to:'/games',l:'Jeux'},{to:'/ebooks',l:'Ebooks'},{to:'/logiciels',l:'Logiciels'}].map(i => (
-                <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
+            <div className="border-t pt-4 space-y-1" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <p className="text-xs font-extrabold uppercase tracking-widest mb-2 text-white/50">Contenu</p>
+              {[{to:'/movies',l:'Films',I:Film,c:'text-red-400'},{to:'/tv-shows',l:'Séries',I:Tv,c:'text-blue-400'},{to:'/anime',l:'Animes',I:Tv,c:'text-pink-400'},{to:'/actors',l:'Acteurs',I:UsersIcon,c:'text-amber-400'},{to:'/music',l:'Musique',I:Music,c:'text-fuchsia-400'},{to:'/games',l:'Jeux',I:Gamepad2,c:'text-emerald-400'},{to:'/ebooks',l:'Ebooks',I:Calendar,c:'text-orange-400'},{to:'/logiciels',l:'Logiciels',I:Calendar,c:'text-cyan-400'}].map(i => (
+                <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors" style={textStyle}><i.I className={`w-4 h-4 ${i.c}`} />{i.l}</Link>
               ))}
             </div>
-            <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
-              <p className="text-sm font-semibold mb-2" style={textStyle}>Medias</p>
-              {[{to:'/tv-channels',l:'Chaines TV'},{to:'/radio',l:'Radio FM'},{to:'/retrogaming',l:'Retrogaming'},{to:'/calendar',l:'Calendrier Sorties'},{to:'/discover/playlists',l:'Playlists publiques'}].map(i => (
-                <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
+            <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <p className="text-xs font-extrabold uppercase tracking-widest mb-2 text-white/50">Médias</p>
+              {[{to:'/tv-channels',l:'Chaînes TV',I:Tv,c:'text-red-400'},{to:'/radio',l:'Radio FM',I:Music,c:'text-cyan-400'},{to:'/retrogaming',l:'Retrogaming',I:Gamepad2,c:'text-emerald-400'},{to:'/calendar',l:'Calendrier Sorties',I:Calendar,c:'text-blue-400'},{to:'/discover/playlists',l:'Playlists publiques',I:Trophy,c:'text-purple-400'}].map(i => (
+                <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors" style={textStyle}><i.I className={`w-4 h-4 ${i.c}`} />{i.l}</Link>
               ))}
             </div>
-            <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'hsl(var(--nav-border))' }}>
-              <p className="text-sm font-semibold mb-2" style={textStyle}>Autres</p>
-              {[{to:'/calendar',l:'Calendrier'},{to:'/vip-game',l:'Jeu VIP'},{to:'/leaderboard',l:'Classement'},{to:'/changelogs',l:'Nouveautes'}].map(i => (
-                <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="block py-2 px-3 rounded-lg hover:opacity-80" style={textStyle}>{i.l}</Link>
+            <div className="border-t pt-4 mt-4 space-y-1" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+              <p className="text-xs font-extrabold uppercase tracking-widest mb-2 text-white/50">Autres</p>
+              {[{to:'/vip-game',l:'Jeu VIP',I:Crown,c:'text-yellow-400'},{to:'/leaderboard',l:'Classement',I:Trophy,c:'text-purple-400'},{to:'/changelogs',l:'Nouveautés',I:Sparkles,c:'text-blue-400'}].map(i => (
+                <Link key={i.to} to={i.to} onClick={() => setIsMenuOpen(false)} className="flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white/5 transition-colors" style={textStyle}><i.I className={`w-4 h-4 ${i.c}`} />{i.l}</Link>
               ))}
             </div>
           </div>

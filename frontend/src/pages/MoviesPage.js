@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import ContentCard from '../components/ContentCard';
 import { LoadingGrid } from '../components/Loading';
 import { useAuth } from '../contexts/AuthContext';
-import { Filter, SlidersHorizontal, ChevronDown, X } from 'lucide-react';
+import { Filter, SlidersHorizontal, X, ChevronLeft, ChevronRight, Sparkles, Film, Layers, Zap } from 'lucide-react';
+import { PageWrapper, PageHero, FilterBar, Pill, useCountUp } from '../components/design/PageHero';
 
 const SORT_OPTIONS = [
-  { value: 'popularity.desc', label: 'Popularite (decroissant)' },
-  { value: 'popularity.asc', label: 'Popularite (croissant)' },
+  { value: 'popularity.desc', label: 'Popularité ↓' },
+  { value: 'popularity.asc', label: 'Popularité ↑' },
   { value: 'vote_average.desc', label: 'Meilleure note' },
-  { value: 'vote_average.asc', label: 'Moins bien note' },
-  { value: 'primary_release_date.desc', label: 'Plus recent' },
+  { value: 'vote_average.asc', label: 'Moins bien noté' },
+  { value: 'primary_release_date.desc', label: 'Plus récent' },
   { value: 'primary_release_date.asc', label: 'Plus ancien' },
-  { value: 'revenue.desc', label: 'Recettes (decroissant)' },
+  { value: 'revenue.desc', label: 'Recettes ↓' },
 ];
 
 const POPULAR_PROVIDERS = [
@@ -35,6 +36,7 @@ export default function MoviesPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
   const [genres, setGenres] = useState([]);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -56,25 +58,19 @@ export default function MoviesPage() {
     if (providerFilter) endpoint += `&provider=${providerFilter}`;
     if (yearFilter) endpoint += `&year=${yearFilter}`;
     if (user?.show_adult_content) endpoint += '&include_adult=true';
-
     API.get(endpoint).then(({ data }) => {
       setMovies(data.results || []);
       setTotalPages(data.total_pages || 1);
+      setTotalResults(data.total_results || 0);
     }).catch(() => {}).finally(() => setLoading(false));
   }, [page, genreFilter, sortBy, providerFilter, yearFilter, user?.show_adult_content]);
 
   const updateFilter = (key, value) => {
     const params = new URLSearchParams(searchParams);
-    if (value) params.set(key, value);
-    else params.delete(key);
-    setSearchParams(params);
-    setPage(1);
+    if (value) params.set(key, value); else params.delete(key);
+    setSearchParams(params); setPage(1);
   };
-
-  const clearFilters = () => {
-    setSearchParams({});
-    setPage(1);
-  };
+  const clearFilters = () => { setSearchParams({}); setPage(1); };
 
   const activeGenre = genres.find(g => String(g.id) === genreFilter);
   const activeProvider = POPULAR_PROVIDERS.find(p => String(p.id) === providerFilter);
@@ -83,101 +79,144 @@ export default function MoviesPage() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 30 }, (_, i) => currentYear - i);
 
+  const cTotalMovies = useCountUp(totalResults);
+  const cGenres = useCountUp(genres.length);
+  const cProviders = useCountUp(POPULAR_PROVIDERS.length);
+
+  const subtitle = useMemo(() => {
+    const parts = [];
+    if (activeGenre) parts.push(activeGenre.name);
+    if (activeProvider) parts.push(`sur ${activeProvider.name}`);
+    if (yearFilter) parts.push(yearFilter);
+    return parts.join(' • ');
+  }, [activeGenre, activeProvider, yearFilter]);
+
   return (
-    <div className="container mx-auto px-4 py-8" data-testid="movies-page">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold" data-testid="movies-title">
-          Films {activeGenre ? `- ${activeGenre.name}` : ''} {activeProvider ? `sur ${activeProvider.name}` : ''}
-        </h1>
-        <button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${showFilters ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
-          data-testid="toggle-filters-btn">
-          <SlidersHorizontal className="w-4 h-4" />Filtres
-          {hasFilters && <span className="w-2 h-2 rounded-full bg-amber-400" />}
-        </button>
-      </div>
+    <PageWrapper testId="movies-page" accents={['rgba(239,68,68,0.55)', 'rgba(244,63,94,0.5)', 'rgba(234,88,12,0.45)']}>
+      <PageHero
+        badge={subtitle || 'Catalogue Cinéma'}
+        badgeIcon={Film}
+        title="Films"
+        subtitle="le grand"
+        highlight="Catalogue"
+        description="Explorez des milliers de films triés par popularité, plateforme et année. Toutes les sorties, tous les genres."
+        gradient="rgba(239,68,68,0.18), rgba(244,63,94,0.12) 35%, rgba(234,88,12,0.18) 65%, rgba(168,85,247,0.15)"
+        titleGradient="linear-gradient(135deg, #fff 0%, #fca5a5 40%, #fdba74 70%, #c4b5fd 100%)"
+        highlightGradient="linear-gradient(135deg, #ef4444, #f97316, #ec4899)"
+        blobColor1="rgba(239,68,68,0.6)"
+        blobColor2="rgba(234,88,12,0.55)"
+        stats={[
+          { icon: Film, label: 'Films', value: cTotalMovies, accent: 'rgba(239,68,68,0.7)' },
+          { icon: Layers, label: 'Plateformes', value: cProviders, accent: 'rgba(234,88,12,0.7)' },
+          { icon: Zap, label: 'Genres', value: cGenres, accent: 'rgba(244,63,94,0.7)' },
+        ]}
+      />
 
-      {/* Genre pills */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button onClick={() => updateFilter('genre', '')} className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${!genreFilter ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`} data-testid="genre-filter-all">Tous</button>
-        {genres.map(g => (
-          <button key={g.id} onClick={() => updateFilter('genre', String(g.id))}
-            className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${String(g.id) === genreFilter ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`} data-testid={`genre-filter-${g.id}`}>{g.name}</button>
-        ))}
-      </div>
-
-      {/* Advanced Filters Panel */}
-      {showFilters && (
-        <div className="rounded-xl border p-4 mb-6 space-y-4" style={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }} data-testid="filters-panel">
-          {/* Platforms */}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground mb-2 block flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" />Plateforme
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => updateFilter('provider', '')}
-                className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${!providerFilter ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`} data-testid="provider-all">Toutes</button>
-              {POPULAR_PROVIDERS.map(p => (
-                <button key={p.id} onClick={() => updateFilter('provider', String(p.id))}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border transition-colors ${String(p.id) === providerFilter ? 'bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}
-                  data-testid={`provider-${p.id}`}>
-                  <img src={`${TMDB_IMG}/w45${p.logo}`} alt={p.name} className="w-5 h-5 rounded" />
-                  {p.name}
-                </button>
-              ))}
+      <FilterBar>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-bold text-white/80 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-red-400" /> Genres
             </div>
+            <button onClick={() => setShowFilters(!showFilters)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors ${
+                      showFilters ? 'bg-red-500/20 text-red-300 border-red-500/40' : 'border-white/15 bg-white/5 text-white/70 hover:text-white hover:bg-white/10'
+                    }`}
+                    data-testid="toggle-filters-btn">
+              <SlidersHorizontal className="w-3.5 h-3.5" /> Filtres avancés
+              {hasFilters && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+            </button>
           </div>
-          {/* Sort + Year */}
-          <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">Trier par</label>
-              <select value={sortBy} onChange={e => updateFilter('sort', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border bg-background text-foreground outline-none" style={{ borderColor: 'hsl(var(--border))' }}
-                data-testid="sort-select">
-                {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div className="min-w-[150px]">
-              <label className="text-sm font-medium text-muted-foreground mb-2 block">Annee</label>
-              <select value={yearFilter} onChange={e => updateFilter('year', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border bg-background text-foreground outline-none" style={{ borderColor: 'hsl(var(--border))' }}
-                data-testid="year-select">
-                <option value="">Toutes</option>
-                {years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-            {hasFilters && (
-              <div className="flex items-end">
-                <button onClick={clearFilters} className="flex items-center gap-1 px-3 py-2 rounded-lg border text-sm border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors" data-testid="clear-filters-btn">
-                  <X className="w-4 h-4" />Effacer
-                </button>
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
+            <Pill active={!genreFilter} onClick={() => updateFilter('genre', '')} icon={Sparkles} color="#ef4444" testId="genre-filter-all">Tous</Pill>
+            {genres.map(g => (
+              <Pill key={g.id} active={String(g.id) === genreFilter} onClick={() => updateFilter('genre', String(g.id))} color="#f97316" testId={`genre-filter-${g.id}`}>{g.name}</Pill>
+            ))}
+          </div>
+
+          {showFilters && (
+            <div className="rounded-xl border border-white/10 bg-black/30 p-3 md:p-4 space-y-4" data-testid="filters-panel">
+              <div>
+                <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block flex items-center gap-1.5">
+                  <Filter className="w-3 h-3" /> Plateforme
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  <button onClick={() => updateFilter('provider', '')}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${!providerFilter ? 'bg-red-500 text-white border-red-500' : 'border-white/15 bg-white/5 hover:bg-white/10 text-white/70'}`}
+                          data-testid="provider-all">Toutes</button>
+                  {POPULAR_PROVIDERS.map(p => (
+                    <button key={p.id} onClick={() => updateFilter('provider', String(p.id))}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border transition-colors ${String(p.id) === providerFilter ? 'bg-red-500 text-white border-red-500' : 'border-white/15 bg-white/5 hover:bg-white/10 text-white/70'}`}
+                            data-testid={`provider-${p.id}`}>
+                      <img src={`${TMDB_IMG}/w45${p.logo}`} alt={p.name} className="w-4 h-4 rounded" />
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex-1 min-w-[180px]">
+                  <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Trier par</label>
+                  <select value={sortBy} onChange={e => updateFilter('sort', e.target.value)}
+                          className="w-full px-3 h-10 rounded-lg border border-white/10 bg-white/5 text-white text-sm outline-none focus:border-red-500/50"
+                          data-testid="sort-select">
+                    {SORT_OPTIONS.map(o => <option key={o.value} value={o.value} className="bg-slate-900">{o.label}</option>)}
+                  </select>
+                </div>
+                <div className="min-w-[140px]">
+                  <label className="text-xs font-bold text-white/70 uppercase tracking-wider mb-2 block">Année</label>
+                  <select value={yearFilter} onChange={e => updateFilter('year', e.target.value)}
+                          className="w-full px-3 h-10 rounded-lg border border-white/10 bg-white/5 text-white text-sm outline-none focus:border-red-500/50"
+                          data-testid="year-select">
+                    <option value="" className="bg-slate-900">Toutes</option>
+                    {years.map(y => <option key={y} value={y} className="bg-slate-900">{y}</option>)}
+                  </select>
+                </div>
+                {hasFilters && (
+                  <div className="flex items-end">
+                    <button onClick={clearFilters} className="flex items-center gap-1 px-3 h-10 rounded-lg border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs font-bold hover:bg-rose-500/20 transition-colors" data-testid="clear-filters-btn">
+                      <X className="w-3.5 h-3.5" /> Effacer
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </FilterBar>
 
-      {/* Grid (multi-row) */}
       {loading ? <LoadingGrid count={20} /> : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4" data-testid="movies-grid">
-          {movies.map(m => <ContentCard key={m.id} item={m} type="movie" />)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4" data-testid="movies-grid">
+          {movies.map((m, i) => (
+            <div key={m.id} className="wv-fade-in" style={{ animationDelay: `${Math.min(i, 24) * 25}ms` }}>
+              <ContentCard item={m} type="movie" />
+            </div>
+          ))}
         </div>
       )}
 
       {!loading && movies.length === 0 && (
         <div className="text-center py-16">
-          <p className="text-lg text-muted-foreground">Aucun film trouve avec ces filtres</p>
-          <button onClick={clearFilters} className="mt-3 px-4 py-2 rounded-lg bg-primary text-primary-foreground">Effacer les filtres</button>
+          <p className="text-lg text-white/60">Aucun film trouvé avec ces filtres</p>
+          <button onClick={clearFilters} className="mt-3 px-4 py-2 rounded-lg bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold text-sm">Effacer les filtres</button>
         </div>
       )}
 
-      {/* Pagination */}
       <div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
-        <button onClick={() => { setPage(1); }} disabled={page <= 1} className="px-3 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors text-sm">1</button>
-        <button onClick={() => { setPage(p => Math.max(1, p - 1)); }} disabled={page <= 1} className="px-4 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors" data-testid="prev-page-btn">Precedent</button>
-        <span className="px-4 py-2 text-muted-foreground text-sm">Page {page} / {totalPages}</span>
-        <button onClick={() => { setPage(p => Math.min(totalPages, p + 1)); }} disabled={page >= totalPages} className="px-4 py-2 rounded-lg border border-border disabled:opacity-50 hover:bg-secondary transition-colors" data-testid="next-page-btn">Suivant</button>
+        <button onClick={() => setPage(1)} disabled={page <= 1}
+                className="h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-sm font-bold text-white">1</button>
+        <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+                className="h-10 px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-40 text-sm font-bold text-white flex items-center gap-1" data-testid="prev-page-btn">
+          <ChevronLeft className="w-4 h-4" /> Préc.
+        </button>
+        <span className="h-10 px-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white/80 font-bold flex items-center">
+          Page <span className="mx-1.5 text-white">{page}</span> / {totalPages}
+        </span>
+        <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
+                className="h-10 px-3 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 disabled:opacity-40 text-sm font-bold text-white flex items-center gap-1 shadow-lg shadow-red-500/30" data-testid="next-page-btn">
+          Suiv. <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
-    </div>
+    </PageWrapper>
   );
 }
