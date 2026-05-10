@@ -19,7 +19,7 @@ export default function Navigation() {
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
   const { user, signOut } = useAuth();
-  const { theme, setTheme, THEMES, LIMITED_THEMES, PREMIUM_THEMES } = useTheme();
+  const { theme, setTheme, THEMES, EXCEPTIONAL_THEMES, LIMITED_THEMES, PREMIUM_THEMES } = useTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
   const navRef = useRef(null);
@@ -89,16 +89,16 @@ export default function Navigation() {
   };
 
   const navStyle = {
-    background: 'linear-gradient(180deg, rgba(5,11,24,0.92) 0%, rgba(10,15,28,0.85) 100%)',
-    borderColor: 'rgba(255,255,255,0.08)',
+    background: 'linear-gradient(180deg, hsl(var(--nav-bg) / 0.92) 0%, hsl(var(--background) / 0.85) 100%)',
+    borderColor: 'hsl(var(--nav-border) / 0.4)',
     backdropFilter: 'blur(20px)',
     WebkitBackdropFilter: 'blur(20px)',
   };
-  const textStyle = { color: 'rgba(255,255,255,0.92)' };
-  const textSecStyle = { color: 'rgba(255,255,255,0.55)' };
+  const textStyle = { color: 'hsl(var(--nav-text))' };
+  const textSecStyle = { color: 'hsl(var(--nav-text-secondary))' };
   const dropBg = {
-    background: 'linear-gradient(180deg, rgba(11,18,32,0.98) 0%, rgba(7,12,23,0.98) 100%)',
-    borderColor: 'rgba(255,255,255,0.1)',
+    background: 'linear-gradient(180deg, hsl(var(--nav-dropdown-bg) / 0.98) 0%, hsl(var(--nav-bg) / 0.98) 100%)',
+    borderColor: 'hsl(var(--nav-border) / 0.5)',
     backdropFilter: 'blur(24px)',
     WebkitBackdropFilter: 'blur(24px)',
   };
@@ -134,8 +134,11 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-16 md:h-20">
           <Link to="/" className="flex items-center flex-shrink-0 group transition-all hover:scale-[1.02]" data-testid="logo-link">
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-fuchsia-500 to-purple-600 blur-xl opacity-40 group-hover:opacity-70 transition-opacity" />
-              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="relative h-10 md:h-14 w-auto object-contain drop-shadow-[0_4px_18px_rgba(239,68,68,0.5)]" />
+              <div className="absolute inset-0 blur-xl opacity-40 group-hover:opacity-70 transition-opacity"
+                style={{ background: 'linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--ring)))' }} />
+              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch"
+                className="relative h-10 md:h-14 w-auto object-contain"
+                style={{ filter: 'drop-shadow(0 4px 18px hsl(var(--primary) / 0.5))' }} />
             </div>
           </Link>
 
@@ -221,45 +224,67 @@ export default function Navigation() {
                 <Palette className="w-4 h-4 text-white/85" />
               </button>
               {themeOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-lg border shadow-xl p-3 z-50" style={dropBg}>
-                  <p className="text-xs font-semibold mb-2 px-1" style={textStyle}>Themes Standard</p>
+                <div className="absolute right-0 top-full mt-2 w-80 max-h-[70vh] overflow-y-auto rounded-2xl border shadow-2xl p-3 z-50" style={dropBg}>
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-2 px-1 flex items-center gap-1.5" style={textStyle}>
+                    <Sparkles className="w-3 h-3" />Thèmes Standard
+                  </p>
                   <div className="grid grid-cols-2 gap-1.5 mb-3">
                     {THEMES.map(t => (
                       <button key={t.id} onClick={() => handleThemeChange(t.id)}
-                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors hover:opacity-80 relative ${theme === t.id ? 'ring-2 ring-blue-500' : ''}`}>
-                        <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient}`} />
-                        <span className="text-xs" style={textStyle}>{t.name}</span>
-                        {t.isNew && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded">NEW</span>}
+                        className={`flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-white/5 relative ${theme === t.id ? 'ring-2 ring-cyan-400' : ''}`}
+                        data-testid={`theme-${t.id}`}>
+                        <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient} shadow-md`} />
+                        <span className="text-xs font-semibold" style={textStyle}>{t.name}</span>
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs font-semibold mb-2 px-1" style={textStyle}>Limites</p>
+
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-2 px-1 flex items-center gap-1.5" style={{ color: 'hsl(180 90% 60%)' }}>
+                    <Sparkles className="w-3 h-3" />Exceptionnels
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5 mb-3">
+                    {EXCEPTIONAL_THEMES.map(t => (
+                      <button key={t.id} onClick={() => handleThemeChange(t.id)}
+                        className={`flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-white/5 relative border border-cyan-400/20 ${theme === t.id ? 'ring-2 ring-cyan-400' : ''}`}
+                        data-testid={`theme-${t.id}`}>
+                        <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient} shadow-md ring-1 ring-cyan-300/40`} />
+                        <span className="text-xs font-semibold" style={textStyle}>{t.name}</span>
+                        <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-extrabold bg-gradient-to-r from-cyan-400 to-emerald-400 text-black rounded shadow-md">★</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-2 px-1" style={{ color: 'hsl(35 90% 65%)' }}>Limités</p>
                   <div className="grid grid-cols-2 gap-1.5 mb-3">
                     {LIMITED_THEMES.map(t => (
                       <button key={t.id} onClick={() => handleThemeChange(t.id)}
-                        className={`flex items-center gap-2 p-2 rounded-lg transition-colors hover:opacity-80 relative ${theme === t.id ? 'ring-2 ring-blue-500' : ''}`}>
-                        <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient}`} />
-                        <span className="text-xs" style={textStyle}>{t.name}</span>
-                        {t.isNew && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded">NEW</span>}
+                        className={`flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-white/5 relative ${theme === t.id ? 'ring-2 ring-cyan-400' : ''}`}
+                        data-testid={`theme-${t.id}`}>
+                        <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient} shadow-md`} />
+                        <span className="text-xs font-semibold" style={textStyle}>{t.name}</span>
                       </button>
                     ))}
                   </div>
+
                   {user && (<>
-                    <p className="text-xs font-semibold mb-2 px-1 flex items-center" style={textStyle}>
-                      Premium {!user.is_vip && !user.is_vip_plus && !user.is_admin && <Crown className="w-3 h-3 ml-1 text-yellow-400" />}
+                    <p className="text-[10px] font-bold uppercase tracking-widest mb-2 px-1 flex items-center gap-1.5" style={{ color: 'hsl(45 95% 65%)' }}>
+                      <Crown className="w-3 h-3" />Premium VIP
+                      {!user.is_vip && !user.is_vip_plus && !user.is_admin && <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-400/40">VIP requis</span>}
                     </p>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {PREMIUM_THEMES.map(t => (
-                        <button key={t.id} onClick={() => handleThemeChange(t.id, t.requiresVip, t.requiresVipPlus)}
-                          className={`flex items-center gap-2 p-2 rounded-lg transition-colors hover:opacity-80 relative ${theme === t.id ? 'ring-2 ring-blue-500' : ''} ${
-                            (t.requiresVipPlus && !user.is_vip_plus && !user.is_admin) || (t.requiresVip && !user.is_vip && !user.is_vip_plus && !user.is_admin) ? 'opacity-50' : ''
-                          }`}>
-                          <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient} ${t.hasAnimation ? 'animate-pulse' : ''}`} />
-                          <span className="text-xs" style={textStyle}>{t.name}</span>
-                          {t.requiresVipPlus && <Crown className="w-3 h-3 text-purple-400" />}
-                          {t.isNew && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded">NEW</span>}
-                        </button>
-                      ))}
+                      {PREMIUM_THEMES.map(t => {
+                        const locked = (t.requiresVipPlus && !user.is_vip_plus && !user.is_admin) || (t.requiresVip && !user.is_vip && !user.is_vip_plus && !user.is_admin);
+                        return (
+                          <button key={t.id} onClick={() => handleThemeChange(t.id, t.requiresVip, t.requiresVipPlus)}
+                            className={`flex items-center gap-2 p-2 rounded-lg transition-all hover:bg-white/5 relative ${theme === t.id ? 'ring-2 ring-cyan-400' : ''} ${locked ? 'opacity-50' : ''} ${t.exceptional ? 'border border-amber-400/30' : ''}`}
+                            data-testid={`theme-${t.id}`}>
+                            <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${t.gradient} shadow-md ${t.hasAnimation ? 'animate-pulse' : ''} ${t.exceptional ? 'ring-1 ring-amber-300/50' : ''}`} />
+                            <span className="text-xs font-semibold" style={textStyle}>{t.name}</span>
+                            {t.requiresVipPlus && <Crown className="w-3 h-3 text-purple-300" />}
+                            {t.exceptional && <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[8px] font-extrabold bg-gradient-to-r from-amber-400 to-orange-500 text-black rounded shadow-md">★</span>}
+                          </button>
+                        );
+                      })}
                     </div>
                   </>)}
                 </div>
@@ -324,10 +349,11 @@ export default function Navigation() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden overflow-y-auto" style={{ background: 'linear-gradient(180deg, rgba(5,11,24,0.98), rgba(11,18,32,0.98))', backdropFilter: 'blur(24px)' }}>
+        <div className="fixed inset-0 z-50 lg:hidden overflow-y-auto" style={{ background: 'linear-gradient(180deg, hsl(var(--nav-bg) / 0.98), hsl(var(--background) / 0.98))', backdropFilter: 'blur(24px)' }}>
           <div className="container mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-6">
-              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-10 w-auto object-contain drop-shadow-[0_4px_18px_rgba(239,68,68,0.5)]" />
+              <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-10 w-auto object-contain"
+                style={{ filter: 'drop-shadow(0 4px 18px hsl(var(--primary) / 0.5))' }} />
               <button onClick={() => setIsMenuOpen(false)} className="h-10 w-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors">
                 <X className="w-5 h-5" style={textStyle} />
               </button>

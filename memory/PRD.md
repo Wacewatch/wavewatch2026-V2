@@ -520,3 +520,41 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
 - Achievements, Leaderboard, Messages, ContentRequests, DownloadLinks, Search, WatchParty/Room, Spectacles
 - Pages détail (ActorDetail, MovieDetail, etc.) — souvent layout dédié, refonte optionnelle
 - Admin — interne, peut rester technique
+
+## Iteration 40 — 2026-05-10 — Refonte thèmes + Dashboard engageant + orbes globales
+
+### Refonte complète des thèmes
+**Retirés (doublons)** : `forest` (similaire à jade), `aurora` (similaire à arctic/ocean), `lavender` (similaire à royal). Migration auto vers `dark` pour les utilisateurs ayant ces thèmes en localStorage.
+
+**Fix `light`** : était sombre (background 0% 15%) → maintenant **vrai thème clair** (background 210 40% 98%, primary blue 217 91% 50%).
+
+**Renommés** : `Foret` → retiré, `Lavande` → retiré, `Noel` → `Noël`, `Desert` → `Désert`, `Ocean` → `Océan`.
+
+**2 thèmes gratuits EXCEPTIONNELS ajoutés** ★ :
+- `Solarized` : palette warm cream/sépia élégante, primary cyan turquoise
+- `Nordique` : palette froide bleu-gris-blanc minimaliste
+
+**2 thèmes VIP EXCEPTIONNELS ajoutés** ★ (badge doré dans le sélecteur) :
+- `Aurore Boréale` (`borealis`) : gradient flow multicolore animé en arrière-plan (vert→violet→rose), nav animée avec shimmer multicolore
+- `Obsidienne` (`obsidian`) : noir profond + filets dorés diagonaux subtils, nav avec barre dorée animée scintillante
+
+**Total final** : 10 standards + 2 exceptionnels + 3 saisonniers + 4 VIP + 2 VIP exceptionnels + 3 VIP+ = **24 thèmes uniques**
+
+### Couleur du logo dynamique selon thème
+- Aura derrière le logo : `linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--ring)))`
+- Drop-shadow : `hsl(var(--primary) / 0.5)`
+- Sur Sakura → rose/fuchsia, sur Cyberpunk → cyan/magenta, sur Borealis → vert/violet, etc.
+
+### Navigation entièrement themée
+- `navStyle.background` : `hsl(var(--nav-bg) / 0.92) → hsl(var(--background) / 0.85)`
+- Borders, dropdowns, textes, hovers : tous via `hsl(var(--nav-X))`
+- Le menu thèmes a maintenant 4 sections : **Standard**, **Exceptionnels** (badge cyan ★), **Limités**, **Premium VIP** (badge doré ★ pour les exceptionnels).
+
+### Dashboard plus engageant
+Nouveau bloc d'engagement après les Quick links :
+- **Sparkline 30 jours** : courbe SVG d'activité de visionnage, gradient themed
+- **Streak en cours** : jours consécutifs (avec emoji 🔥)
+- **Meilleur jour** : jour avec le plus de visionnages
+
+### Orbes themées globales
+Ajoutées dans `App.js` au niveau racine (z-index -10) avec pulse animée et couleurs `hsl(var(--primary|accent|ring) / 0.45)`. **Toutes les pages (refaites ou non, dont pages détail, admin, etc.)** bénéficient maintenant d'un fond animé qui s'adapte au thème.

@@ -129,6 +129,48 @@ export default function DashboardPage() {
 
   const displayedReviews = showAllReviews ? communityReviews.reviews : communityReviews.reviews.slice(0, 5);
 
+  // === ENGAGEMENT METRICS ===
+  // Activité sur 30 jours (compte d'éléments par jour basé sur l'historique)
+  const buildActivityData = () => {
+    const days = 30;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const map = {};
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      map[key] = 0;
+    }
+    allHistory.forEach(h => {
+      if (!h.watched_at) return;
+      const key = new Date(h.watched_at).toISOString().slice(0, 10);
+      if (key in map) map[key] += 1;
+    });
+    return Object.entries(map).map(([date, count]) => ({ date, count }));
+  };
+  const activityData = buildActivityData();
+  const maxActivity = Math.max(1, ...activityData.map(d => d.count));
+  const totalActivity = activityData.reduce((s, d) => s + d.count, 0);
+  const activeDays = activityData.filter(d => d.count > 0).length;
+  // Streak (jours consécutifs en partant d'aujourd'hui)
+  let streak = 0;
+  for (let i = activityData.length - 1; i >= 0; i--) {
+    if (activityData[i].count > 0) streak += 1; else break;
+  }
+  // Meilleur jour
+  const bestDay = activityData.reduce((best, d) => d.count > (best?.count || 0) ? d : best, null);
+  const bestDayLabel = bestDay && bestDay.count > 0 ? new Date(bestDay.date).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) : '—';
+
+  // Sparkline SVG (path)
+  const sparkW = 100, sparkH = 36;
+  const sparkPoints = activityData.map((d, i) => {
+    const x = (i / (activityData.length - 1)) * sparkW;
+    const y = sparkH - (d.count / maxActivity) * sparkH;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const sparkArea = `M0,${sparkH} L${sparkPoints.replace(/ /g, ' L')} L${sparkW},${sparkH} Z`;
+
   return (
     <ThemedPage testId="dashboard-page">
       <div className="container mx-auto px-4 py-8 space-y-6">
@@ -159,6 +201,80 @@ export default function DashboardPage() {
               {l.icon}<span>{l.label}</span>
             </Link>
           ))}
+      </div>
+
+      {/* === ACTIVITÉ ENGAGEMENT === */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4" data-testid="activity-block">
+        {/* Sparkline 30 days */}
+        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl border border-border bg-card/80 backdrop-blur-xl p-5 group hover:border-primary/30 transition-colors">
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full blur-3xl opacity-30" style={{ background: 'hsl(var(--primary))' }} />
+          <div className="relative flex items-start justify-between mb-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest font-bold text-foreground/60">Activité — 30 derniers jours</p>
+              <p className="text-3xl font-black tabular-nums" style={{ color: 'hsl(var(--primary))' }}>
+                {totalActivity}<span className="text-foreground/50 text-base font-bold ml-1">visionnages</span>
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-foreground/60">Jours actifs</p>
+              <p className="text-2xl font-black tabular-nums" style={{ color: 'hsl(var(--accent))' }}>{activeDays}<span className="text-foreground/50 text-sm">/30</span></p>
+            </div>
+          </div>
+          <svg viewBox={`0 0 ${sparkW} ${sparkH}`} className="w-full h-20" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <path d={sparkArea} fill="url(#sparkGrad)" />
+            <polyline points={sparkPoints} fill="none" stroke="hsl(var(--primary))" strokeWidth="0.6" strokeLinejoin="round" strokeLinecap="round" />
+            {/* Dots on active days */}
+            {activityData.map((d, i) => d.count > 0 ? (
+              <circle key={i}
+                cx={(i / (activityData.length - 1)) * sparkW}
+                cy={sparkH - (d.count / maxActivity) * sparkH}
+                r="0.6" fill="hsl(var(--primary))" />
+            ) : null)}
+          </svg>
+          <div className="flex justify-between text-[10px] text-foreground/50 mt-1 font-medium">
+            <span>il y a 30j</span>
+            <span>aujourd'hui</span>
+          </div>
+        </div>
+
+        {/* Streak + best day */}
+        <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+          <div className="relative overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-950/40 via-orange-950/30 to-rose-950/30 p-4">
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-50" style={{ background: 'hsl(35 95% 55%)' }} />
+            <div className="relative flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/40 flex-shrink-0">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-amber-200/80">Série en cours</p>
+                <p className="text-2xl font-black text-white tabular-nums leading-tight">
+                  {streak}<span className="text-base text-amber-200/70 ml-1">j</span>
+                </p>
+                <p className="text-[10px] text-amber-200/60 truncate">{streak === 0 ? 'Reprends aujourd\'hui !' : streak === 1 ? 'Bonne reprise !' : 'Continue comme ça 🔥'}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-950/40 via-blue-950/30 to-indigo-950/30 p-4">
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-50" style={{ background: 'hsl(190 95% 55%)' }} />
+            <div className="relative flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/40 flex-shrink-0">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-cyan-200/80">Meilleur jour</p>
+                <p className="text-lg font-black text-white truncate leading-tight">{bestDayLabel}</p>
+                <p className="text-[10px] text-cyan-200/60">{bestDay && bestDay.count > 0 ? `${bestDay.count} visionnages` : 'Pas encore'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Main Stats */}

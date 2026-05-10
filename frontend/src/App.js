@@ -78,7 +78,16 @@ export default function App() {
         <ToastProvider>
           <StatusProvider>
           <BrowserRouter>
-            <div className="min-h-screen bg-background text-foreground flex flex-col">
+            <div className="relative min-h-screen bg-background text-foreground flex flex-col">
+              {/* Orbes themed globales — visibles sur les pages non encore themed */}
+              <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10" aria-hidden="true">
+                <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] rounded-full opacity-25 blur-3xl"
+                  style={{ background: 'radial-gradient(closest-side, hsl(var(--primary) / 0.45), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
+                <div className="absolute top-1/3 -right-40 w-[36rem] h-[36rem] rounded-full opacity-20 blur-3xl"
+                  style={{ background: 'radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
+                <div className="absolute bottom-0 left-1/3 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
+                  style={{ background: 'radial-gradient(closest-side, hsl(var(--ring) / 0.4), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+              </div>
               <ScrollToTop />
               <Navigation />
               <main className="flex-1">
