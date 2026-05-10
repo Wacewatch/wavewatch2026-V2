@@ -38,13 +38,13 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="relative mt-20 text-white border-t border-white/10 overflow-hidden" style={{ background: 'linear-gradient(180deg, #050b18 0%, #07101e 50%, #030710 100%)' }} data-testid="main-footer">
+    <footer className="relative mt-20 text-white border-t border-white/10 overflow-hidden" style={{ background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card) / 0.7) 50%, hsl(var(--background)) 100%)' }} data-testid="main-footer">
       {/* Decorative orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-40 -left-32 w-[36rem] h-[36rem] rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.5), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--primary) / 0.4), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
         <div className="absolute -top-32 right-0 w-[32rem] h-[32rem] rounded-full opacity-15 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(168,85,247,0.5), transparent 70%)', animation: 'pulse 14s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--ring) / 0.4), transparent 70%)', animation: 'pulse 14s ease-in-out infinite' }} />
         <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       </div>
 
@@ -70,7 +70,7 @@ export default function Footer() {
                 { label: 'Fonctionnalités',  val: reviewData.averages.fonctionnalites,  hex: '#3b82f6' },
                 { label: 'Design',           val: reviewData.averages.design,           hex: '#a855f7' },
               ].map(s => (
-                <div key={s.label} className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl px-5 py-4 group hover:border-white/25 transition-colors">
+                <div key={s.label} className="relative overflow-hidden rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl px-5 py-4 group hover:border-white/25 transition-colors">
                   <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full blur-2xl opacity-40 group-hover:opacity-70 transition-opacity" style={{ background: s.hex }} />
                   <div className="relative flex items-center justify-between">
                     <div>
@@ -86,7 +86,7 @@ export default function Footer() {
             </div>
 
             {messagesWithText.length > 0 && (
-              <div className="relative rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl p-5 md:p-6 overflow-hidden">
+              <div className="relative rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl p-5 md:p-6 overflow-hidden">
                 <div className="absolute -top-10 left-1/3 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.6), transparent 70%)' }} />
 
                 <div className="relative flex items-center justify-between mb-4">
@@ -138,7 +138,7 @@ export default function Footer() {
         )}
 
         {/* Brand + links */}
-        <div className="rounded-2xl border border-white/10 bg-[#0b1220]/60 backdrop-blur-xl p-5 md:p-6">
+        <div className="rounded-2xl border border-white/10 bg-card/60 backdrop-blur-xl p-5 md:p-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-5 text-center md:text-left">
             <Link to="/" className="flex items-center gap-3 group" data-testid="footer-logo">
               <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-12 w-auto object-contain transition-transform group-hover:scale-105" />

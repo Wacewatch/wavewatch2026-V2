@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import ContentCard from '../components/ContentCard';
 import { LoadingSpinner, LoadingGrid } from '../components/Loading';
-import { Search, Film, ArrowLeft, Star } from 'lucide-react';
+import { Search, Film, ArrowLeft, Star, Layers, X } from 'lucide-react';
+import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 
 function CollectionDetail({ collectionId }) {
   const [collection, setCollection] = useState(null);
@@ -99,23 +100,50 @@ export default function CollectionsPage() {
   // Si un ID est fourni, afficher le detail de la collection
   if (id) {
     return (
-      <div className="container mx-auto px-4 py-8" data-testid="collections-page">
-        <CollectionDetail collectionId={id} />
-      </div>
+      <ThemedPage testId="collections-page">
+        <div className="container mx-auto px-4 py-8">
+          <CollectionDetail collectionId={id} />
+        </div>
+      </ThemedPage>
     );
   }
 
   const allCollections = collections.length > 0 ? collections : popular;
 
   return (
-    <div className="container mx-auto px-4 py-8" data-testid="collections-page">
-      <h1 className="text-3xl font-bold mb-6 flex items-center gap-3"><Film className="w-8 h-8" />Collections / Sagas</h1>
-      <form onSubmit={handleSearch} className="mb-8">
-        <div className="relative max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher une collection..." className="w-full pl-12 pr-4 h-12 rounded-lg border border-input bg-background outline-none focus:ring-2 focus:ring-ring" data-testid="collections-search" />
-        </div>
-      </form>
+    <ThemedPage testId="collections-page">
+      <div className="container mx-auto px-4 py-8">
+        <ThemedHero
+          badge="Sagas & univers"
+          badgeIcon={Layers}
+          title="Collections"
+          subtitle="& "
+          highlight="Sagas"
+          description="Explore les plus grandes franchises cinématographiques. Marvel, Star Wars, Harry Potter et bien d'autres."
+          stats={[
+            { icon: Film, label: 'Disponibles', value: allCollections.length, color: 'hsl(var(--primary))' },
+          ]}
+        />
+
+        <form onSubmit={handleSearch} className="mb-6 sticky top-16 z-40">
+          <div className="relative rounded-2xl border border-border bg-card/80 backdrop-blur-xl p-3 shadow-xl shadow-black/30">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/50" />
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Rechercher une collection (Marvel, Star Wars, ...)"
+                className="w-full pl-11 pr-9 py-2.5 rounded-xl border border-border bg-background/50 text-sm text-foreground placeholder-foreground/40 outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 transition-all"
+                data-testid="collections-search"
+              />
+              {query && (
+                <button type="button" onClick={() => { setQuery(''); setCollections([]); }} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-foreground/10"><X className="w-3.5 h-3.5 text-foreground/50" /></button>
+              )}
+            </div>
+          </div>
+        </form>
+
       {loading ? <LoadingSpinner /> : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
           {allCollections.map(c => (
@@ -140,7 +168,8 @@ export default function CollectionsPage() {
           ))}
         </div>
       )}
-      {allCollections.length === 0 && !loading && <p className="text-center py-12 text-muted-foreground">Aucune collection trouvee</p>}
-    </div>
+      {allCollections.length === 0 && !loading && <p className="text-center py-12 text-foreground/50">Aucune collection trouvée</p>}
+      </div>
+    </ThemedPage>
   );
 }

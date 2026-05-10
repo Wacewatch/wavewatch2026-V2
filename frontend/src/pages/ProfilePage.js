@@ -4,6 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../lib/api';
 import { User, Save, Camera, Calendar, MapPin, Edit, Crown, Shield, Mail, X, Lock, MessageSquare, ArrowLeft, Trash2 } from 'lucide-react';
+import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 
 export default function ProfilePage() {
   const { user, loading: authLoading, refreshUser } = useAuth();
@@ -137,23 +138,26 @@ export default function ProfilePage() {
   );
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-8" data-testid="profile-page">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-2"><ArrowLeft className="w-4 h-4" />Retour au dashboard</Link>
-          <h1 className="text-3xl font-bold">Mon Profil</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-blue-400 font-medium">{user.username}</span>
-            {getRoleBadge()}
-          </div>
-        </div>
+    <ThemedPage testId="profile-page">
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        <ThemedHero
+          badge="Mon espace"
+          badgeIcon={User}
+          title="Profil"
+          subtitle="de"
+          highlight={user.username}
+          description="Gère tes informations, préférences et paramètres de sécurité."
+        />
+
+      {/* Action bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 -mt-3">
+        <Link to="/dashboard" className="text-sm text-foreground/60 hover:text-foreground flex items-center gap-1"><ArrowLeft className="w-4 h-4" />Retour au dashboard</Link>
         <div className="flex gap-2">
-          <button onClick={() => setIsEditing(!isEditing)} className="px-4 py-2 rounded-lg border border-border text-sm font-medium hover:bg-secondary flex items-center gap-2">
+          <button onClick={() => setIsEditing(!isEditing)} className="px-4 py-2 rounded-xl border border-border bg-card/80 backdrop-blur text-sm font-medium hover:bg-card flex items-center gap-2">
             {isEditing ? <><X className="w-4 h-4" />Annuler</> : <><Edit className="w-4 h-4" />Modifier</>}
           </button>
           {isEditing && (
-            <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2">
+            <button onClick={handleSave} disabled={saving} className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 shadow-lg">
               <Save className="w-4 h-4" />{saving ? 'Enregistrement...' : 'Sauvegarder'}
             </button>
           )}
@@ -286,6 +290,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </ThemedPage>
   );
 }

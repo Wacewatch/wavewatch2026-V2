@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import API from '../lib/api';
 import { Crown, Sparkles, Trophy, Lock } from 'lucide-react';
+import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 
 function formatRemaining(ms) {
   if (ms <= 0) return null;
@@ -63,11 +64,13 @@ export default function VIPGamePage() {
   if (!config) return null;
   if (!config.enabled) {
     return (
-      <div className="container mx-auto px-4 py-16 max-w-2xl text-center" data-testid="vip-game-disabled">
-        <Lock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-        <h1 className="text-2xl font-bold mb-2">Jeu indisponible</h1>
-        <p className="text-muted-foreground">Le jeu VIP est temporairement désactivé. Revenez plus tard !</p>
-      </div>
+      <ThemedPage testId="vip-game-disabled">
+        <div className="container mx-auto px-4 py-16 max-w-2xl text-center">
+          <Lock className="w-12 h-12 mx-auto mb-4 text-foreground/40" />
+          <h1 className="text-2xl font-bold mb-2">Jeu indisponible</h1>
+          <p className="text-foreground/60">Le jeu VIP est temporairement désactivé. Revenez plus tard !</p>
+        </div>
+      </ThemedPage>
     );
   }
 
@@ -85,13 +88,26 @@ export default function VIPGamePage() {
   const rewardLabel = config.reward_type === 'vip_plus' ? 'VIP+' : 'VIP';
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl" data-testid="vip-game-page">
-      <div className="bg-gradient-to-br from-purple-900/50 via-pink-900/50 to-orange-900/50 border border-purple-700 rounded-2xl p-8">
+    <ThemedPage testId="vip-game-page">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <ThemedHero
+          badge="Jeu quotidien"
+          badgeIcon={Sparkles}
+          title={config.title || 'Jeu VIP'}
+          subtitle=""
+          highlight="Gratuit"
+          description={config.subtitle || `Tente de gagner ${rewardLabel} pour ${config.reward_days || 30} jours, gratuitement.`}
+        />
+
+        <div className="relative overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-br from-purple-900/40 via-pink-900/30 to-orange-900/30 backdrop-blur-xl p-6 md:p-8">
+          <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full blur-3xl opacity-30" style={{ background: c1 }} />
+          <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full blur-3xl opacity-30" style={{ background: c2 }} />
+
+          <div className="relative">
         <div className="text-center mb-8">
-          <Sparkles className="w-10 h-10 text-yellow-400 mx-auto mb-3" />
-          <h1 className="text-3xl font-bold mb-2">{config.title || 'Jeu VIP Gratuit'}</h1>
-          <p className="text-lg text-muted-foreground">{config.subtitle || 'Tentez de gagner un statut VIP gratuit !'}</p>
-          <p className="text-sm text-yellow-400 mt-2">Récompense: <span className="font-bold">{rewardLabel}</span> pour <span className="font-bold">{config.reward_days || 30} jours</span></p>
+          <p className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-200 text-xs font-bold uppercase tracking-wider">
+            <Crown className="w-3 h-3" />Récompense: {rewardLabel} pour {config.reward_days || 30} jours
+          </p>
         </div>
         {/* Wheel */}
         <div className="relative w-64 h-64 mx-auto mb-8">
@@ -136,7 +152,9 @@ export default function VIPGamePage() {
             </div>
           </div>
         )}
+        </div>
       </div>
-    </div>
+      </div>
+    </ThemedPage>
   );
 }

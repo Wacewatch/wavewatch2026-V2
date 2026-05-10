@@ -40,22 +40,22 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative min-h-[90vh] text-white" style={{ background: 'linear-gradient(180deg, #050b18 0%, #0a0f1c 30%, #050b18 100%)' }} data-testid="register-page">
+    <div className="relative min-h-[90vh] text-white" style={{ background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 35%, hsl(var(--background)) 100%)' }} data-testid="register-page">
       {/* Animated background orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] rounded-full opacity-30 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.55), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--primary) / 0.45), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
         <div className="absolute top-40 -right-40 w-[36rem] h-[36rem] rounded-full opacity-25 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(6,182,212,0.55), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
         <div className="absolute bottom-0 left-1/3 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(168,85,247,0.55), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--ring) / 0.4), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
       </div>
 
       <div className="relative container mx-auto px-4 py-12 md:py-20 flex items-center justify-center min-h-[90vh]">
         <div className="w-full max-w-md">
           <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-emerald-500/20 via-cyan-500/10 to-purple-500/20 blur-2xl pointer-events-none" />
 
-          <div className="relative rounded-3xl border border-white/10 bg-[#0b1220]/85 backdrop-blur-xl p-7 md:p-9 shadow-2xl shadow-black/50 overflow-hidden">
+          <div className="relative rounded-3xl border border-white/10 bg-card/85 backdrop-blur-xl p-7 md:p-9 shadow-2xl shadow-black/50 overflow-hidden">
             <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
             <div className="relative">

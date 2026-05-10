@@ -35,14 +35,14 @@ export default function FAQPage() {
   }, [search, cat]);
 
   return (
-    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, #050b18 0%, #0a0f1c 30%, #050b18 100%)' }} data-testid="faq-page">
+    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 35%, hsl(var(--background)) 100%)' }} data-testid="faq-page">
       <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] rounded-full opacity-30 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(245,158,11,0.5), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--primary) / 0.45), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
         <div className="absolute top-40 -right-40 w-[36rem] h-[36rem] rounded-full opacity-25 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(59,130,246,0.55), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
         <div className="absolute bottom-0 left-1/3 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(168,85,247,0.55), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--ring) / 0.4), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
       </div>
 
       <div className="relative container mx-auto px-4 py-8 max-w-4xl">
@@ -68,7 +68,7 @@ export default function FAQPage() {
         </div>
 
         {/* TOOLBAR */}
-        <div className="relative rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl p-3 md:p-4 mb-5 sticky top-16 z-40 shadow-xl shadow-black/30">
+        <div className="relative rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl p-3 md:p-4 mb-5 sticky top-16 z-40 shadow-xl shadow-black/30">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -115,7 +115,7 @@ export default function FAQPage() {
             const I = f.icon;
             const cMeta = CATS.find(c => c.id === f.cat) || CATS[1];
             return (
-              <div key={i} className={`relative overflow-hidden rounded-2xl border bg-[#0b1220]/80 backdrop-blur-xl transition-all ${isOpen ? 'border-white/25 shadow-xl shadow-black/30' : 'border-white/10 hover:border-white/20'}`} data-testid={`faq-item-${i}`}>
+              <div key={i} className={`relative overflow-hidden rounded-2xl border bg-card/80 backdrop-blur-xl transition-all ${isOpen ? 'border-white/25 shadow-xl shadow-black/30' : 'border-white/10 hover:border-white/20'}`} data-testid={`faq-item-${i}`}>
                 {isOpen && (
                   <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-3xl opacity-20 pointer-events-none" style={{ background: cMeta.hex }} />
                 )}

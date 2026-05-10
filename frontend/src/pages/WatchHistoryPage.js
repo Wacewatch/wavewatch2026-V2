@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import API, { TMDB_IMG } from '../lib/api';
 import { LoadingSpinner } from '../components/Loading';
 import { Clock, Film, Tv, Trash2, History } from 'lucide-react';
+import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 
 export default function WatchHistoryPage() {
   const { user } = useAuth();
@@ -17,12 +18,14 @@ export default function WatchHistoryPage() {
   }, [user]);
 
   if (!user) return (
-    <div className="container mx-auto px-4 py-16 text-center" data-testid="watch-history-page">
-      <History className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-      <h1 className="text-2xl font-bold mb-2">Historique de visionnage</h1>
-      <p className="text-muted-foreground mb-4">Connectez-vous pour voir votre historique</p>
-      <Link to="/login" className="px-6 py-2 rounded-lg bg-primary text-primary-foreground">Connexion</Link>
-    </div>
+    <ThemedPage testId="watch-history-page">
+      <div className="container mx-auto px-4 py-16 text-center">
+        <History className="w-16 h-16 text-foreground/40 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold mb-2">Historique de visionnage</h1>
+        <p className="text-foreground/60 mb-4">Connectez-vous pour voir votre historique</p>
+        <Link to="/login" className="px-6 py-2 rounded-xl bg-primary text-primary-foreground font-medium shadow-lg">Connexion</Link>
+      </div>
+    </ThemedPage>
   );
 
   if (loading) return <LoadingSpinner />;
@@ -34,19 +37,33 @@ export default function WatchHistoryPage() {
     setHistory([]);
   };
 
+  const movieCount = history.filter(h => h.content_type === 'movie').length;
+  const tvCount = history.filter(h => h.content_type !== 'movie').length;
+
   return (
-    <div className="container mx-auto px-4 py-8" data-testid="watch-history-page">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><History className="w-8 h-8 text-blue-400" />Historique</h1>
-          <p className="text-muted-foreground mt-1">{history.length} element{history.length !== 1 ? 's' : ''} dans votre historique</p>
-        </div>
+    <ThemedPage testId="watch-history-page">
+      <div className="container mx-auto px-4 py-8">
+        <ThemedHero
+          badge="Visionnage"
+          badgeIcon={History}
+          title="Mon"
+          subtitle=""
+          highlight="Historique"
+          description="Tous les contenus que tu as regardés sur WaveWatch."
+          stats={[
+            { icon: History, label: 'Total',  value: history.length, color: 'hsl(var(--primary))' },
+            { icon: Film,    label: 'Films',  value: movieCount,     color: 'hsl(var(--accent))' },
+            { icon: Tv,      label: 'Séries', value: tvCount,        color: 'hsl(var(--ring))' },
+          ]}
+        />
+
         {history.length > 0 && (
-          <button onClick={clearHistory} className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm hover:bg-destructive hover:text-destructive-foreground transition-colors" data-testid="clear-history-btn">
-            <Trash2 className="w-4 h-4" />Effacer
-          </button>
+          <div className="flex justify-end mb-4">
+            <button onClick={clearHistory} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-card/80 backdrop-blur text-sm font-medium hover:bg-destructive hover:text-destructive-foreground transition-colors" data-testid="clear-history-btn">
+              <Trash2 className="w-4 h-4" />Effacer
+            </button>
+          </div>
         )}
-      </div>
 
       <div className="flex gap-2 mb-6">
         {[{ val: 'all', label: 'Tout' }, { val: 'movie', label: 'Films' }, { val: 'tv', label: 'Series' }].map(f => (
@@ -85,6 +102,7 @@ export default function WatchHistoryPage() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </ThemedPage>
   );
 }

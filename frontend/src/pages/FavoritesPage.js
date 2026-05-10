@@ -5,6 +5,7 @@ import API, { TMDB_IMG } from '../lib/api';
 import { LoadingSpinner } from '../components/Loading';
 import { Heart, Film, Tv, Play, Music, Gamepad2, BookOpen, Monitor, Radio, Star, User, Trash2, Filter } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 
 const TYPE_CONFIG = {
   movie: { icon: Film, label: 'Film', color: 'text-red-400', bg: 'bg-red-500/20', path: 'movies' },
@@ -54,9 +55,20 @@ export default function FavoritesPage() {
   const filtered = typeFilter === 'all' ? favorites : favorites.filter(f => f.content_type === typeFilter);
 
   return (
-    <div className="container mx-auto px-4 py-8" data-testid="favorites-page">
-      <h1 className="text-3xl font-bold mb-2 flex items-center gap-3"><Heart className="w-8 h-8 text-red-400 fill-red-400" />Mes Favoris</h1>
-      <p className="text-muted-foreground mb-6">{favorites.length} elements</p>
+    <ThemedPage testId="favorites-page">
+      <div className="container mx-auto px-4 py-8">
+        <ThemedHero
+          badge="Ma collection"
+          badgeIcon={Heart}
+          title="Mes"
+          subtitle=""
+          highlight="Favoris"
+          description="Tous tes coups de cœur en un seul endroit. Films, séries, musique, jeux, ebooks et plus."
+          stats={[
+            { icon: Heart, label: 'Favoris', value: favorites.length, color: 'hsl(var(--primary))' },
+            { icon: Filter, label: 'Types',   value: types.length,      color: 'hsl(var(--accent))' },
+          ]}
+        />
 
       {/* Type filters */}
       <div className="flex flex-wrap gap-2 mb-6">
@@ -124,6 +136,7 @@ export default function FavoritesPage() {
           })}
         </div>
       )}
-    </div>
+      </div>
+    </ThemedPage>
   );
 }

@@ -42,7 +42,7 @@ function ActorCard({ a, idx }) {
   return (
     <Link to={`/actors/${a.id}`} className="group block relative" data-testid={`actor-card-${a.id}`}>
       <div className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-br ${FALLBACK_GRADIENTS[idx % FALLBACK_GRADIENTS.length]} opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-500 pointer-events-none`} />
-      <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0b1220]/95 group-hover:border-white/30 transition-all duration-300 group-hover:-translate-y-1">
+      <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-card/95 group-hover:border-white/30 transition-all duration-300 group-hover:-translate-y-1">
         <div className="relative aspect-[2/3] overflow-hidden">
           {a.profile_path ? (
             <img
@@ -119,19 +119,17 @@ export default function ActorsPage() {
   }, [page, debouncedSearch]);
 
   const cActors = useCountUp(totalResults);
-  const cPage = useCountUp(page);
-  const cPages = useCountUp(totalPages);
 
   return (
-    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, #050b18 0%, #0a0f1c 30%, #050b18 100%)' }} data-testid="actors-page">
+    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 35%, hsl(var(--background)) 100%)' }} data-testid="actors-page">
       {/* Animated background orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] rounded-full opacity-30 blur-3xl"
           style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.5), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
         <div className="absolute top-40 -right-40 w-[36rem] h-[36rem] rounded-full opacity-25 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(168,85,247,0.55), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--ring) / 0.4), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
         <div className="absolute bottom-0 left-1/3 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(59,130,246,0.55), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
       </div>
 
       <div className="relative container mx-auto px-4 py-8">
@@ -157,30 +155,21 @@ export default function ActorsPage() {
                 </p>
               </div>
 
-              {/* Stats cards */}
-              <div className="grid grid-cols-3 gap-3 w-full lg:w-auto lg:flex-shrink-0">
-                {[
-                  { value: cActors, label: 'Acteurs', hex: '#ec4899', icon: Users },
-                  { value: cPage,   label: 'Page',    hex: '#a855f7', icon: Layers },
-                  { value: cPages,  label: 'Pages',   hex: '#06b6d4', icon: Zap },
-                ].map(s => {
-                  const I = s.icon;
-                  return (
-                    <div key={s.label} className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md px-3 md:px-5 py-4 group hover:border-white/25 transition-colors">
-                      <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full blur-2xl opacity-40 group-hover:opacity-70 transition-opacity" style={{ background: s.hex }} />
-                      <I className="w-4 h-4 mb-2" style={{ color: s.hex }} />
-                      <p className="text-2xl md:text-4xl font-black tabular-nums" style={{ color: s.hex }}>{s.value}</p>
-                      <p className="text-[10px] md:text-xs uppercase tracking-widest text-slate-400 font-semibold mt-1">{s.label}</p>
-                    </div>
-                  );
-                })}
+              {/* Stats card unique */}
+              <div className="w-full lg:w-auto lg:flex-shrink-0">
+                <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md px-6 md:px-8 py-5 group hover:border-white/25 transition-colors min-w-[200px]">
+                  <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full blur-2xl opacity-50 group-hover:opacity-80 transition-opacity" style={{ background: 'hsl(var(--primary))' }} />
+                  <Users className="w-5 h-5 mb-2" style={{ color: 'hsl(var(--primary))' }} />
+                  <p className="text-3xl md:text-5xl font-black tabular-nums" style={{ color: 'hsl(var(--primary))' }}>{cActors.toLocaleString('fr-FR')}</p>
+                  <p className="text-[11px] md:text-xs uppercase tracking-widest text-slate-400 font-semibold mt-1">Acteurs au total</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* TOOLBAR */}
-        <div className="relative rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl p-3 md:p-4 mb-5 sticky top-16 z-40 shadow-xl shadow-black/30">
+        <div className="relative rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl p-3 md:p-4 mb-5 sticky top-16 z-40 shadow-xl shadow-black/30">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -206,7 +195,7 @@ export default function ActorsPage() {
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
             {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-white/10 bg-[#0b1220]/80 overflow-hidden animate-pulse">
+              <div key={i} className="rounded-2xl border border-white/10 bg-card/80 overflow-hidden animate-pulse">
                 <div className="aspect-[2/3] bg-white/5" />
                 <div className="p-3 space-y-2">
                   <div className="h-3 bg-white/10 rounded w-3/4" />

@@ -487,3 +487,36 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
 - AnimeDetailPage, EbookDetailPage, GameDetailPage, MusicDetailPage, SoftwareDetailPage, PlaylistDetailPage, DirectorDetailPage
 
 **Admin** : AdminPage (interne, peut rester technique)
+
+## Iteration 39 — 2026-05-10 — Themed wrapper + 8 nouvelles pages
+
+### Nouveau composant réutilisable
+- **`/app/frontend/src/components/design/ThemedPage.js`** : `<ThemedPage>` (wrapper avec background + orbes themed) et `<ThemedHero>` (hero gradient avec badge/title/subtitle/highlight/description/stats). Utilise `hsl(var(--background))`, `hsl(var(--card))`, `hsl(var(--primary))`, `hsl(var(--accent))`, `hsl(var(--ring))` → s'adapte automatiquement au thème (Sakura, Cyberpunk, Premium, VIP, VIP+, etc.)
+
+### Migration des 11 pages déjà refaites vers les variables CSS du thème
+- ActorsPage, CalendarPage, LoginPage, RegisterPage, HomePage, DNSVPNPage, FAQPage, ChangelogsPage, ContactStaffPage, DiscoverPlaylistsPage, Footer
+- Remplacements globaux: `#050b18` → `hsl(var(--background))`, `bg-[#0b1220]/X` → `bg-card/X`, orbes hardcodées → `hsl(var(--primary|accent|ring) / 0.4)`
+
+### 8 pages refaites au pattern themed
+- **DashboardPage** (`/dashboard`) : hero "Bonjour, {username}" + 4 stats (Temps total/Films/Séries/Succès), sections existantes intactes
+- **ProfilePage** (`/profile`) : hero "Profil de {username}", boutons modifier/sauvegarder en pills
+- **FavoritesPage** (`/favorites`) : hero "Mes Favoris" + stats (Favoris, Types)
+- **WatchHistoryPage** (`/history`) : hero "Mon Historique" + 3 stats (Total/Films/Séries) + bouton effacer
+- **PlaylistsPage** (`/playlists`) : hero "Mes Playlists" + 3 stats (Total/Publiques/Privées) + bouton créer
+- **SubscriptionPage** (`/subscription`) : hero "Choisis ton plan" + 3 cards plan stylées (Gratuit/VIP/VIP+) avec gradient, glow et tags (Populaire/Premium), CTA bonus "Tente ta chance" vers /vip-game
+- **VIPGamePage** (`/vip-game`) : hero "Jeu VIP Gratuit" + card roue conservée (avec backdrop blur et orbes c1/c2)
+- **CollectionsPage** (`/collections`) : hero "Collections & Sagas" + barre recherche sticky en glassmorphism
+
+### ActorsPage stats
+- Avant : 3 stats (Acteurs / Page / Pages)
+- Après : **1 stat** unique en grand (Acteurs au total) — comme demandé par l'utilisateur
+
+### Effets thèmes VIP intacts (vérifié)
+- z-index élevé pour `body::after` (ambient glow VIP) et `::before` (particules VIP+)
+- nav animée, scrollbar gradient, glow boutons et titres VIP : OK via classes `theme-X` sur `<html>`
+- Maintenant que toutes les pages utilisent `bg-background` et `hsl(var(--primary))`, **les couleurs s'adaptent automatiquement** au thème sélectionné (Sakura → roses, Cyberpunk → cyans, etc.)
+
+### Pages restantes (option, à demander)
+- Achievements, Leaderboard, Messages, ContentRequests, DownloadLinks, Search, WatchParty/Room, Spectacles
+- Pages détail (ActorDetail, MovieDetail, etc.) — souvent layout dédié, refonte optionnelle
+- Admin — interne, peut rester technique

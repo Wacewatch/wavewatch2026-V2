@@ -33,14 +33,14 @@ function CopyChip({ value, hex }) {
 
 export default function DNSVPNPage() {
   return (
-    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, #050b18 0%, #0a0f1c 30%, #050b18 100%)' }} data-testid="dns-vpn-page">
+    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 35%, hsl(var(--background)) 100%)' }} data-testid="dns-vpn-page">
       <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] rounded-full opacity-30 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.55), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--primary) / 0.45), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
         <div className="absolute top-40 -right-40 w-[36rem] h-[36rem] rounded-full opacity-25 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(6,182,212,0.55), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
         <div className="absolute bottom-0 left-1/3 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(59,130,246,0.55), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
       </div>
 
       <div className="relative container mx-auto px-4 py-8 max-w-5xl">
@@ -66,7 +66,7 @@ export default function DNSVPNPage() {
         </div>
 
         {/* DNS */}
-        <div className="rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl p-5 md:p-6 mb-6 shadow-xl shadow-black/30">
+        <div className="rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl p-5 md:p-6 mb-6 shadow-xl shadow-black/30">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
               <Globe className="w-5 h-5 text-white" />
@@ -102,7 +102,7 @@ export default function DNSVPNPage() {
         </div>
 
         {/* VPN */}
-        <div className="rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl p-5 md:p-6 shadow-xl shadow-black/30">
+        <div className="rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl p-5 md:p-6 shadow-xl shadow-black/30">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30">
               <Lock className="w-5 h-5 text-white" />

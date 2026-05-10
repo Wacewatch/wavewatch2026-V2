@@ -150,7 +150,7 @@ function PlaylistGridCard({ playlist, idx }) {
       {/* Glow background that animates on hover */}
       <div className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-br ${FALLBACK_GRADIENTS[idx % FALLBACK_GRADIENTS.length]} opacity-0 group-hover:opacity-60 blur-xl transition-opacity duration-500 pointer-events-none`} />
 
-      <div className={`relative rounded-2xl overflow-hidden border bg-[#0b1220]/95 transition-all duration-300 group-hover:-translate-y-1 ${isStaff ? 'border-amber-400/50 shadow-lg shadow-amber-500/10' : 'border-white/10 group-hover:border-white/30'}`}>
+      <div className={`relative rounded-2xl overflow-hidden border bg-card/95 transition-all duration-300 group-hover:-translate-y-1 ${isStaff ? 'border-amber-400/50 shadow-lg shadow-amber-500/10' : 'border-white/10 group-hover:border-white/30'}`}>
         {/* Cover with overlay */}
         <div className="relative h-52 overflow-hidden">
           <PlaylistCover playlist={playlist} idx={idx} className="h-full" />
@@ -236,7 +236,7 @@ function PlaylistGridCard({ playlist, idx }) {
 function PlaylistListRow({ playlist, idx }) {
   const isStaff = playlist.user_info?.is_admin || playlist.user_info?.is_uploader;
   return (
-    <Link to={`/playlists/${playlist._id}`} className="group flex items-center gap-3 p-3 rounded-2xl border border-white/10 bg-[#0b1220]/90 hover:bg-[#0b1220] hover:border-cyan-500/40 transition-all hover:shadow-xl hover:shadow-cyan-500/10" data-testid={`discover-playlist-${playlist._id}`}>
+    <Link to={`/playlists/${playlist._id}`} className="group flex items-center gap-3 p-3 rounded-2xl border border-white/10 bg-card/90 hover:bg-[#0b1220] hover:border-cyan-500/40 transition-all hover:shadow-xl hover:shadow-cyan-500/10" data-testid={`discover-playlist-${playlist._id}`}>
       <div className={`relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 ${isStaff ? 'ring-2 ring-amber-400/70 ring-offset-2 ring-offset-black' : ''}`}>
         <PlaylistCover playlist={playlist} idx={idx} className="h-full w-full" />
       </div>
@@ -285,7 +285,7 @@ function SortDropdown({ value, onChange }) {
         <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl border border-white/15 bg-[#0b1220]/98 backdrop-blur-xl shadow-2xl shadow-black/50 z-50 py-1.5 overflow-hidden">
+        <div className="absolute right-0 top-full mt-1.5 w-60 rounded-xl border border-white/15 bg-card/98 backdrop-blur-xl shadow-2xl shadow-black/50 z-50 py-1.5 overflow-hidden">
           {SORT_OPTIONS.map(o => {
             const I = o.icon;
             const active = o.value === value;
@@ -367,15 +367,15 @@ export default function DiscoverPlaylistsPage() {
   const totalPages = Math.max(1, Math.ceil(total / 20));
 
   return (
-    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, #050b18 0%, #0a0f1c 30%, #050b18 100%)' }} data-testid="discover-playlists-page">
+    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 35%, hsl(var(--background)) 100%)' }} data-testid="discover-playlists-page">
       {/* Animated background orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] rounded-full opacity-30 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.55), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--primary) / 0.45), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
         <div className="absolute top-40 -right-40 w-[36rem] h-[36rem] rounded-full opacity-25 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(59,130,246,0.55), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
         <div className="absolute bottom-0 left-1/3 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(168,85,247,0.55), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--ring) / 0.4), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
       </div>
 
       <div className="relative container mx-auto px-4 py-8">
@@ -426,7 +426,7 @@ export default function DiscoverPlaylistsPage() {
         </div>
 
         {/* TOOLBAR */}
-        <div className="relative rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl p-3 md:p-4 mb-5 sticky top-16 z-40 shadow-xl shadow-black/30">
+        <div className="relative rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl p-3 md:p-4 mb-5 sticky top-16 z-40 shadow-xl shadow-black/30">
           <div className="flex flex-wrap items-center gap-2">
             {/* Search */}
             <div className="relative flex-1 min-w-[200px]">
@@ -563,7 +563,7 @@ export default function DiscoverPlaylistsPage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="rounded-2xl border border-white/10 bg-[#0b1220]/80 overflow-hidden animate-pulse">
+              <div key={i} className="rounded-2xl border border-white/10 bg-card/80 overflow-hidden animate-pulse">
                 <div className="h-52 bg-white/5" />
                 <div className="p-4 space-y-2">
                   <div className="h-4 bg-white/10 rounded w-3/4" />
@@ -574,7 +574,7 @@ export default function DiscoverPlaylistsPage() {
           </div>
         ) : playlists.length === 0 ? (
           <div className="relative overflow-hidden text-center py-16 md:py-20 rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-950/30 via-cyan-950/20 to-blue-950/30">
-            <div className="absolute -top-20 left-1/4 w-72 h-72 rounded-full blur-3xl opacity-20" style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.5), transparent 70%)' }} />
+            <div className="absolute -top-20 left-1/4 w-72 h-72 rounded-full blur-3xl opacity-20" style={{ background: 'radial-gradient(closest-side, hsl(var(--primary) / 0.4), transparent 70%)' }} />
             <div className="absolute -bottom-20 right-1/4 w-80 h-80 rounded-full blur-3xl opacity-20" style={{ background: 'radial-gradient(closest-side, rgba(59,130,246,0.5), transparent 70%)' }} />
             <div className="relative max-w-md mx-auto px-6">
               <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-400 to-cyan-500 mb-5 shadow-2xl shadow-cyan-500/40">

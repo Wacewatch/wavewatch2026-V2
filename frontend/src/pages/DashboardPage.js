@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import ContentCard from '../components/ContentCard';
 import { Heart, Eye, ListMusic, Crown, Star, Clock, Award, MessageSquare, Film, Tv, Trophy, ChevronRight, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Zap, Calendar, TrendingUp, BarChart3, Users, Sparkles } from 'lucide-react';
+import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 
 function RatingBar({ label, value, onChange }) {
   const getColor = (i) => {
@@ -129,31 +130,35 @@ export default function DashboardPage() {
   const displayedReviews = showAllReviews ? communityReviews.reviews : communityReviews.reviews.slice(0, 5);
 
   return (
-    <div className="container mx-auto px-4 py-8 space-y-6" data-testid="dashboard-page">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Tableau de bord</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-muted-foreground">Bienvenue,</span>
-            <span className="font-medium text-blue-400">{user.username}</span>
-            {user.is_admin && <span className="px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-400 border border-red-500/30">Admin</span>}
-            {user.is_vip_plus && <span className="px-2 py-0.5 rounded-full text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30"><Crown className="w-3 h-3 inline mr-1" />VIP+</span>}
-            {user.is_vip && !user.is_vip_plus && <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"><Crown className="w-3 h-3 inline mr-1" />VIP</span>}
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <ThemedPage testId="dashboard-page">
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        <ThemedHero
+          badge="Tableau de bord"
+          badgeIcon={BarChart3}
+          title="Bonjour,"
+          subtitle=""
+          highlight={user.username}
+          description="Suis tes stats, tes succès, tes favoris et garde un œil sur ton activité WaveWatch."
+          stats={[
+            { icon: Clock,    label: 'Temps total',  value: `${totalHours}h`,                        color: 'hsl(var(--primary))' },
+            { icon: Film,     label: 'Films vus',    value: detailedStats?.movies_watched || 0,      color: 'hsl(var(--accent))' },
+            { icon: Tv,       label: 'Séries',       value: detailedStats?.shows_watched || 0,       color: 'hsl(var(--ring))' },
+            { icon: Trophy,   label: 'Succès',       value: `${unlockedCount}/${achievements.length}`, color: 'hsl(var(--primary))' },
+          ]}
+        />
+
+      {/* Quick links */}
+      <div className="flex flex-wrap gap-2 -mt-3">
           {[
             { to: '/profile', label: 'Profil', icon: <Crown className="w-4 h-4" /> },
             { to: '/playlists', label: 'Mes Playlists', icon: <Film className="w-4 h-4" /> },
             { to: '/messages', label: 'Messagerie', icon: <MessageSquare className="w-4 h-4" /> },
             { to: '/requests', label: 'Demandes', icon: <MessageSquare className="w-4 h-4" /> },
           ].map(l => (
-            <Link key={l.to} to={l.to} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-card hover:bg-secondary transition-colors text-sm" data-testid={`nav-${l.label.toLowerCase().replace(/\s/g, '-')}`}>
+            <Link key={l.to} to={l.to} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-card/80 backdrop-blur hover:bg-card transition-colors text-sm" data-testid={`nav-${l.label.toLowerCase().replace(/\s/g, '-')}`}>
               {l.icon}<span>{l.label}</span>
             </Link>
           ))}
-        </div>
       </div>
 
       {/* Main Stats */}
@@ -333,6 +338,7 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </ThemedPage>
   );
 }

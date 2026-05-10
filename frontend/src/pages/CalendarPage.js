@@ -162,15 +162,15 @@ export default function CalendarPage() {
   const upcoming = filteredEvents.filter(e => new Date(e.date) >= today);
 
   return (
-    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, #050b18 0%, #0a0f1c 30%, #050b18 100%)' }} data-testid="calendar-page">
+    <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 35%, hsl(var(--background)) 100%)' }} data-testid="calendar-page">
       {/* Animated background orbs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] rounded-full opacity-30 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(59,130,246,0.55), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--accent) / 0.45), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
         <div className="absolute top-40 -right-40 w-[36rem] h-[36rem] rounded-full opacity-25 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(168,85,247,0.55), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--ring) / 0.4), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
         <div className="absolute bottom-0 left-1/3 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.55), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+          style={{ background: 'radial-gradient(closest-side, hsl(var(--primary) / 0.45), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
       </div>
 
       <div className="relative container mx-auto px-4 py-8">
@@ -220,7 +220,7 @@ export default function CalendarPage() {
         </div>
 
         {/* TOOLBAR FILTRES */}
-        <div className="relative rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl p-3 md:p-4 mb-5 sticky top-16 z-40 shadow-xl shadow-black/30">
+        <div className="relative rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl p-3 md:p-4 mb-5 sticky top-16 z-40 shadow-xl shadow-black/30">
           <div className="flex flex-wrap items-center gap-2" data-testid="calendar-filters">
             <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mr-2 flex items-center gap-1.5">
               <Filter className="w-3.5 h-3.5" />Filtres
@@ -247,7 +247,7 @@ export default function CalendarPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* CALENDRIER */}
-            <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl overflow-hidden shadow-xl shadow-black/30">
+            <div className="lg:col-span-2 rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl overflow-hidden shadow-xl shadow-black/30">
               <div className="relative overflow-hidden p-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(168,85,247,0.3) 50%, rgba(236,72,153,0.3))' }}>
                 <div className="absolute inset-0 opacity-[0.08] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
                 <h2 className="relative text-white font-black text-lg md:text-xl tracking-tight">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h2>
@@ -298,7 +298,7 @@ export default function CalendarPage() {
             </div>
 
             {/* LISTE PROCHAINES SORTIES */}
-            <div className="rounded-2xl border border-white/10 bg-[#0b1220]/80 backdrop-blur-xl overflow-hidden shadow-xl shadow-black/30">
+            <div className="rounded-2xl border border-white/10 bg-card/80 backdrop-blur-xl overflow-hidden shadow-xl shadow-black/30">
               <div className="relative overflow-hidden p-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, rgba(168,85,247,0.3), rgba(236,72,153,0.3))' }}>
                 <h2 className="relative text-white font-black text-lg flex items-center gap-2"><Sparkles className="w-5 h-5" />Prochaines sorties</h2>
                 <span className="relative px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-md text-white text-xs font-bold border border-white/20">{upcoming.length}</span>

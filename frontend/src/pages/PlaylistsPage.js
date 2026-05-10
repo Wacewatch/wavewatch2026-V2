@@ -4,6 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useNavigate, Link } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import { ListMusic, Plus, Trash2, Globe, Lock, Play, Eye, Film, Tv } from 'lucide-react';
+import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 
 export default function PlaylistsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -40,17 +41,31 @@ export default function PlaylistsPage() {
 
   const colors = ['from-blue-600 to-purple-600', 'from-pink-600 to-red-600', 'from-green-600 to-teal-600', 'from-orange-600 to-yellow-600', 'from-indigo-600 to-blue-600', 'from-purple-600 to-pink-600', 'from-cyan-600 to-blue-600', 'from-rose-600 to-pink-600'];
 
+  const publicCount = playlists.filter(p => p.is_public).length;
+  const privateCount = playlists.filter(p => !p.is_public).length;
+
   return (
-    <div className="container mx-auto px-4 py-8" data-testid="playlists-page">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3"><ListMusic className="w-8 h-8" />Mes Playlists</h1>
-          <p className="text-muted-foreground mt-1">{playlists.length} playlist{playlists.length !== 1 ? 's' : ''}</p>
+    <ThemedPage testId="playlists-page">
+      <div className="container mx-auto px-4 py-8">
+        <ThemedHero
+          badge="Mes collections"
+          badgeIcon={ListMusic}
+          title="Mes"
+          subtitle=""
+          highlight="Playlists"
+          description="Crée, organise et partage tes collections de films, séries et animes."
+          stats={[
+            { icon: ListMusic, label: 'Total',   value: playlists.length, color: 'hsl(var(--primary))' },
+            { icon: Globe,     label: 'Publiques', value: publicCount,     color: 'hsl(var(--accent))' },
+            { icon: Lock,      label: 'Privées',  value: privateCount,     color: 'hsl(var(--ring))' },
+          ]}
+        />
+
+        <div className="flex items-center justify-end mb-4">
+          <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 rounded-xl bg-primary text-primary-foreground flex items-center gap-2 hover:opacity-90 font-semibold shadow-lg" data-testid="create-playlist-btn">
+            <Plus className="w-4 h-4" />Créer une playlist
+          </button>
         </div>
-        <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground flex items-center gap-2 hover:opacity-90" data-testid="create-playlist-btn">
-          <Plus className="w-4 h-4" />Creer
-        </button>
-      </div>
 
       {showCreate && (
         <div className="bg-card border border-border rounded-xl p-6 mb-6" data-testid="create-playlist-form">
@@ -149,6 +164,7 @@ export default function PlaylistsPage() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </ThemedPage>
   );
 }
