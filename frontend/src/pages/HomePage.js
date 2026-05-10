@@ -365,48 +365,62 @@ function SubscriptionOffer() {
 }
 
 function RandomContent() {
-  const [content, setContent] = useState(null);
+  const [movie, setMovie] = useState(null);
+  const [tv, setTv] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const fetchRandom = () => {
     setLoading(true);
-    const page = Math.floor(Math.random() * 5) + 1;
-    const isMovie = Math.random() > 0.5;
-    API.get(`/api/tmdb/${isMovie ? 'popular/movies' : 'popular/tv'}?page=${page}`).then(({ data }) => {
-      const results = data.results || [];
-      if (results.length) setContent({ ...results[Math.floor(Math.random() * results.length)], isMovie });
-    }).catch(() => {}).finally(() => setLoading(false));
+    const moviePage = Math.floor(Math.random() * 5) + 1;
+    const tvPage = Math.floor(Math.random() * 5) + 1;
+    Promise.all([
+      API.get(`/api/tmdb/popular/movies?page=${moviePage}`).catch(() => ({ data: { results: [] } })),
+      API.get(`/api/tmdb/popular/tv?page=${tvPage}`).catch(() => ({ data: { results: [] } })),
+    ]).then(([mRes, tRes]) => {
+      const movies = mRes.data.results || [];
+      const tvs = tRes.data.results || [];
+      if (movies.length) setMovie(movies[Math.floor(Math.random() * movies.length)]);
+      if (tvs.length) setTv(tvs[Math.floor(Math.random() * tvs.length)]);
+    }).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchRandom(); }, []);
 
+  const Card = ({ item, isMovie }) => {
+    if (!item) return null;
+    return (
+      <Link to={`/${isMovie ? 'movies' : 'tv-shows'}/${item.id}`} className="flex flex-col sm:flex-row gap-4 p-4 group hover:bg-secondary/30 transition-colors rounded-xl" data-testid={`random-${isMovie ? 'movie' : 'tv'}-card`}>
+        <div className="w-full sm:w-32 md:w-36 aspect-[2/3] rounded-xl overflow-hidden bg-muted flex-shrink-0 mx-auto sm:mx-0 max-w-[180px]">
+          {item.poster_path && <img src={`${TMDB_IMG}/w300${item.poster_path}`} alt={item.title || item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            {isMovie ? <Film className="w-4 h-4 text-red-400" /> : <Tv className="w-4 h-4 text-blue-400" />}
+            <span className="text-xs text-muted-foreground">{isMovie ? 'Film' : 'Série'}</span>
+            <div className="flex items-center gap-1 ml-auto"><Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /><span className="text-sm font-medium">{item.vote_average?.toFixed(1)}</span></div>
+          </div>
+          <h3 className="text-base md:text-lg font-bold mb-2 group-hover:text-blue-400 transition-colors line-clamp-2">{item.title || item.name}</h3>
+          <p className="text-muted-foreground text-xs md:text-sm line-clamp-3 md:line-clamp-4">{item.overview}</p>
+          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600/90 text-white text-xs font-medium">
+            <Play className="w-3.5 h-3.5" />Voir
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden" data-testid="random-content">
-      <div className="p-4 flex items-center justify-between border-b border-border">
-        <h2 className="text-xl font-bold flex items-center gap-2"><Shuffle className="w-5 h-5 text-purple-400" />Contenu Aleatoire</h2>
+      <div className="p-4 flex items-center justify-between border-b border-border flex-wrap gap-2">
+        <h2 className="text-xl font-bold flex items-center gap-2"><Shuffle className="w-5 h-5 text-purple-400" />Contenu Aléatoire</h2>
         <button onClick={fetchRandom} disabled={loading} className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium disabled:opacity-50 transition-colors flex items-center gap-2" data-testid="random-refresh">
-          <Shuffle className="w-4 h-4" />{loading ? 'Chargement...' : 'Nouveau'}
+          <Shuffle className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />{loading ? 'Chargement...' : 'Nouveau'}
         </button>
       </div>
-      {content && (
-        <Link to={`/${content.isMovie ? 'movies' : 'tv-shows'}/${content.id}`} className="flex flex-col md:flex-row gap-4 p-4 group">
-          <div className="w-full md:w-48 aspect-[2/3] md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-muted flex-shrink-0">
-            {content.poster_path && <img src={`${TMDB_IMG}/w300${content.poster_path}`} alt={content.title || content.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              {content.isMovie ? <Film className="w-4 h-4 text-red-400" /> : <Tv className="w-4 h-4 text-blue-400" />}
-              <span className="text-xs text-muted-foreground">{content.isMovie ? 'Film' : 'Serie'}</span>
-              <div className="flex items-center gap-1 ml-auto"><Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /><span className="text-sm font-medium">{content.vote_average?.toFixed(1)}</span></div>
-            </div>
-            <h3 className="text-xl font-bold mb-2 group-hover:text-blue-400 transition-colors">{content.title || content.name}</h3>
-            <p className="text-muted-foreground text-sm line-clamp-4">{content.overview}</p>
-            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium">
-              <Play className="w-4 h-4" />Voir les details
-            </div>
-          </div>
-        </Link>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border">
+        <Card item={movie} isMovie />
+        <Card item={tv} isMovie={false} />
+      </div>
     </div>
   );
 }

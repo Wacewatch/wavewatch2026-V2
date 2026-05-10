@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 35 - Backend testing of GET /api/user/recommendations diversity (3 consecutive calls), source switching (personalised vs trending), exclusion of favorites/likes, quality (poster_path / vote_count >= 20), plus non-regression on /api/user/history, /api/user/favorites and the new tv-progress unmark-all-watched. 7/8 tests pass. Personalised path is fully compliant; trending path (new user with no seeds) fails the diversity requirement.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/user/recommendations (source=trending)",
+        "issue": "For users with no seeds (likes/favorites/history), 3 consecutive calls return ~89% identical items. Requirement was overlap < 50% between at least one pair of calls. RCA: server.py ~L2543-2557 only randomises between TMDB trending page 1 OR 2 (random.choice([1,2])), then slices results[:36] (TMDB returns 20/page) and shuffles to pick 18. When the same page is picked (50% chance per call), the candidate pool contains the same ~20 items, so any two such calls share ~18/18 IDs (overlap ~1.0 even after shuffle of the returned slice). Across 3 calls there is a high probability all three pick the same page, giving min overlap >> 0.5.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iteration35_recommendations_diversity.py",
+    "/app/test_reports/pytest/iteration_35.xml"
+  ],
+  "action_items": [
+    "Fix trending-path diversity in get_user_recommendations (server.py ~L2543-2557): widen the candidate pool by fetching MULTIPLE pages (e.g. fetch page 1 + page 2 + page 3 in parallel, or a random subset of pages 1..5) into a >=40-item pool, then shuffle and return 18. Optionally also mix /trending/movie/week + /trending/tv/week to broaden variety. After the fix, re-run test_three_calls_have_variation_trending which currently asserts min overlap < 0.5."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now ~3602 lines - still way over 700-line guideline; recommend splitting into routers (auth/tv_progress/history/favorites/recommendations).",
+    "Trending fallback (no seeds) only paginates over [1,2] - too small a pool for true randomness; min achievable overlap ~10% only when pages differ (50% chance per call).",
+    "Recommendations endpoint does NOT support pagination/seed query params; client cannot force-refresh-with-seed if it ever wanted deterministic A/B behaviour.",
+    "out.sort(key=_score, reverse=True) then random.shuffle(top_pool) produces good variety for personalised, but `top_pool = out[:36]` may shrink to <18 if the seed-derived pool is small for niche users (e.g. 1 like with few similar items) - consider keeping the trending top-up always active to guarantee a 36-item pool."
+  ],
+  "updated_files": ["/app/backend/tests/test_iteration35_recommendations_diversity.py"],
+  "success_rate": {"backend": "87.5%", "frontend": "not tested"},
+  "test_credentials": "Tests register two ephemeral @gmail.com users (new_user + seeded_user) per pytest module run via /api/auth/register. Admin creds in /app/memory/test_credentials.md not used.",
+  "seed_data_creation": "seeded_user fixture: 4 likes (movie 550 Fight Club, movie 13 Forrest Gump, tv 1399 GoT, tv 1396 Breaking Bad) + 1 favorite (movie 157336 Interstellar). new_user has zero seeds.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After the main agent widens the trending pool, just re-run: pytest /app/backend/tests/test_iteration35_recommendations_diversity.py -v. Personalised diversity & exclusion already validated. Note the recos endpoint takes up to ~3-5s per call (TMDB calls), so 3 sequential calls in the diversity test take ~10-15s. /api/user/recommendations returns {recommendations: [...], source: 'personalised'|'trending'}. Each item must have media_type ('movie' or 'tv') and an id. Quality gate confirmed: every personalised item has poster_path and vote_count >= 20. Excluded items (favorites/likes/dislikes/history) verified absent.",
+  "rca of the issue": "Reproduction: register a fresh user (no likes/favorites/history) -> hit GET /api/user/recommendations 3 times -> capture (media_type, id) sets -> compute pairwise overlap. Observed min overlap 0.89; threshold per spec is < 0.5. Root cause in server.py ~L2543: `page = _random.choice([1, 2])` + single TMDB call + results[:36] (TMDB returns 20 per page) + shuffle + return 18. Same page picked twice => same 20-item pool => 18/18 overlap regardless of shuffle. Mitigation: fetch multiple pages (parallel httpx.gather over pages 1..3 or even 1..5) into a single combined candidate list of ~60 items, shuffle, return 18. Optionally rotate trending endpoints (trending/all vs trending/movie + trending/tv) for extra diversity. Personalised path is fine because seeds × (similar+recommendations) × pages 1-2 already builds an 80-item pool so shuffling top-36 produces low overlap (verified)."
+}

@@ -2541,19 +2541,23 @@ async def get_user_recommendations(user: dict = Depends(get_current_user)):
         _add_seed(h.get("content_type"), h.get("content_id"))
 
     if not seeds:
-        # Brand new user: trending mix
+        # Brand new user: trending mix (random page 1 or 2 for variety)
+        import random as _random
+        page = _random.choice([1, 2])
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:
-                r = await client.get(f"https://api.themoviedb.org/3/trending/all/week?api_key={tmdb_key}&language=fr-FR")
-                results = r.json().get("results", [])[:24]
+                r = await client.get(f"https://api.themoviedb.org/3/trending/all/week?api_key={tmdb_key}&language=fr-FR&page={page}")
+                results = r.json().get("results", [])[:36]
             except Exception:
                 results = []
         # Normalise media_type for trending/all
         for it in results:
             it["media_type"] = it.get("media_type") or ("tv" if it.get("name") and not it.get("title") else "movie")
+        _random.shuffle(results)
         return {"recommendations": results[:18], "source": "trending"}
 
     # ---------- Aggregate similar/recommendations + genre discover ----------
+    import random as _random
     out: list = []
     out_keys: set = set()
     genre_counter: dict = {}  # genre_id -> count
@@ -2569,58 +2573,67 @@ async def get_user_recommendations(user: dict = Depends(get_current_user)):
 
     async with httpx.AsyncClient() as client:
         # Step 1: For each seed, fetch similar + recommendations + capture genre_ids
-        for ct, cid in seeds[:10]:
+        # Use pages 1 AND 2 for variety, and shuffle seed order each call.
+        seeds_shuffled = list(seeds)
+        _random.shuffle(seeds_shuffled)
+        for ct, cid in seeds_shuffled[:10]:
             ep = "movie" if ct == "movie" else "tv"
             for kind in ("similar", "recommendations"):
-                url = f"https://api.themoviedb.org/3/{ep}/{cid}/{kind}?api_key={tmdb_key}&language=fr-FR&page=1"
-                items = await _fetch(client, url)
-                for it in items:
-                    it_id = it.get("id")
-                    if not it_id:
-                        continue
-                    it["media_type"] = ep
-                    key = (ep, int(it_id))
-                    if key in seen_pairs or key in out_keys:
-                        continue
-                    # accumulate genre weights
-                    for gid in (it.get("genre_ids") or []):
-                        genre_counter[gid] = genre_counter.get(gid, 0) + 1
-                    # keep with reasonable poster + vote
-                    if it.get("poster_path") and (it.get("vote_count") or 0) >= 20:
-                        out.append(it)
-                        out_keys.add(key)
-                    if len(out) >= 40:
+                for page in (1, 2):
+                    url = f"https://api.themoviedb.org/3/{ep}/{cid}/{kind}?api_key={tmdb_key}&language=fr-FR&page={page}"
+                    items = await _fetch(client, url)
+                    for it in items:
+                        it_id = it.get("id")
+                        if not it_id:
+                            continue
+                        it["media_type"] = ep
+                        key = (ep, int(it_id))
+                        if key in seen_pairs or key in out_keys:
+                            continue
+                        # accumulate genre weights
+                        for gid in (it.get("genre_ids") or []):
+                            genre_counter[gid] = genre_counter.get(gid, 0) + 1
+                        # keep with reasonable poster + vote
+                        if it.get("poster_path") and (it.get("vote_count") or 0) >= 20:
+                            out.append(it)
+                            out_keys.add(key)
+                        if len(out) >= 80:
+                            break
+                    if len(out) >= 80:
                         break
-                if len(out) >= 40:
+                if len(out) >= 80:
                     break
-            if len(out) >= 40:
+            if len(out) >= 80:
                 break
 
-        # Step 2: Discover by top genres for more diversity (movies + TV)
-        if genre_counter and len(out) < 18:
+        # Step 2: Discover by top genres for more diversity (movies + TV) - pages 1 AND 2
+        if genre_counter and len(out) < 60:
             top_genres = sorted(genre_counter.items(), key=lambda kv: -kv[1])[:3]
             for ep in ("movie", "tv"):
-                gids = ",".join(str(g[0]) for g in top_genres)
-                url = f"https://api.themoviedb.org/3/discover/{ep}?api_key={tmdb_key}&language=fr-FR&sort_by=vote_average.desc&vote_count.gte=300&with_genres={gids}&page=1"
-                items = await _fetch(client, url)
-                for it in items:
-                    it_id = it.get("id")
-                    if not it_id:
-                        continue
-                    it["media_type"] = ep
-                    key = (ep, int(it_id))
-                    if key in seen_pairs or key in out_keys:
-                        continue
-                    if it.get("poster_path"):
-                        out.append(it)
-                        out_keys.add(key)
-                    if len(out) >= 30:
+                for page in (1, 2):
+                    gids = ",".join(str(g[0]) for g in top_genres)
+                    url = f"https://api.themoviedb.org/3/discover/{ep}?api_key={tmdb_key}&language=fr-FR&sort_by=vote_average.desc&vote_count.gte=300&with_genres={gids}&page={page}"
+                    items = await _fetch(client, url)
+                    for it in items:
+                        it_id = it.get("id")
+                        if not it_id:
+                            continue
+                        it["media_type"] = ep
+                        key = (ep, int(it_id))
+                        if key in seen_pairs or key in out_keys:
+                            continue
+                        if it.get("poster_path"):
+                            out.append(it)
+                            out_keys.add(key)
+                        if len(out) >= 60:
+                            break
+                    if len(out) >= 60:
                         break
-                if len(out) >= 30:
+                if len(out) >= 60:
                     break
 
         # Step 3: Top-up with trending if still thin
-        if len(out) < 12:
+        if len(out) < 18:
             url = f"https://api.themoviedb.org/3/trending/all/week?api_key={tmdb_key}&language=fr-FR"
             items = await _fetch(client, url)
             for it in items:
@@ -2637,14 +2650,17 @@ async def get_user_recommendations(user: dict = Depends(get_current_user)):
                 if it.get("poster_path"):
                     out.append(it)
                     out_keys.add(key)
-                if len(out) >= 18:
+                if len(out) >= 30:
                     break
 
-    # Final sort: prefer high vote_average then popularity
+    # Final ranking: keep top 36 by score, then shuffle that pool to return 18 different
+    # ones each call while still relevant to the user.
     def _score(it):
         return (it.get("vote_average") or 0) * 0.6 + min((it.get("popularity") or 0) / 100.0, 5.0) * 0.4
     out.sort(key=_score, reverse=True)
-    return {"recommendations": out[:18], "source": "personalised"}
+    top_pool = out[:36]
+    _random.shuffle(top_pool)
+    return {"recommendations": top_pool[:18], "source": "personalised"}
 
 
 # --- User Ratings (Like/Dislike) ---
