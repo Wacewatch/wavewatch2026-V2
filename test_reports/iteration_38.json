@@ -1,0 +1,38 @@
+{
+  "summary": "Backend testing for iteration 38 fixes (playlist sort + popular collections). Created pytest suite covering /api/playlists/public/enhanced (all 7 sort_by values + shape), /api/playlists/public/stats, /api/tmdb/collections/popular (popularity/name/size sorts, pagination, search) and existing /api/tmdb/collection/{id} & /api/tmdb/collections/search. All 17 tests passed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration38_playlists_collections.py",
+    "/app/test_reports/pytest/iteration_38_playlists_collections.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is ~4277 lines — exceeds the 700-line guideline. Strongly recommend splitting into routers (playlists, tmdb, auth, ratings, etc.) for maintainability.",
+    "_build_popular_collections_index issues unbounded concurrent /movie/{id} requests gated only by a Semaphore(30); with max_pages=25 that is up to ~500 TMDB detail calls on a cold cache — consider persisting the index to Mongo so it survives restarts instead of relying on a 24h in-memory cache only.",
+    "/api/playlists/public/enhanced returns 'creator' but test confirmed 'user_info' key is also expected per spec. Currently the projected fields use 'creator'; verify the frontend (HomePage.js, DiscoverPlaylistsPage.js) consumes the right key consistently.",
+    "For sort_by=random, pagination params are silently ignored (documented in code). Consider returning page/total_pages=null or a clear flag so clients don't render misleading pagination."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration38_playlists_collections.py"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "not tested (skip)"},
+  "test_credentials": "n/a (no auth required for tested endpoints)",
+  "seed_data_creation": "None — preview Mongo had 0 public playlists; endpoints validated via shape only for playlists. TMDB cache produced 144 unique collections in ~17s (above the >=100 target).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Reusable pytest at /app/backend/tests/test_iteration38_playlists_collections.py. The TMDB popular collections index is cached 24h in-memory; first call after a backend restart takes ~15-90s. Tests use a 120s timeout for those calls. Playlists DB is empty in preview env, so any assertion needing actual playlists must seed first (via /api/playlists with auth) — currently shape-only assertions are used.",
+  "verified_behaviors": {
+    "playlists_enhanced": "All 7 sort_by values (recent/oldest/likes/dislikes/size/name/random) return 200; shape includes _id, name, items, items_count, likes_count, dislikes_count, creator. No staff pinning observed.",
+    "collections_popular": "total=144 unique collections, total_pages=6 at limit=24. popularity sort verified desc; name sort verified A->Z on page 2; size sort verified desc by movies_count.",
+    "collections_search": "?q=marvel returned non-empty results via /search/collection fallback.",
+    "existing_endpoints": "/api/tmdb/collection/10 returns Star Wars collection (id=10); /api/tmdb/collections/search?q=marvel returns list of results; /api/playlists/public/stats returns 200 dict."
+  }
+}

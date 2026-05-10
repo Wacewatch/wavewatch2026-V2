@@ -229,7 +229,7 @@ function PopularCollectionsRow() {
 function PublicPlaylistsRow() {
   const [playlists, setPlaylists] = useState([]);
   useEffect(() => {
-    API.get('/api/playlists/public/enhanced').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {
+    API.get('/api/playlists/public/enhanced?sort_by=random&limit=12').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {
       API.get('/api/playlists/public/discover').then(({ data }) => setPlaylists(data.playlists || [])).catch(() => {});
     });
   }, []);

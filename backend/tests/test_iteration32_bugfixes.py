@@ -15,7 +15,7 @@ import uuid
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://final-task-complete.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://playlist-sort-fix.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = "admin@wavewatch.com"
 ADMIN_PASSWORD = "WaveWatch2026!"
 

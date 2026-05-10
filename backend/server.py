@@ -265,6 +265,9 @@ async def lifespan(app: FastAPI):
     await seed_admin()
     await seed_default_content()
     await seed_seasonal_events()
+    # Pre-warm popular collections index in background so the first user request is fast
+    import asyncio as _asyncio
+    _asyncio.create_task(_build_popular_collections_index(max_pages=25))
     yield
 
 app = FastAPI(title="WaveWatch API", lifespan=lifespan)
@@ -648,6 +651,162 @@ async def tmdb_popular_persons(page: int = 1):
 @app.get("/api/tmdb/collections/search")
 async def tmdb_search_collections(q: str, page: int = 1):
     return await tmdb_fetch("/search/collection", {"query": q, "page": str(page)})
+
+
+# In-memory cache for the popular collections index (built from popular movies)
+_collections_index_cache: dict = {"ts": 0, "data": []}
+
+async def _build_popular_collections_index(max_pages: int = 25):
+    """Discover unique TMDB collections by scanning popular movies + their details.
+
+    Returns a list of dicts: {id, name, poster_path, backdrop_path, popularity, movies_count}.
+    Cached in-memory for 24h to avoid hammering TMDB.
+    """
+    import asyncio as _asyncio
+    import time as _time
+
+    now = _time.time()
+    if _collections_index_cache.get("data") and (now - _collections_index_cache.get("ts", 0)) < 86400:
+        return _collections_index_cache["data"]
+
+    # Step 1 : fetch N pages of popular movies in parallel
+    page_data = await _asyncio.gather(
+        *[tmdb_fetch("/movie/popular", {"page": str(p)}) for p in range(1, max_pages + 1)],
+        return_exceptions=True,
+    )
+    movie_pop: dict = {}
+    for pd in page_data:
+        if isinstance(pd, Exception) or not pd:
+            continue
+        for m in pd.get("results", []) or []:
+            mid = m.get("id")
+            if mid is None:
+                continue
+            movie_pop[mid] = max(movie_pop.get(mid, 0), float(m.get("popularity") or 0))
+
+    if not movie_pop:
+        return _collections_index_cache.get("data", [])
+
+    # Step 2 : fetch movie details (with bounded concurrency) to read belongs_to_collection
+    sem = _asyncio.Semaphore(30)
+
+    async def _fetch_movie(mid: int):
+        async with sem:
+            try:
+                return await tmdb_fetch(f"/movie/{mid}")
+            except Exception:
+                return None
+
+    details = await _asyncio.gather(*[_fetch_movie(mid) for mid in movie_pop.keys()])
+
+    seen: dict = {}
+    for m in details:
+        if not m or not isinstance(m, dict):
+            continue
+        col = m.get("belongs_to_collection")
+        if not col or not col.get("id"):
+            continue
+        cid = col["id"]
+        pop = movie_pop.get(m.get("id"), 0)
+        if cid in seen:
+            seen[cid]["popularity"] = max(seen[cid]["popularity"], pop)
+            seen[cid]["movies_count"] = seen[cid]["movies_count"] + 1
+        else:
+            seen[cid] = {
+                "id": cid,
+                "name": col.get("name"),
+                "poster_path": col.get("poster_path"),
+                "backdrop_path": col.get("backdrop_path"),
+                "popularity": pop,
+                "movies_count": 1,
+            }
+
+    data = list(seen.values())
+    _collections_index_cache["ts"] = now
+    _collections_index_cache["data"] = data
+    return data
+
+
+@app.get("/api/tmdb/collections/popular")
+async def tmdb_popular_collections(
+    page: int = 1,
+    limit: int = 24,
+    sort_by: str = "popularity",  # popularity | name | size
+    q: str = "",
+):
+    """Return TMDB collections discovered from popular movies, with pagination + sort.
+
+    If a search query is provided, fall back to TMDB /search/collection for richer
+    results while still respecting the requested sort (when possible).
+    """
+    if q and q.strip():
+        # Use TMDB search endpoint for broad coverage when user is searching
+        ql = q.strip()
+        limit = max(1, min(60, int(limit)))
+        page = max(1, int(page))
+        # TMDB search returns 20/page. Aggregate first 5 pages to fill the grid.
+        import asyncio as _asyncio
+        pages_data = await _asyncio.gather(
+            *[tmdb_fetch("/search/collection", {"query": ql, "page": str(p)}) for p in range(1, 6)],
+            return_exceptions=True,
+        )
+        merged: list = []
+        seen_ids: set = set()
+        for pd in pages_data:
+            if isinstance(pd, Exception) or not pd:
+                continue
+            for c in pd.get("results", []) or []:
+                cid = c.get("id")
+                if cid is None or cid in seen_ids:
+                    continue
+                seen_ids.add(cid)
+                merged.append({
+                    "id": cid,
+                    "name": c.get("name"),
+                    "poster_path": c.get("poster_path"),
+                    "backdrop_path": c.get("backdrop_path"),
+                    "popularity": 0,
+                    "movies_count": 0,
+                })
+
+        if sort_by == "name":
+            merged.sort(key=lambda c: (c.get("name") or "").lower())
+        # popularity/size unavailable here, keep TMDB relevance order otherwise
+
+        total = len(merged)
+        start = (page - 1) * limit
+        results = merged[start:start + limit]
+        return {
+            "results": results,
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "total_pages": max(1, (total + limit - 1) // limit),
+        }
+
+    all_cols = await _build_popular_collections_index(max_pages=25)
+
+    if sort_by == "name":
+        all_cols = sorted(all_cols, key=lambda c: (c.get("name") or "").lower())
+    elif sort_by == "size":
+        all_cols = sorted(all_cols, key=lambda c: c.get("movies_count", 0), reverse=True)
+    else:  # popularity (default)
+        all_cols = sorted(all_cols, key=lambda c: c.get("popularity", 0), reverse=True)
+
+    total = len(all_cols)
+    limit = max(1, min(60, int(limit)))
+    page = max(1, int(page))
+    start = (page - 1) * limit
+    results = all_cols[start:start + limit]
+
+    return {
+        "results": results,
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "total_pages": max(1, (total + limit - 1) // limit),
+    }
+
 
 @app.get("/api/tmdb/on-the-air")
 async def tmdb_on_the_air(page: int = 1):
@@ -3224,7 +3383,9 @@ async def get_public_playlists_enhanced(
         ]},
     }})
 
-    # Sort: staff always pinned on top, then per sort_by
+    # Sort according to user selection (no implicit staff pinning so that
+    # the chosen order is fully respected). Staff is still visually marked
+    # via the STAFF badge in the UI.
     sort_field = {"created_at": -1}
     if sort_by == "oldest":
         sort_field = {"created_at": 1}
@@ -3236,15 +3397,20 @@ async def get_public_playlists_enhanced(
         sort_field = {"items_count": -1, "created_at": -1}
     elif sort_by == "name":
         sort_field = {"name": 1}
-    # Always pin staff first
-    full_sort = {"is_staff": -1, **sort_field}
-    pipeline.append({"$sort": full_sort})
 
-    # Total count via $facet
-    pipeline.append({"$facet": {
-        "items": [{"$skip": skip}, {"$limit": limit}],
-        "total": [{"$count": "n"}],
-    }})
+    if sort_by == "random":
+        # Use $sample for true random selection (pagination ignored for random)
+        pipeline.append({"$facet": {
+            "items": [{"$sample": {"size": limit}}],
+            "total": [{"$count": "n"}],
+        }})
+    else:
+        pipeline.append({"$sort": sort_field})
+        # Total count via $facet
+        pipeline.append({"$facet": {
+            "items": [{"$skip": skip}, {"$limit": limit}],
+            "total": [{"$count": "n"}],
+        }})
 
     cursor = db.playlists.aggregate(pipeline)
     docs = await cursor.to_list(1)
