@@ -558,3 +558,40 @@ Nouveau bloc d'engagement après les Quick links :
 
 ### Orbes themées globales
 Ajoutées dans `App.js` au niveau racine (z-index -10) avec pulse animée et couleurs `hsl(var(--primary|accent|ring) / 0.45)`. **Toutes les pages (refaites ou non, dont pages détail, admin, etc.)** bénéficient maintenant d'un fond animé qui s'adapte au thème.
+
+## Iteration 41 — 2026-05-10 — DMCA + Episode nav + XP system + Halloween default
+
+### 1️⃣ Page DMCA (`/dmca`)
+- Inspirée de `https://nakios.fit/dmca` — 4 sections (Zéro Hébergement / Nature du Service / Responsabilité des Tiers / Procédure de Retrait) + Avertissement Final + CTA staff
+- Style themed avec hero gradient + cards glow par section + couleurs adaptatives
+- Lien ajouté dans le **Footer** avec icône Shield
+
+### 2️⃣ EpisodeDetailPage — flèches Précédent / Suivant
+- Récupère les épisodes de la saison via `/api/tmdb/tv/:id/season/:seasonNumber`
+- Boutons Précédent ◀ et Suivant ▶ s'affichent uniquement si l'épisode existe (sinon `<div />` vide pour conserver la grille 2 cols)
+- Chaque bouton affiche `E{number} · {name}` avec icône themed `hsl(var(--primary))`
+- data-testid : `ep-prev-btn` / `ep-next-btn`
+
+### 3️⃣ Système de niveau XP au Dashboard
+- **Calcul XP** : films×10 + séries×15 + likes×2 + favoris×5 + playlists×20 + heures×0.5
+- **Formule niveau** : `Niveau = floor(sqrt(XP/100)) + 1` (progression non-linéaire)
+- **5 tiers** avec couleurs distinctes :
+  - 🥉 Bronze (Niv 1-5) — orange terre
+  - 🥈 Argent (Niv 6-10) — gris clair
+  - 🥇 Or (Niv 11-20) — jaune doré
+  - 💎 Platine (Niv 21-35) — bleu acier
+  - 💠 Diamant (Niv 36+) — cyan glacé
+- Card avec **badge tier 3D** (gradient + glow tier-color), barre de progression XP animée avec %, chips d'XP par action
+
+### 4️⃣ Halloween thème par défaut 🎃
+- `useState` initial `'halloween'` (au lieu de `'dark'`) — pour les nouveaux visiteurs sans préférence enregistrée
+- Migration auto pour les ex-`forest|aurora|lavender` → `halloween`
+
+### 5️⃣ Solarized refondu
+- **Avant** : warm cream/sépia (44 25% 12%, primary 175°)
+- **Après** : palette **emblématique Solarized base03** authentique :
+  - background: `192 100% 11%` (cyan-vert profond)
+  - primary: `175 59% 40%` (cyan solarized)
+  - accent: `45 100% 35%` (yellow solarized)
+  - ring: `18 80% 44%` (orange solarized)
+  - Nav text-secondary cyan, gradient pin du sélecteur revu (cyan→yellow→orange)

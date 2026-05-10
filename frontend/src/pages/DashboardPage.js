@@ -171,6 +171,34 @@ export default function DashboardPage() {
   }).join(' ');
   const sparkArea = `M0,${sparkH} L${sparkPoints.replace(/ /g, ' L')} L${sparkW},${sparkH} Z`;
 
+  // === SYSTÈME DE NIVEAU XP ===
+  const totalLikes = (detailedStats?.likes_given || 0);
+  const totalPlaylists = (stats?.playlists || 0);
+  const xp = Math.floor(
+    (detailedStats?.movies_watched || 0) * 10
+    + (detailedStats?.shows_watched || 0) * 15
+    + totalLikes * 2
+    + (stats?.favorites || 0) * 5
+    + totalPlaylists * 20
+    + totalHours * 0.5
+  );
+  // Formule : niveau N atteint à N²×100 XP. niveau actuel = floor(sqrt(xp/100))+1
+  const level = Math.floor(Math.sqrt(xp / 100)) + 1;
+  const xpForCurrentLevel = (level - 1) * (level - 1) * 100;
+  const xpForNextLevel = level * level * 100;
+  const progressXP = xp - xpForCurrentLevel;
+  const neededXP = xpForNextLevel - xpForCurrentLevel;
+  const progressPct = Math.min(100, Math.round((progressXP / neededXP) * 100));
+
+  const getTier = (lvl) => {
+    if (lvl >= 36) return { name: 'Diamant',  hex: '#67e8f9', from: '#b9f2ff', to: '#6e9cdb', glow: 'rgba(186, 247, 255, 0.5)' };
+    if (lvl >= 21) return { name: 'Platine',  hex: '#a7c5e8', from: '#c8e0f0', to: '#4682b4', glow: 'rgba(167, 197, 232, 0.5)' };
+    if (lvl >= 11) return { name: 'Or',       hex: '#fcd34d', from: '#ffd700', to: '#d4af37', glow: 'rgba(252, 211, 77, 0.5)' };
+    if (lvl >= 6)  return { name: 'Argent',   hex: '#cbd5e1', from: '#e2e8f0', to: '#94a3b8', glow: 'rgba(203, 213, 225, 0.4)' };
+    return                { name: 'Bronze',   hex: '#d97706', from: '#cd7f32', to: '#92400e', glow: 'rgba(217, 119, 6, 0.5)' };
+  };
+  const tier = getTier(level);
+
   return (
     <ThemedPage testId="dashboard-page">
       <div className="container mx-auto px-4 py-8 space-y-6">
@@ -201,6 +229,80 @@ export default function DashboardPage() {
               {l.icon}<span>{l.label}</span>
             </Link>
           ))}
+      </div>
+
+      {/* === NIVEAU UTILISATEUR === */}
+      <div className="relative overflow-hidden rounded-2xl border-2 backdrop-blur-xl p-5 md:p-6"
+        style={{ borderColor: `${tier.hex}60`, background: `linear-gradient(135deg, ${tier.from}15, transparent 50%, ${tier.to}10)`, boxShadow: `0 12px 40px ${tier.glow}` }}
+        data-testid="user-level-card"
+      >
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full blur-3xl opacity-30" style={{ background: tier.hex }} />
+        <div className="absolute -bottom-12 -left-12 w-48 h-48 rounded-full blur-3xl opacity-20" style={{ background: tier.to }} />
+
+        <div className="relative flex flex-col md:flex-row md:items-center gap-5">
+          {/* Badge tier */}
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl blur-xl opacity-60" style={{ background: tier.hex }} />
+              <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-2xl flex flex-col items-center justify-center shadow-2xl"
+                style={{ background: `linear-gradient(135deg, ${tier.from}, ${tier.to})`, boxShadow: `0 12px 32px ${tier.glow}, inset 0 2px 8px rgba(255,255,255,0.2)` }}>
+                <span className="text-[9px] uppercase tracking-widest font-extrabold text-black/70">Niveau</span>
+                <span className="text-3xl md:text-4xl font-black text-black tabular-nums leading-none drop-shadow">{level}</span>
+              </div>
+            </div>
+            <div className="md:hidden">
+              <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: tier.hex }}>{tier.name}</p>
+              <p className="text-xl font-black text-foreground tabular-nums">{xp} XP</p>
+            </div>
+          </div>
+
+          {/* Info & progress */}
+          <div className="flex-1 min-w-0">
+            <div className="hidden md:flex items-center justify-between mb-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: tier.hex }}>Rang {tier.name}</p>
+                <p className="text-2xl md:text-3xl font-black text-foreground">
+                  <span className="tabular-nums">{xp.toLocaleString('fr-FR')}</span>
+                  <span className="text-foreground/50 text-base ml-1">XP</span>
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-foreground/50">Prochain niveau</p>
+                <p className="text-lg font-black text-foreground tabular-nums">{(neededXP - progressXP).toLocaleString('fr-FR')} <span className="text-foreground/50 text-sm">XP restants</span></p>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="relative h-3 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }} data-testid="level-progress">
+              <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${tier.from}, ${tier.to})`, boxShadow: `0 0 12px ${tier.glow}` }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold mix-blend-difference text-white">
+                {progressPct}%
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 mt-2 text-[11px] text-foreground/60">
+              <span>Niv. {level} ({xpForCurrentLevel.toLocaleString('fr-FR')} XP)</span>
+              <span>Niv. {level + 1} ({xpForNextLevel.toLocaleString('fr-FR')} XP)</span>
+            </div>
+
+            {/* Quick XP sources */}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {[
+                { label: '+10 XP / film',     hex: '#3b82f6' },
+                { label: '+15 XP / série',    hex: '#a855f7' },
+                { label: '+5 XP / favori',    hex: '#ec4899' },
+                { label: '+20 XP / playlist', hex: '#10b981' },
+              ].map(s => (
+                <span key={s.label} className="px-2 py-0.5 rounded-full text-[10px] font-bold border"
+                  style={{ background: `${s.hex}15`, borderColor: `${s.hex}40`, color: s.hex }}>
+                  {s.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* === ACTIVITÉ ENGAGEMENT === */}

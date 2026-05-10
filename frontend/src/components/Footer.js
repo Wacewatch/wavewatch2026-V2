@@ -35,6 +35,7 @@ export default function Footer() {
     { to: '/dns-vpn',       label: 'DNS & VPN',       icon: ShieldQuestion },
     { to: '/faq',           label: 'FAQ',             icon: HelpCircle },
     { to: '/changelogs',    label: 'Nouveautés',      icon: Newspaper },
+    { to: '/dmca',          label: 'DMCA',            icon: Shield },
   ];
 
   return (

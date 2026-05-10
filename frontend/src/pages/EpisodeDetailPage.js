@@ -7,7 +7,7 @@ import { LoadingSpinner } from '../components/Loading';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import IframeModal from '../components/IframeModal';
-import { Play, Star, Calendar, Clock, Heart, CheckCircle, Download, Youtube } from 'lucide-react';
+import { Play, Star, Calendar, Clock, Heart, CheckCircle, Download, Youtube, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function EpisodeDetailPage({ isAnime = false }) {
   const { id, seasonNumber, episodeNumber } = useParams();
@@ -15,6 +15,7 @@ export default function EpisodeDetailPage({ isAnime = false }) {
   const { toast } = useToast();
   const [episode, setEpisode] = useState(null);
   const [seriesInfo, setSeriesInfo] = useState(null);
+  const [seasonEpisodes, setSeasonEpisodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showStream, setShowStream] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
@@ -25,8 +26,10 @@ export default function EpisodeDetailPage({ isAnime = false }) {
   const epContentId = parseInt(`${id}${seasonNumber}${episodeNumber}`);
 
   useEffect(() => {
+    setLoading(true);
     API.get(`/api/tmdb/tv/${id}/season/${seasonNumber}/episode/${episodeNumber}`).then(({ data }) => setEpisode(data)).catch(() => {}).finally(() => setLoading(false));
     API.get(`/api/tmdb/tv/${id}`).then(({ data }) => setSeriesInfo(data)).catch(() => {});
+    API.get(`/api/tmdb/tv/${id}/season/${seasonNumber}`).then(({ data }) => setSeasonEpisodes(data.episodes || [])).catch(() => setSeasonEpisodes([]));
     if (user) {
       API.get(`/api/user/tv-progress/${id}`).then(({ data }) => {
         const eps = data.watched_episodes || {};
@@ -93,6 +96,45 @@ export default function EpisodeDetailPage({ isAnime = false }) {
   return (
     <div className="container mx-auto px-4 py-8" data-testid="episode-detail-page">
       <Link to={`/${basePath}/${id}/season/${seasonNumber}`} className="text-blue-400 hover:underline text-sm mb-4 block">&larr; Retour a la saison {seasonNumber}</Link>
+
+      {/* Navigation Précédent / Suivant */}
+      {(() => {
+        const epNum = parseInt(episodeNumber);
+        const sortedEps = [...seasonEpisodes].sort((a, b) => a.episode_number - b.episode_number);
+        const prev = sortedEps.find(e => e.episode_number === epNum - 1);
+        const next = sortedEps.find(e => e.episode_number === epNum + 1);
+        if (!prev && !next) return null;
+        return (
+          <div className="grid grid-cols-2 gap-3 mb-5" data-testid="episode-nav">
+            {prev ? (
+              <Link to={`/${basePath}/${id}/season/${seasonNumber}/episode/${prev.episode_number}`}
+                className="group relative overflow-hidden rounded-2xl border border-border bg-card/80 backdrop-blur-xl p-3 hover:border-primary/40 transition-colors flex items-center gap-3"
+                data-testid="ep-prev-btn">
+                <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/25 transition-colors">
+                  <ChevronLeft className="w-5 h-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-foreground/50">Épisode précédent</p>
+                  <p className="text-sm font-bold text-foreground truncate">E{prev.episode_number}{prev.name ? ` · ${prev.name}` : ''}</p>
+                </div>
+              </Link>
+            ) : <div />}
+            {next ? (
+              <Link to={`/${basePath}/${id}/season/${seasonNumber}/episode/${next.episode_number}`}
+                className="group relative overflow-hidden rounded-2xl border border-border bg-card/80 backdrop-blur-xl p-3 hover:border-primary/40 transition-colors flex items-center gap-3 text-right"
+                data-testid="ep-next-btn">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-foreground/50">Épisode suivant</p>
+                  <p className="text-sm font-bold text-foreground truncate">E{next.episode_number}{next.name ? ` · ${next.name}` : ''}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/30 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/25 transition-colors">
+                  <ChevronRight className="w-5 h-5 text-primary" />
+                </div>
+              </Link>
+            ) : <div />}
+          </div>
+        );
+      })()}
       {/* Hero image: episode still OR series backdrop fallback OR series poster fallback */}
       {(episode.still_path || seriesInfo?.backdrop_path || seriesInfo?.poster_path) && (
         <div className="aspect-video max-w-3xl rounded-xl overflow-hidden mb-6 bg-muted relative">

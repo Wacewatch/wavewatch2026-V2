@@ -18,7 +18,7 @@ const THEMES = [
 
 // Thèmes EXCEPTIONNELS gratuits (2)
 const EXCEPTIONAL_THEMES = [
-  { id: 'solarized', name: 'Solarized',   gradient: 'from-amber-700 via-yellow-700 to-cyan-700', isNew: true, exceptional: true },
+  { id: 'solarized', name: 'Solarized',   gradient: 'from-cyan-900 via-yellow-700 to-orange-800', isNew: true, exceptional: true },
   { id: 'nordic',    name: 'Nordique',    gradient: 'from-slate-700 via-blue-300 to-slate-500', isNew: true, exceptional: true },
 ];
 
@@ -163,8 +163,8 @@ export function ThemeProvider({ children }) {
     const saved = localStorage.getItem('ww_theme');
     // Reset removed/legacy themes
     const REMOVED = ['forest', 'aurora', 'lavender'];
-    if (saved && REMOVED.includes(saved)) return 'dark';
-    return saved || 'dark';
+    if (saved && REMOVED.includes(saved)) return 'halloween';
+    return saved || 'halloween'; // 🎃 Halloween par défaut
   });
 
   useEffect(() => {

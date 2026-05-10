@@ -55,6 +55,7 @@ import GameDetailPage from './pages/GameDetailPage';
 import EbookDetailPage from './pages/EbookDetailPage';
 import SoftwareDetailPage from './pages/SoftwareDetailPage';
 import DownloadLinksPage from './pages/DownloadLinksPage';
+import DMCAPage from './pages/DMCAPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { StatusProvider } from './components/ContentCard';
 import './App.css';
@@ -125,6 +126,7 @@ export default function App() {
                   <Route path="/subscription" element={<SubscriptionPage />} />
                   <Route path="/faq" element={<FAQPage />} />
                   <Route path="/dns-vpn" element={<DNSVPNPage />} />
+                  <Route path="/dmca" element={<DMCAPage />} />
                   <Route path="/contact-staff" element={<ContactStaffPage />} />
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
