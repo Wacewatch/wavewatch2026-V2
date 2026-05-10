@@ -444,3 +444,46 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
   - GET /api/livewatch/countries -> 17 countries with totals
   - GET /api/livewatch/channels?country=X -> channels with embed_url + backup_embed_url
 - LiveWatch flow: country selector first -> channels grid -> iframe player with backup-toggle button
+
+## Iteration 38 - 2026-05-10 - Refonte UI au pattern "Discover" (suite)
+
+### Pages refaites au nouveau pattern (background gradient sombre + orbes pulsantes + glassmorphism + hero gradient + toolbar sticky + cards cyan/pink/purple)
+- **ActorsPage** (`/actors`) : hero "Acteurs & Stars" gradient, stats live (Acteurs/Page/Pages depuis TMDB), barre recherche debounce, cards glow gradient au hover, badge HOT pour acteurs populaires
+- **CalendarPage** (`/calendar`) : hero "Calendrier des Sorties", 4 stat cards (Films/Séries/Anime/À venir), filtres pills gradient (Tout/Films/Séries/Anime/Mes favoris), calendrier glassmorphism, liste prochaines sorties avec notification toggle
+- **HomePage** (`/`) : wrapper background gradient + orbes pulsantes ajouté autour des sliders existants (fonctionnalités intactes)
+- **LoginPage** (`/login`) : card centrée glassmorphism avec hero gradient, inputs cyan focus, bouton gradient cyan-blue, show/hide password
+- **RegisterPage** (`/register`) : card centrée gradient emerald-cyan, validation password progressive (8 car / 1 maj / 1 chiffre) avec checks verts
+- **Footer** : reviews communauté en glassmorphism, livre d'or carrousel, links pills hover cyan, gradient logo
+- **DNSVPNPage** (`/dns-vpn`) : hero "DNS & VPN Recommandés", cards DNS avec copy-to-clipboard chips, cards VPN avec liens externes
+- **FAQPage** (`/faq`) : recherche + filtres catégories pills (Général/VIP/Thèmes/Support), accordéons glow par catégorie, CTA "Écrire au staff"
+- **ChangelogsPage** (`/changelogs`) : timeline verticale avec dots colorés par version major, badge dernière version dans le hero, palette dynamique
+- **ContactStaffPage** (`/contact-staff`) : **fix du formulaire qui ne s'affichait pas**, hero gradient pink-purple, sélecteur catégorie pills, historique des messages dans aside avec status (Répondu/En attente)
+
+### AnimePage stats refondues (à la demande utilisateur)
+- Avant : Animes (page count) / Page / Pages
+- Après : **Animes (totalResults TMDB) / Plateformes (5) / Genres (8)** — comme MoviesPage
+
+### Thèmes VIP — z-index fix
+- `.theme-vip body::after` (ambient glow) : z-index 0 → 9998 + opacité 0.03 → 0.06 pour rester subtil mais visible par-dessus les nouveaux wrappers gradient
+- `.theme-vip-plus::before` (particules) : z-index 0 → 9999 + opacité particules 0.06-0.15 → 0.16-0.25
+- Effets nav animée, scrollbar gradient, glow boutons et titres VIP : intacts (toujours appliqués via classes `theme-X` sur root)
+
+### Pages restantes à refaire (ordre de priorité suggéré)
+**P1 (haute visibilité utilisateur)** :
+- DashboardPage, ProfilePage, FavoritesPage, WatchHistoryPage
+- PlaylistsPage, SubscriptionPage, VIPGamePage
+- TVChannelsPage, CollectionsPage
+
+**P2 (utilitaires connecté)** :
+- AchievementsPage, LeaderboardPage, MessagesPage
+- ContentRequestsPage, DownloadLinksPage, SearchPage
+- WatchPartyPage / WatchPartyRoomPage, SpectaclesPage
+
+**P3 (déjà au style PageWrapper unique — pas urgent)** :
+- TVShowsPage, MoviesPage, MusicPage, GamesPage, EbooksPage, SoftwarePage, RadioPage, RetrogamingPage, SportPage, DocumentairesPage (utilisent PageWrapper coloré, déjà cohérent)
+
+**Pages détail** (gardent un layout dédié — refonte optionnelle) :
+- ActorDetailPage, MovieDetailPage, TVShowDetailPage, EpisodeDetailPage, SeasonDetailPage
+- AnimeDetailPage, EbookDetailPage, GameDetailPage, MusicDetailPage, SoftwareDetailPage, PlaylistDetailPage, DirectorDetailPage
+
+**Admin** : AdminPage (interne, peut rester technique)

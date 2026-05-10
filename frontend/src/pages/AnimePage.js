@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import ContentCard from '../components/ContentCard';
 import { LoadingGrid } from '../components/Loading';
-import { SlidersHorizontal, X, Filter, ChevronLeft, ChevronRight, Sparkles, Wand2, Layers, Zap } from 'lucide-react';
+import { SlidersHorizontal, X, Filter, ChevronLeft, ChevronRight, Sparkles, Wand2, Layers, Zap, Tv } from 'lucide-react';
 import { PageWrapper, PageHero, FilterBar, Pill, useCountUp } from '../components/design/PageHero';
 
 const SORT_OPTIONS = [
@@ -80,9 +80,9 @@ export default function AnimePage() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 30 }, (_, i) => currentYear - i);
 
-  const cAnime = useCountUp(anime.length);
-  const cPage = useCountUp(page);
-  const cTotal = useCountUp(totalPages);
+  const cAnime = useCountUp(totalResults);
+  const cProviders = useCountUp(ANIME_PROVIDERS.length);
+  const cGenres = useCountUp(ANIME_GENRES.length);
 
   const subtitle = useMemo(() => {
     const parts = [];
@@ -108,8 +108,8 @@ export default function AnimePage() {
         blobColor2="rgba(168,85,247,0.55)"
         stats={[
           { icon: Wand2, label: 'Animes', value: cAnime, accent: 'rgba(244,114,182,0.7)' },
-          { icon: Layers, label: 'Page', value: cPage, accent: 'rgba(168,85,247,0.7)' },
-          { icon: Zap, label: 'Pages', value: cTotal, accent: 'rgba(99,102,241,0.7)' },
+          { icon: Tv, label: 'Plateformes', value: cProviders, accent: 'rgba(168,85,247,0.7)' },
+          { icon: Zap, label: 'Genres', value: cGenres, accent: 'rgba(99,102,241,0.7)' },
         ]}
       />
 

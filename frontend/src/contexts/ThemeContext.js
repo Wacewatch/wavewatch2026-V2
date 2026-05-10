@@ -121,10 +121,10 @@ const themeAnimations = `
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     pointer-events: none;
-    background: radial-gradient(ellipse at 20% 50%, rgba(var(--primary-rgb, 255 200 0) / 0.03), transparent 60%),
-                radial-gradient(ellipse at 80% 50%, rgba(var(--primary-rgb, 255 200 0) / 0.02), transparent 60%);
+    background: radial-gradient(ellipse at 20% 50%, rgba(var(--primary-rgb, 255 200 0) / 0.06), transparent 60%),
+                radial-gradient(ellipse at 80% 50%, rgba(var(--primary-rgb, 255 200 0) / 0.05), transparent 60%);
     animation: vip-ambient 10s ease-in-out infinite alternate;
-    z-index: 0;
+    z-index: 9998;
   }
   @keyframes vip-ambient {
     0% { opacity: 0.5; }
@@ -138,15 +138,15 @@ const themeAnimations = `
     top: 0; left: 0; width: 100%; height: 100%;
     pointer-events: none;
     background-image: 
-      radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.15), transparent),
-      radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.08), transparent),
-      radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.12), transparent),
-      radial-gradient(1.5px 1.5px at 130px 80px, rgba(255,255,255,0.1), transparent),
-      radial-gradient(1px 1px at 160px 120px, rgba(255,255,255,0.06), transparent);
+      radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.25), transparent),
+      radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.18), transparent),
+      radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.22), transparent),
+      radial-gradient(1.5px 1.5px at 130px 80px, rgba(255,255,255,0.2), transparent),
+      radial-gradient(1px 1px at 160px 120px, rgba(255,255,255,0.16), transparent);
     background-repeat: repeat;
     background-size: 200px 200px;
     animation: particles-drift 40s linear infinite;
-    z-index: 0;
+    z-index: 9999;
   }
   @keyframes particles-drift {
     from { background-position: 0 0, 50px 20px, 100px 40px, 30px 60px, 150px 80px; }

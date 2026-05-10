@@ -1,13 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import API, { TMDB_IMG } from '../lib/api';
 import { Link } from 'react-router-dom';
-import { LoadingSpinner } from '../components/Loading';
-import { Users, Search, X, Sparkles, Film, Tv, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Search, X, Sparkles, Film, Tv, ChevronLeft, ChevronRight, Layers, Zap } from 'lucide-react';
 
 function useDebounced(value, delay = 300) {
   const [v, setV] = useState(value);
   useEffect(() => { const t = setTimeout(() => setV(value), delay); return () => clearTimeout(t); }, [value, delay]);
   return v;
+}
+
+function useCountUp(target, duration = 800) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!target) { setVal(0); return; }
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setVal(Math.round(target * eased));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return val;
 }
 
 const FALLBACK_GRADIENTS = [
@@ -67,6 +84,8 @@ export default function ActorsPage() {
   const [actors, setActors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [totalResults, setTotalResults] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounced(search, 350);
 
@@ -78,9 +97,12 @@ export default function ActorsPage() {
       ? `/api/tmdb/search/persons?q=${encodeURIComponent(debouncedSearch)}&page=${page}`
       : `/api/tmdb/popular/persons?page=${page}`;
     API.get(url)
-      .then(({ data }) => setActors(data.results || []))
+      .then(({ data }) => {
+        setActors(data.results || []);
+        setTotalResults(data.total_results || 0);
+        setTotalPages(data.total_pages || 1);
+      })
       .catch(() => {
-        // Fallback à popular si search endpoint indisponible
         if (debouncedSearch) {
           API.get(`/api/tmdb/popular/persons?page=${page}`)
             .then(({ data }) => {
@@ -88,11 +110,17 @@ export default function ActorsPage() {
                 a.name?.toLowerCase().includes(debouncedSearch.toLowerCase())
               );
               setActors(filtered);
+              setTotalResults(filtered.length);
+              setTotalPages(1);
             }).catch(() => setActors([]));
         } else setActors([]);
       })
       .finally(() => setLoading(false));
   }, [page, debouncedSearch]);
+
+  const cActors = useCountUp(totalResults);
+  const cPage = useCountUp(page);
+  const cPages = useCountUp(totalPages);
 
   return (
     <div className="relative min-h-screen text-white" style={{ background: 'linear-gradient(180deg, #050b18 0%, #0a0f1c 30%, #050b18 100%)' }} data-testid="actors-page">
@@ -113,18 +141,41 @@ export default function ActorsPage() {
           <div className="absolute -top-20 right-10 w-72 h-72 rounded-full blur-3xl opacity-50" style={{ background: 'radial-gradient(closest-side, rgba(236,72,153,0.6), transparent 70%)' }} />
 
           <div className="relative px-6 md:px-12 py-10 md:py-14">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/15 border border-pink-400/30 text-pink-300 text-xs font-bold uppercase tracking-wider mb-4">
-              <Users className="w-3 h-3" />Casting
-            </span>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-3 leading-[1.05]">
-              <span className="block bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #fff 0%, #f9a8d4 40%, #c4b5fd 70%, #67e8f9 100%)' }}>
-                Acteurs
-              </span>
-              <span className="block text-white">& <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #ec4899, #a855f7, #06b6d4)' }}>Stars</span></span>
-            </h1>
-            <p className="text-slate-300 max-w-xl text-base md:text-lg leading-relaxed">
-              Explore les acteurs du moment. <span className="text-white font-semibold">Filmographie, séries, animés</span> — clique pour découvrir leur univers.
-            </p>
+            <div className="flex flex-col lg:flex-row items-start gap-8">
+              <div className="flex-1 min-w-0">
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/15 border border-pink-400/30 text-pink-300 text-xs font-bold uppercase tracking-wider mb-4">
+                  <Users className="w-3 h-3" />Casting
+                </span>
+                <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-3 leading-[1.05]">
+                  <span className="block bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #fff 0%, #f9a8d4 40%, #c4b5fd 70%, #67e8f9 100%)' }}>
+                    Acteurs
+                  </span>
+                  <span className="block text-white">& <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #ec4899, #a855f7, #06b6d4)' }}>Stars</span></span>
+                </h1>
+                <p className="text-slate-300 max-w-xl text-base md:text-lg leading-relaxed">
+                  Explore les acteurs du moment. <span className="text-white font-semibold">Filmographie, séries, animés</span> — clique pour découvrir leur univers.
+                </p>
+              </div>
+
+              {/* Stats cards */}
+              <div className="grid grid-cols-3 gap-3 w-full lg:w-auto lg:flex-shrink-0">
+                {[
+                  { value: cActors, label: 'Acteurs', hex: '#ec4899', icon: Users },
+                  { value: cPage,   label: 'Page',    hex: '#a855f7', icon: Layers },
+                  { value: cPages,  label: 'Pages',   hex: '#06b6d4', icon: Zap },
+                ].map(s => {
+                  const I = s.icon;
+                  return (
+                    <div key={s.label} className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 backdrop-blur-md px-3 md:px-5 py-4 group hover:border-white/25 transition-colors">
+                      <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full blur-2xl opacity-40 group-hover:opacity-70 transition-opacity" style={{ background: s.hex }} />
+                      <I className="w-4 h-4 mb-2" style={{ color: s.hex }} />
+                      <p className="text-2xl md:text-4xl font-black tabular-nums" style={{ color: s.hex }}>{s.value}</p>
+                      <p className="text-[10px] md:text-xs uppercase tracking-widest text-slate-400 font-semibold mt-1">{s.label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
