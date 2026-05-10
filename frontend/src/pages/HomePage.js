@@ -615,14 +615,26 @@ export default function HomePage() {
   const allKeys = [...new Set([...order, ...defaultOrder])];
 
   return (
-    <div className="space-y-8" data-testid="home-page">
-      <InfoBanner />
-      {allKeys.map(key => {
-        if (key === 'hero') return moduleComponents[key];
-        return null;
-      })}
-      <div className="container mx-auto px-4 space-y-12">
-        {allKeys.filter(k => k !== 'hero').map(key => moduleComponents[key])}
+    <div className="relative text-white" style={{ background: 'linear-gradient(180deg, #050b18 0%, #0a0f1c 30%, #050b18 100%)' }} data-testid="home-page">
+      {/* Animated background orbs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <div className="absolute -top-32 -left-32 w-[40rem] h-[40rem] rounded-full opacity-25 blur-3xl"
+          style={{ background: 'radial-gradient(closest-side, rgba(16,185,129,0.55), transparent 70%)', animation: 'pulse 8s ease-in-out infinite' }} />
+        <div className="absolute top-1/3 -right-40 w-[36rem] h-[36rem] rounded-full opacity-20 blur-3xl"
+          style={{ background: 'radial-gradient(closest-side, rgba(59,130,246,0.55), transparent 70%)', animation: 'pulse 10s ease-in-out infinite' }} />
+        <div className="absolute bottom-0 left-1/3 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
+          style={{ background: 'radial-gradient(closest-side, rgba(168,85,247,0.55), transparent 70%)', animation: 'pulse 12s ease-in-out infinite' }} />
+      </div>
+
+      <div className="relative space-y-8 pb-12">
+        <InfoBanner />
+        {allKeys.map(key => {
+          if (key === 'hero') return moduleComponents[key];
+          return null;
+        })}
+        <div className="container mx-auto px-4 space-y-12">
+          {allKeys.filter(k => k !== 'hero').map(key => moduleComponents[key])}
+        </div>
       </div>
     </div>
   );
