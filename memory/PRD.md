@@ -410,3 +410,30 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
 
 ### Diff GitHub Wacewatch/wavewatch2026-V2 (main)
 - Comparaison `/app` vs repo cloné : seuls les fichiers que j'ai modifiés ces dernières itérations diffèrent. **Le repo distant est en retard sur /app**, pas l'inverse. Les features mentionnées par l'utilisateur (pseudo sous jaquette dans DownloadLinksRow, filtres+tri sur DiscoverPlaylistsPage) sont **déjà présentes dans /app**.
+
+
+## Iteration 37 - 2026-05-09 - Refonte Découvrir des Playlists (visual + filtres)
+
+### Backend
+- `GET /api/playlists/public/enhanced` : aggregation pipeline complète
+  - Filtres : `q` (texte name/desc), `creator_role` (all/staff/vip/standard), `content_type_filter` (movie,tv,music,...), `min_items`
+  - Sort : recent | oldest | likes | dislikes | size | name
+  - **Staff toujours pinned en haut** (`is_staff: -1` avant le sort utilisateur)
+  - Lookup users + lookup user_ratings (likes/dislikes counts) + items_count via $size
+  - $facet pour total + page
+- `GET /api/playlists/public/stats` : nouveau, pour le hero (total_playlists / total_contributors / total_items / by_type)
+
+### Frontend
+- DiscoverPlaylistsPage refonte VISUELLE complète :
+  - **Hero** : titre gradient (blanc→émeraude→cyan→violet), 3 stat cards avec count-up animé + glow colorés (émeraude/cyan/violet), grid pattern + orbes floues animées en arrière-plan
+  - **Toolbar sticky** : glassmorphism, search avec focus cyan, dropdown sort avec icônes, bouton Filtres avec badge notification gradient, view toggle grid/list
+  - **Filtres** : pills gradient colorées quand actives (chaque type a son gradient + shadow + ring), barres d'accent verticales pour les sections, slider violet avec fill dynamique
+  - **Cards grid** : poster mosaïque 4 cases, badges STAFF (gold) + HOT (rose pulse), bulles de types colorées en bottom-left, titre gros gras white, avatar auteur + role badge, stat strip émeraude/rose, glow gradient au hover
+  - **Cards list** : compact avec ring gold pour staff
+  - **Empty state** : encadré gradient avec orbes floues, gros icon emerald+cyan, CTA "Créer ma playlist" gradient
+  - **Skeleton loading** : 8 cards animées
+  - Background page : gradient sombre custom avec 3 orbes pulsantes (émeraude/bleu/violet) — indépendant du thème utilisateur
+
+### Verifications
+- Backend testé via curl : sort_by=likes, stats endpoint, filters → tous OK
+- Visuel testé via Playwright : desktop 1440 + mobile 390 → cohérent, vibrant, moderne
