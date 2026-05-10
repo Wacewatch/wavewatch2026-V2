@@ -37,8 +37,9 @@ export default function SportsStreamPromo() {
               plusieurs sources de streaming pour chaque événement, le tout sans inscription requise.
             </p>
 
-            <a href="https://sports-stream.sbs/" target="_blank" rel="noopener noreferrer"
-              className="inline-flex px-6 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-red-600 text-white font-medium items-center gap-2 hover:from-orange-500 hover:to-red-500 transition-all shadow-lg shadow-orange-500/25">
+            <a href="https://livewatch.top/" target="_blank" rel="noopener noreferrer"
+              className="inline-flex px-6 py-3 rounded-lg bg-gradient-to-r from-orange-600 to-red-600 text-white font-medium items-center gap-2 hover:from-orange-500 hover:to-red-500 transition-all shadow-lg shadow-orange-500/25"
+              data-testid="sports-access-btn">
               <ExternalLink className="w-4 h-4" />Accéder au site
             </a>
 

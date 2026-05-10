@@ -3270,6 +3270,40 @@ async def reset_tv_progress(show_id: str, user: dict = Depends(get_current_user)
     await db.tv_progress.delete_one({"user_id": user["_id"], "show_id": show_id})
     return {"message": "Progression reintialisee"}
 
+@app.post("/api/user/tv-progress/{show_id}/unmark-all-watched")
+async def unmark_all_episodes_watched(show_id: str, user: dict = Depends(get_current_user)):
+    """Reverse of mark-all-watched: clears tv_progress and removes the series + all its episodes from watch_history."""
+    # Reset progress
+    await db.tv_progress.delete_one({"user_id": user["_id"], "show_id": show_id})
+
+    # Remove series itself from watch_history
+    try:
+        show_id_int = int(show_id)
+    except (TypeError, ValueError):
+        show_id_int = show_id
+    await db.watch_history.delete_many({
+        "user_id": user["_id"],
+        "content_id": show_id_int,
+        "content_type": "tv",
+    })
+
+    # Remove every episode of this series from watch_history. Episode content_id is built
+    # as int(f"{show_id}{season}{episode}") so we match by content_type + prefix.
+    show_id_str = str(show_id)
+    all_eps = await db.watch_history.find(
+        {"user_id": user["_id"], "content_type": "episode"},
+        {"content_id": 1}
+    ).to_list(5000)
+    to_delete = [e["content_id"] for e in all_eps if str(e.get("content_id", "")).startswith(show_id_str)]
+    if to_delete:
+        await db.watch_history.delete_many({
+            "user_id": user["_id"],
+            "content_type": "episode",
+            "content_id": {"$in": to_delete},
+        })
+
+    return {"message": "Serie demarquee", "episodes_cleared": len(to_delete)}
+
 # =================== RELEASE NOTIFICATIONS ===================
 
 @app.get("/api/user/release-notifications")

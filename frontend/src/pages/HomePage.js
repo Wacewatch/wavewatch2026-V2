@@ -300,7 +300,7 @@ function SportsStreamPromo() {
             <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">Sans inscription</span>
           </div>
           <p className="text-sm text-muted-foreground mt-4 max-w-xl mx-auto md:mx-0">Profitez d'un streaming multi-sports de haute qualite avec plus de 15 disciplines disponibles. Accedez a plusieurs sources de streaming pour chaque evenement, le tout sans inscription requise.</p>
-          <a href="https://sports-stream.sbs/" target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-colors">
+          <a href="https://livewatch.top/" target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-red-600 hover:bg-red-500 text-white font-medium transition-colors" data-testid="sports-access-btn">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
             Acceder au site
           </a>

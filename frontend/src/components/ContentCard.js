@@ -224,6 +224,24 @@ export default function ContentCard({ item, type = 'movie', isAnime = false }) {
   const quickMarkWatched = (e) => {
     e.preventDefault(); e.stopPropagation();
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
+
+    // For a TV show: marking = mark every season/episode as watched (and reverse).
+    // Movies behave like before.
+    if (contentType === 'tv') {
+      if (isWatched) {
+        toggleWatchedLocal(key, false);
+        API.post(`/api/user/tv-progress/${item.id}/unmark-all-watched`)
+          .then(() => toast({ title: 'Série retirée du vu' }))
+          .catch(() => { toggleWatchedLocal(key, true); toast({ title: 'Erreur', variant: 'destructive' }); });
+      } else {
+        toggleWatchedLocal(key, true);
+        API.post(`/api/user/tv-progress/${item.id}/mark-all-watched`, { show_name: title, poster_path: item.poster_path })
+          .then(() => toast({ title: 'Toute la série marquée comme vue !' }))
+          .catch(() => { toggleWatchedLocal(key, false); toast({ title: 'Erreur', variant: 'destructive' }); });
+      }
+      return;
+    }
+
     if (isWatched) {
       // Toggle OFF optimistically
       toggleWatchedLocal(key, false);

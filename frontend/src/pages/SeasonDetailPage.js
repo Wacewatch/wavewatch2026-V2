@@ -24,8 +24,9 @@ export default function SeasonDetailPage({ isAnime = false }) {
     if (user) {
       API.get(`/api/user/tv-progress/${id}`).then(({ data }) => {
         const eps = data.watched_episodes || {};
+        const seasonEps = eps[String(seasonNumber)] || {};
         const s = new Set();
-        Object.entries(eps).forEach(([k, v]) => { if (k.startsWith(`${seasonNumber}-`)) s.add(parseInt(k.split('-')[1])); });
+        Object.entries(seasonEps).forEach(([epNum, isW]) => { if (isW) s.add(parseInt(epNum)); });
         setWatchedEps(s);
       }).catch(() => {});
     }

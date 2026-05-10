@@ -28,8 +28,10 @@ export default function EpisodeDetailPage({ isAnime = false }) {
     API.get(`/api/tmdb/tv/${id}/season/${seasonNumber}/episode/${episodeNumber}`).then(({ data }) => setEpisode(data)).catch(() => {}).finally(() => setLoading(false));
     API.get(`/api/tmdb/tv/${id}`).then(({ data }) => setSeriesInfo(data)).catch(() => {});
     if (user) {
-      API.get('/api/user/history').then(({ data }) => {
-        setIsWatched((data.history || []).some(h => h.content_id === epContentId && h.content_type === 'episode'));
+      API.get(`/api/user/tv-progress/${id}`).then(({ data }) => {
+        const eps = data.watched_episodes || {};
+        const seasonEps = eps[String(seasonNumber)] || {};
+        setIsWatched(!!seasonEps[String(episodeNumber)]);
       }).catch(() => {});
       API.get(`/api/user/favorites/check?content_id=${epContentId}&content_type=episode`).then(({ data }) => setIsFavorite(data.is_favorite)).catch(() => {});
     }
@@ -37,17 +39,34 @@ export default function EpisodeDetailPage({ isAnime = false }) {
 
   const markAsWatched = async () => {
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
+    const willMark = !isWatched;
+    // Optimistic UI
+    setIsWatched(willMark);
     try {
-      if (isWatched) {
-        await API.delete(`/api/user/history/${epContentId}/episode`);
-        setIsWatched(false);
-        toast({ title: 'Episode retire du vu' });
+      // Sync tv_progress (so series page progress bar + season page green check update)
+      await API.post(`/api/user/tv-progress/${id}/episode`, {
+        season: parseInt(seasonNumber),
+        episode: parseInt(episodeNumber),
+        watched: willMark,
+      });
+      // Sync watch_history (episode-level) for stats / activity
+      if (willMark) {
+        await API.post('/api/user/history', {
+          content_id: epContentId,
+          content_type: 'episode',
+          title: `${seriesInfo?.name ? seriesInfo.name + ' - ' : ''}S${seasonNumber}E${episodeNumber} - ${episode?.name || ''}`,
+          poster_path: episode?.still_path || seriesInfo?.poster_path,
+          metadata: { series_id: id, series_name: seriesInfo?.name || '', season_number: parseInt(seasonNumber), episode_number: parseInt(episodeNumber) },
+        });
       } else {
-        await API.post('/api/user/history', { content_id: epContentId, content_type: 'episode', title: `S${seasonNumber}E${episodeNumber} - ${episode?.name || ''}`, poster_path: episode?.still_path });
-        setIsWatched(true);
-        toast({ title: 'Episode marque comme vu !' });
+        await API.delete(`/api/user/history/${epContentId}/episode`);
       }
-    } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+      toast({ title: willMark ? 'Episode marque comme vu !' : 'Episode retire du vu' });
+    } catch {
+      // Rollback
+      setIsWatched(!willMark);
+      toast({ title: 'Erreur', variant: 'destructive' });
+    }
   };
 
   const toggleFavorite = async () => {

@@ -1,0 +1,32 @@
+{
+  "summary": "Iteration 34 - Backend testing of new TV progress mark-all/unmark-all cycle on /api/user/tv-progress/{show_id}/* endpoints, plus non-regression on /api/user/history, /api/user/favorites, /api/user/recommendations. 11/11 tests pass with show_id=1399 (Game of Thrones).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration34_tv_progress_mark_unmark.py",
+    "/app/test_reports/pytest/iteration_34.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is now ~3586 lines - exceeds 700-line guideline; should be split into routers (auth, tv_progress, history, favorites, recommendations).",
+    "TMDB API key has hardcoded fallback `d4b8332681051181b69c8a6c9ba1a70a` at line 3194 in mark_all_episodes_watched - secrets should come from env only and fail fast if missing.",
+    "unmark_all_episodes_watched fetches up to 5000 episode docs into memory then filters in Python by content_id prefix. Better: persist show_id as a separate field on episode history docs and delete by show_id, or build expected episode IDs from TMDB seasons (same source used at mark-all)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration34_tv_progress_mark_unmark.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "not tested"},
+  "test_credentials": "Test creates a fresh user via /api/auth/register (test_iter34_<random>@gmail.com / TestPass!2026Strong) per pytest module run. Admin credentials available in /app/memory/test_credentials.md.",
+  "seed_data_creation": "Each module run registers one ephemeral test user; test cleans up its tv_progress + watch_history at the end via unmark-all-watched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Email validator rejects .test/.example TLDs - use @gmail.com or other real-looking domain when registering test users. Show 1399 (Game of Thrones, 8 seasons, ~73 eps) is reliable for full mark-all cycle. Episode content_id convention: int(f'{show_id}{season}{episode}'). Verified: GET tv-progress empty -> mark-all (creates nested watched_episodes + 1 tv watch_history + ~73 episode entries) -> unmark-all (clears both progress and all matching history entries) -> single POST /episode {watched:true} re-creates progress with last_watched advancing to next episode -> {watched:false} sets value to false. Auth enforced (401/403 without token).",
+  "rca of the issue": "No issues. New POST /api/user/tv-progress/{show_id}/unmark-all-watched endpoint behaves correctly: deletes tv_progress doc, deletes the tv watch_history doc, and bulk-deletes all episode watch_history entries whose content_id string starts with the show_id. Existing endpoints (history/favorites/recommendations) unaffected."
+}

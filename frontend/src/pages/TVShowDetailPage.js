@@ -3,12 +3,152 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff, Download, Youtube, Shuffle } from 'lucide-react';
+import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff, Download, Youtube, Shuffle, RotateCcw, CalendarClock, Trophy, Clock } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
 import { LoadingSpinner } from '../components/Loading';
 import IframeModal from '../components/IframeModal';
+
+function formatRelativeAirDate(airDate) {
+  if (!airDate) return null;
+  const target = new Date(airDate + 'T00:00:00');
+  const now = new Date();
+  const diffMs = target - now;
+  if (diffMs <= 0) return 'disponible maintenant';
+  const days = Math.floor(diffMs / 86400000);
+  if (days === 0) return "aujourd'hui";
+  if (days === 1) return 'demain';
+  if (days < 7) return `dans ${days} jours`;
+  if (days < 30) return `dans ${Math.ceil(days / 7)} semaines`;
+  return `dans ${Math.ceil(days / 30)} mois`;
+}
+
+function ResumeWidget({ show, state, basePath }) {
+  const { kind, last, next, nextAir } = state;
+  const navigate = useNavigate();
+  const goEp = (s, e) => navigate(`/${basePath}/${show.id}/season/${s}/episode/${e}`);
+
+  // Common: card showing last watched
+  const lastCard = last && (
+    <div className="flex items-center gap-3 min-w-0">
+      <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
+        <CheckCircle className="w-7 h-7 text-green-400 fill-green-400/20" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">Dernier épisode vu</p>
+        <p className="font-semibold text-white truncate">Saison {last.season} · Épisode {last.episode}</p>
+      </div>
+    </div>
+  );
+
+  if (kind === 'next-episode' || kind === 'next-season') {
+    const isNewSeason = kind === 'next-season';
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-gray-900 to-gray-900 p-4 md:p-5" data-testid="resume-widget">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          {lastCard}
+          <div className="hidden lg:block w-px h-12 bg-emerald-500/20" />
+          <div className="flex-1 flex flex-wrap gap-2">
+            <button
+              onClick={() => goEp(last.season, last.episode)}
+              className="px-4 py-2.5 rounded-lg border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 transition-colors flex items-center gap-2 text-sm"
+              data-testid="resume-rewatch-btn"
+            >
+              <RotateCcw className="w-4 h-4" />Revoir S{last.season}E{last.episode}
+            </button>
+            <button
+              onClick={() => goEp(next.season, next.episode)}
+              className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-medium flex items-center gap-2 text-sm shadow-lg shadow-emerald-500/25"
+              data-testid="resume-next-btn"
+            >
+              {isNewSeason ? <SkipForward className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isNewSeason ? `Commencer la saison ${next.season}` : `Voir l'épisode suivant (S${next.season}E${next.episode})`}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === 'finished') {
+    return (
+      <div className="rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-950/40 via-gray-900 to-gray-900 p-4 md:p-5" data-testid="resume-widget">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          {lastCard}
+          <div className="hidden lg:block w-px h-12 bg-amber-500/20" />
+          <div className="flex-1 flex items-start gap-3">
+            <Trophy className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="font-semibold text-amber-300">Vous êtes au bout de la série</p>
+              <p className="text-sm text-muted-foreground">{show.status === 'Canceled' ? 'La série a été annulée — il n\'y aura pas de suite.' : 'La série est terminée — bravo, vous avez tout vu !'}</p>
+            </div>
+            <button
+              onClick={() => goEp(last.season, last.episode)}
+              className="ml-auto px-3 py-2 rounded-lg border border-amber-500/40 text-amber-300 hover:bg-amber-500/10 transition-colors flex items-center gap-2 text-sm flex-shrink-0"
+              data-testid="resume-rewatch-btn"
+            >
+              <RotateCcw className="w-4 h-4" />Revoir
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === 'wait') {
+    const rel = formatRelativeAirDate(nextAir.air_date);
+    return (
+      <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-gray-900 to-gray-900 p-4 md:p-5" data-testid="resume-widget">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          {lastCard}
+          <div className="hidden lg:block w-px h-12 bg-cyan-500/20" />
+          <div className="flex-1 flex items-start gap-3">
+            <CalendarClock className="w-6 h-6 text-cyan-400 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-cyan-300">Prochain épisode pas encore sorti</p>
+              <p className="text-sm text-muted-foreground">
+                S{nextAir.season_number}E{nextAir.episode_number}
+                {nextAir.name ? ` · ${nextAir.name}` : ''} — diffusion le {new Date(nextAir.air_date).toLocaleDateString('fr-FR')}
+                {rel ? ` (${rel})` : ''}.
+              </p>
+            </div>
+            <button
+              onClick={() => goEp(last.season, last.episode)}
+              className="ml-auto px-3 py-2 rounded-lg border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 transition-colors flex items-center gap-2 text-sm flex-shrink-0"
+              data-testid="resume-rewatch-btn"
+            >
+              <RotateCcw className="w-4 h-4" />Revoir le dernier
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // wait-unknown
+  return (
+    <div className="rounded-xl border border-gray-600/40 bg-gradient-to-r from-gray-900 via-gray-900 to-gray-900 p-4 md:p-5" data-testid="resume-widget">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+        {lastCard}
+        <div className="hidden lg:block w-px h-12 bg-gray-700" />
+        <div className="flex-1 flex items-start gap-3">
+          <Clock className="w-6 h-6 text-gray-400 flex-shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-gray-200">Vous êtes à jour</p>
+            <p className="text-sm text-muted-foreground">La série est toujours en cours, mais aucune date pour le prochain épisode n'a encore été annoncée.</p>
+          </div>
+          <button
+            onClick={() => goEp(last.season, last.episode)}
+            className="ml-auto px-3 py-2 rounded-lg border border-gray-600 text-gray-300 hover:bg-gray-700/40 transition-colors flex items-center gap-2 text-sm flex-shrink-0"
+          >
+            <RotateCcw className="w-4 h-4" />Revoir
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function TVShowDetailPage() {
   const { id } = useParams();
@@ -95,6 +235,74 @@ export default function TVShowDetailPage() {
       navigate(`/tv-shows/${id}/season/${continueInfo.season}/episode/${continueInfo.episode}`);
     }
   };
+
+  // Compute the "next step" for the user based on watched_episodes + show.seasons
+  // Returns { kind: 'rewatch'|'next-episode'|'next-season'|'finished'|'wait', ... }
+  const getResumeState = () => {
+    if (!show || !show.seasons) return null;
+    const realSeasons = show.seasons.filter(s => s.season_number > 0 && s.episode_count > 0);
+    if (realSeasons.length === 0) return null;
+
+    // Find last watched (highest season, then highest episode within)
+    let lastSeason = null, lastEpisode = null;
+    realSeasons.forEach(s => {
+      const seasonEps = watchedEpisodes[String(s.season_number)] || {};
+      Object.entries(seasonEps).forEach(([epNum, isW]) => {
+        if (isW) {
+          const sn = s.season_number;
+          const en = parseInt(epNum);
+          if (lastSeason === null || sn > lastSeason || (sn === lastSeason && en > lastEpisode)) {
+            lastSeason = sn; lastEpisode = en;
+          }
+        }
+      });
+    });
+
+    if (lastSeason === null) return { kind: 'start', firstSeason: realSeasons[0].season_number };
+
+    // Determine next episode
+    const currentSeason = realSeasons.find(s => s.season_number === lastSeason);
+    const currentSeasonEpCount = currentSeason?.episode_count || 0;
+
+    // Case 1: there's a next episode in same season
+    if (lastEpisode < currentSeasonEpCount) {
+      return {
+        kind: 'next-episode',
+        last: { season: lastSeason, episode: lastEpisode },
+        next: { season: lastSeason, episode: lastEpisode + 1 },
+      };
+    }
+
+    // Case 2: there's a next season available
+    const nextSeason = realSeasons.find(s => s.season_number > lastSeason);
+    if (nextSeason) {
+      return {
+        kind: 'next-season',
+        last: { season: lastSeason, episode: lastEpisode },
+        next: { season: nextSeason.season_number, episode: 1 },
+      };
+    }
+
+    // Case 3: no next season locally — check show status
+    // Show ended/canceled → finished
+    if (show.status === 'Ended' || show.status === 'Canceled') {
+      return { kind: 'finished', last: { season: lastSeason, episode: lastEpisode } };
+    }
+
+    // Show still running → check next_episode_to_air
+    if (show.next_episode_to_air?.air_date) {
+      return {
+        kind: 'wait',
+        last: { season: lastSeason, episode: lastEpisode },
+        nextAir: show.next_episode_to_air,
+      };
+    }
+
+    // Returning series but no scheduled episode info
+    return { kind: 'wait-unknown', last: { season: lastSeason, episode: lastEpisode } };
+  };
+
+  const resumeState = getResumeState();
 
   // Episode aleatoire (saison aleatoire + episode aleatoire)
   const [loadingRandom, setLoadingRandom] = useState(false);
@@ -207,18 +415,6 @@ export default function TVShowDetailPage() {
             
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-3">
-              {/* Bouton Reprendre (si applicable) */}
-              {continueInfo && (
-                <button 
-                  onClick={handleContinueWatching} 
-                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium flex items-center gap-2 hover:from-green-500 hover:to-emerald-500 shadow-lg shadow-green-500/25 transition-all"
-                  data-testid="continue-watching-btn"
-                >
-                  <SkipForward className="w-5 h-5" />
-                  Reprendre S{continueInfo.season} E{continueInfo.episode}
-                </button>
-              )}
-              
               <button onClick={() => { setShowStream(true); if (user?.auto_mark_watched !== false && !isWatched) markAsWatched(); }} className="px-5 py-2.5 rounded-lg border border-red-600 text-red-400 hover:bg-red-900/20 flex items-center gap-2"><Play className="w-5 h-5" />Regarder</button>
               <button onClick={handleRandomEpisode} disabled={loadingRandom} className="px-5 py-2.5 rounded-lg border border-purple-600 text-purple-400 hover:bg-purple-900/20 flex items-center gap-2 disabled:opacity-60" data-testid="random-episode-btn" title="Episode aleatoire">
                 <Shuffle className={`w-5 h-5 ${loadingRandom ? 'animate-spin' : ''}`} />Aleatoire
@@ -243,6 +439,11 @@ export default function TVShowDetailPage() {
               )}
             </div>
             
+            {/* Reprendre / Continuer (Continue Watching widget) */}
+            {user && resumeState && resumeState.kind !== 'start' && (
+              <ResumeWidget show={show} state={resumeState} basePath="tv-shows" />
+            )}
+
             {/* Marquer TOUTE la série comme vue */}
             <div className="flex items-center gap-3 p-4 rounded-lg border border-gray-800 bg-gray-900/50">
               <Tv className="w-6 h-6 text-blue-400" />
