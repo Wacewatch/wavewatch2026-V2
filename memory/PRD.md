@@ -636,3 +636,41 @@ Card niveau XP avec badge tier 3D, barre de progression et chips. Mode `compact`
 | 35 | 💎 Thème "Obsidienne" (VIP exceptionnel) **gratuit** |
 
 Dans le menu thèmes Premium, les thèmes débloqués par niveau affichent un badge **"LV"** vert/cyan (au lieu de l'étoile dorée VIP) et sont accessibles sans être VIP.
+
+
+## Iteration 43 — 2026-05-10 — Événements saisonniers + Avatars themed XP + bug fix /active
+
+### 1️⃣ Système d'événements saisonniers (backend + frontend + admin)
+**Backend** (`/app/backend/server.py`)
+- Nouvelle collection `db.seasonal_events` avec 5 événements seedés au démarrage:
+  - **Halloween** (15-31 oct, ×3 XP, theme=halloween, genres horror/thriller)
+  - **Noël** (1-31 déc, ×3 XP, theme=christmas, genres familial/romance/anim)
+  - **Été WaveWatch** (1 jul-31 aoû, ×2 XP, theme=estival)
+  - **Saint-Valentin** (7-14 fév, ×2 XP, theme=sakura, genre romance)
+  - **Anniversaire WaveWatch** (15-21 mars, ×5 XP, theme=neon)
+- Helper `_is_event_currently_active(evt, now)` — gère les fenêtres récurrentes annuelles, y compris span sur 2 années (ex: 20 déc → 10 jan)
+- Endpoints publics : `GET /api/seasonal-events/active` (event courant ou null), `GET /api/seasonal-events` (liste complète avec flag `currently_active`)
+- Endpoints admin : `GET/POST/PUT/DELETE /api/admin/seasonal-events[/{id}]` — CRUD complet sécurisé `require_admin`
+- **Bug fix critique** : projection MongoDB de `/api/seasonal-events/active` excluait le champ `active`, ce qui faisait toujours échouer `_is_event_currently_active`. Champ ajouté à la projection + retiré de la réponse.
+
+**Frontend**
+- `lib/seasonal.js` : hook `useSeasonalEvent()` avec cache 10 min, fetch `/api/seasonal-events/active`
+- `components/SeasonalBanner.js` : bandeau gradient au-dessus de la nav, icône dynamique (Ghost/TreePine/Sun/Heart/Cake/Sparkles/Zap), couleur dynamique de l'événement, badge ×N XP, CTA "En savoir plus" → `/leaderboard`, fermable (sessionStorage)
+- `components/AutoThemeApplier.js` : applique automatiquement `event.auto_theme` si `localStorage.ww_theme_user_set !== '1'`. Une fois que l'utilisateur change de thème manuellement, son choix prime.
+- `components/Navigation.js` : modification du `setTheme` pour set le flag `ww_theme_user_set=1`
+- `App.js` : `<AutoThemeApplier />` + `<SeasonalBanner />` injectés au-dessus de la `<Navigation />`
+- `components/admin/EventsAdminPanel.js` : nouvel onglet **"Événements"** dans l'admin avec liste + édition inline (icon picker, color picker, theme picker auto, dates start/end, multiplier XP, genres/types bonus, toggle active, delete)
+
+### 2️⃣ Avatars themed selon le niveau XP
+- Nouveau composant `components/UserAvatar.js` réutilisable :
+  - Niveau 5+ → médaille tier en bas-à-droite (Bronze→Argent→Or→Platine→Diamant)
+  - Niveau 10+ → cadre 3px gradient tier
+  - Niveau 20+ → animation glow pulsante du cadre
+  - Couleurs/glow : `getTier(level)` depuis `lib/xp.js`
+- Intégré dans `Navigation.js` à la place de l'avatar plat (preserve les badges admin/VIP existants)
+
+### 3️⃣ Validation
+- Testing agent iteration 36 : **19/19 tests backend** (100%)
+  - test_iteration37_seasonal_events.py (11/11) : list public, active null hors saison, create+active toggling, update, delete, admin auth, validation
+  - test_iteration35_recommendations_diversity.py (8/8) : non-régression diversité personnalisée + trending
+- Test visuel via Playwright : événement de test "Saison du Test" créé → bandeau rose s'affiche en haut + thème sakura auto-appliqué ✅
