@@ -23,12 +23,32 @@ const CATEGORY_COLORS = {
   Câble: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
 };
 
-const COUNTRY_FLAGS = {
-  France: '🇫🇷', Italy: '🇮🇹', Spain: '🇪🇸', Portugal: '🇵🇹', Germany: '🇩🇪',
-  'United Kingdom': '🇬🇧', Belgium: '🇧🇪', Netherlands: '🇳🇱', Switzerland: '🇨🇭',
-  Albania: '🇦🇱', Turkey: '🇹🇷', Arabia: '🇸🇦', Balkans: '🌍', Russia: '🇷🇺',
-  Romania: '🇷🇴', Poland: '🇵🇱', Bulgaria: '🇧🇬',
+// ISO 3166-1 alpha-2 codes for flagcdn.com (Balkans is not a country -> uses generic globe fallback)
+const COUNTRY_ISO = {
+  France: 'fr', Italy: 'it', Spain: 'es', Portugal: 'pt', Germany: 'de',
+  'United Kingdom': 'gb', Belgium: 'be', Netherlands: 'nl', Switzerland: 'ch',
+  Albania: 'al', Turkey: 'tr', Arabia: 'sa', Russia: 'ru',
+  Romania: 'ro', Poland: 'pl', Bulgaria: 'bg', Balkans: 'rs',
 };
+
+function FlagImg({ country, size = 'lg' }) {
+  const iso = COUNTRY_ISO[country];
+  const widths = { sm: 'w-6 h-4', md: 'w-9 h-6', lg: 'w-14 h-10' };
+  const cdnW = { sm: 40, md: 80, lg: 160 };
+  const cls = widths[size] || widths.lg;
+  if (!iso) {
+    return <div className={`${cls} flex items-center justify-center text-2xl`}>🌍</div>;
+  }
+  return (
+    <img
+      src={`https://flagcdn.com/w${cdnW[size]}/${iso}.png`}
+      srcSet={`https://flagcdn.com/w${cdnW[size] * 2}/${iso}.png 2x`}
+      alt={country}
+      className={`${cls} object-cover rounded-sm shadow-md ring-1 ring-black/30`}
+      loading="lazy"
+    />
+  );
+}
 
 function ChannelCard({ channel, onWatch, onFavorite, onVote, userVote, isFavorite }) {
   const cat = channel.category || 'Autre';
@@ -126,6 +146,7 @@ function ChannelCard({ channel, onWatch, onFavorite, onVote, userVote, isFavorit
 function LiveWatchChannelCard({ channel, onWatch }) {
   const cat = channel.category || 'TV';
   const catColor = CATEGORY_COLORS[cat] || 'bg-slate-500/15 text-slate-300 border-slate-500/30';
+  const hasBackup = !!channel.backup_embed_url;
   return (
     <div
       className="bg-card border border-border rounded-2xl p-4 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 flex flex-col gap-3"
@@ -151,16 +172,31 @@ function LiveWatchChannelCard({ channel, onWatch }) {
             {channel.quality && (
               <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-md border bg-secondary border-border text-foreground">{channel.quality}</span>
             )}
+            {hasBackup && (
+              <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-md border bg-amber-500/15 text-amber-300 border-amber-500/30">ALT</span>
+            )}
           </div>
         </div>
       </div>
-      <button
-        onClick={() => onWatch(channel)}
-        className="w-full h-10 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow shadow-red-600/20"
-        data-testid={`livewatch-watch-${channel.id}`}
-      >
-        <Play className="w-4 h-4 fill-current" /> Regarder
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onWatch(channel, false)}
+          className="flex-1 h-10 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow shadow-red-600/20"
+          data-testid={`livewatch-watch-${channel.id}`}
+        >
+          <Play className="w-4 h-4 fill-current" /> Regarder
+        </button>
+        {hasBackup && (
+          <button
+            onClick={() => onWatch(channel, true)}
+            title="Source alternative (backup)"
+            className="h-10 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors"
+            data-testid={`livewatch-alt-${channel.id}`}
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Alt
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -275,7 +311,7 @@ export default function TVChannelsPage() {
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
-  const openLwChannel = (channel) => setLwSelected({ channel, useBackup: false });
+  const openLwChannel = (channel, useBackup = false) => setLwSelected({ channel, useBackup });
   const closeLwChannel = () => setLwSelected(null);
   const toggleBackup = () => {
     setLwSelected(s => s ? { ...s, useBackup: !s.useBackup } : s);
@@ -390,11 +426,13 @@ export default function TVChannelsPage() {
                     <button
                       key={c.name}
                       onClick={() => loadLwChannels(c.name)}
-                      className="bg-card border border-border rounded-2xl p-5 hover:border-red-500/60 hover:bg-red-500/5 transition-all duration-300 flex flex-col items-center gap-2 group"
+                      className="bg-card border border-border rounded-2xl p-5 hover:border-red-500/60 hover:bg-red-500/5 transition-all duration-300 flex flex-col items-center gap-3 group"
                       data-testid={`country-btn-${c.name}`}
                     >
-                      <span className="text-4xl group-hover:scale-110 transition-transform">{COUNTRY_FLAGS[c.name] || '🌐'}</span>
-                      <span className="font-bold text-base">{c.name}</span>
+                      <div className="group-hover:scale-110 transition-transform">
+                        <FlagImg country={c.name} size="lg" />
+                      </div>
+                      <span className="font-bold text-base text-center">{c.name}</span>
                       <span className="text-xs text-muted-foreground">{c.total} chaînes</span>
                     </button>
                   ))}
@@ -413,8 +451,8 @@ export default function TVChannelsPage() {
                 >
                   <ArrowLeft className="w-4 h-4" /> Pays
                 </button>
-                <div className="flex items-center gap-2 text-lg font-bold">
-                  <span className="text-2xl">{COUNTRY_FLAGS[lwSelectedCountry] || '🌐'}</span>
+                <div className="flex items-center gap-3 text-lg font-bold">
+                  <FlagImg country={lwSelectedCountry} size="md" />
                   {lwSelectedCountry}
                   <span className="text-sm text-muted-foreground font-normal">({lwChannels.length} chaînes)</span>
                 </div>
