@@ -2541,20 +2541,47 @@ async def get_user_recommendations(user: dict = Depends(get_current_user)):
         _add_seed(h.get("content_type"), h.get("content_id"))
 
     if not seeds:
-        # Brand new user: trending mix (random page 1 or 2 for variety)
+        # Brand new user: fetch trending across MULTIPLE pages in parallel for true variety
         import random as _random
-        page = _random.choice([1, 2])
+        import asyncio as _asyncio
         async with httpx.AsyncClient(timeout=10.0) as client:
+            urls = [
+                f"https://api.themoviedb.org/3/trending/all/week?api_key={tmdb_key}&language=fr-FR&page={p}"
+                for p in (1, 2, 3)
+            ] + [
+                f"https://api.themoviedb.org/3/trending/movie/week?api_key={tmdb_key}&language=fr-FR&page=1",
+                f"https://api.themoviedb.org/3/trending/tv/week?api_key={tmdb_key}&language=fr-FR&page=1",
+            ]
             try:
-                r = await client.get(f"https://api.themoviedb.org/3/trending/all/week?api_key={tmdb_key}&language=fr-FR&page={page}")
-                results = r.json().get("results", [])[:36]
+                responses = await _asyncio.gather(*(client.get(u) for u in urls), return_exceptions=True)
             except Exception:
-                results = []
-        # Normalise media_type for trending/all
-        for it in results:
-            it["media_type"] = it.get("media_type") or ("tv" if it.get("name") and not it.get("title") else "movie")
-        _random.shuffle(results)
-        return {"recommendations": results[:18], "source": "trending"}
+                responses = []
+            pool = []
+            seen_ids = set()
+            for resp in responses:
+                if isinstance(resp, Exception):
+                    continue
+                try:
+                    items = resp.json().get("results", []) or []
+                except Exception:
+                    items = []
+                for it in items:
+                    it_id = it.get("id")
+                    if not it_id:
+                        continue
+                    mt = it.get("media_type") or ("tv" if it.get("name") and not it.get("title") else "movie")
+                    if mt not in ("movie", "tv"):
+                        continue
+                    it["media_type"] = mt
+                    key = (mt, int(it_id))
+                    if key in seen_ids:
+                        continue
+                    if not it.get("poster_path"):
+                        continue
+                    seen_ids.add(key)
+                    pool.append(it)
+        _random.shuffle(pool)
+        return {"recommendations": pool[:18], "source": "trending"}
 
     # ---------- Aggregate similar/recommendations + genre discover ----------
     import random as _random

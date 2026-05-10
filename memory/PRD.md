@@ -391,3 +391,22 @@ Passage de `to_list(N)` → `to_list(length=None)` sur :
 ### Tests
 - Iteration 34 (testing agent) : 11/11 backend tests pass — cycle mark-all → unmark-all → episode toggle validé end-to-end
 - Tests E2E manuels via Playwright : widget Resume affiché en mode `next-episode` (S1E3 vu → S1E4 proposé) ET `finished` (S8E6 vu → message GoT terminé), URL Sports = livewatch.top
+
+
+## Iteration 36 - 2026-05-09 - Recommandations variées + Contenu Aléatoire dual + diff GitHub
+
+### Backend
+- `GET /api/user/recommendations` rendu varié à chaque appel :
+  - **Path personnalisé** (avec seeds) : pool élargi de ~80 candidats (similar/recommendations pages 1+2 par seed, discover pages 1+2 par genre, seeds shufflés). Top 36 par score puis `random.shuffle` → return 18.
+  - **Path trending** (nouvel utilisateur) : fetch parallèle (asyncio.gather) de `trending/all/week` pages 1-2-3 + `trending/movie/week` p1 + `trending/tv/week` p1 → pool dédoublonné de ~50+ items, shuffle, return 18.
+  - Quality gates conservés (poster_path, vote_count >= 20 pour seeds-derived).
+  - Exclusions inchangées : history + favorites + dislikes.
+
+### Frontend
+- `HomePage RandomContent` : refonte pour afficher **simultanément 1 film ET 1 série** dans une grille 2 colonnes responsive. Bouton "Nouveau" rafraîchit les deux. Spinner sur l'icône Shuffle pendant chargement.
+
+### Tests
+- 8/8 tests pytest pass (test_iteration35_recommendations_diversity.py) — diversité personnalisée ET trending validées, exclusions et qualité OK, non-régression /history /favorites /tv-progress unmark-all.
+
+### Diff GitHub Wacewatch/wavewatch2026-V2 (main)
+- Comparaison `/app` vs repo cloné : seuls les fichiers que j'ai modifiés ces dernières itérations diffèrent. **Le repo distant est en retard sur /app**, pas l'inverse. Les features mentionnées par l'utilisateur (pseudo sous jaquette dans DownloadLinksRow, filtres+tri sur DiscoverPlaylistsPage) sont **déjà présentes dans /app**.
