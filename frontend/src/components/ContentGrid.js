@@ -33,7 +33,7 @@ export default function ContentGrid({ children, title, subtitle, link, icon }) {
       )}
       <div ref={scrollRef} className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         {React.Children.map(children, child => (
-          <div className="flex-shrink-0 w-[140px] sm:w-[160px] md:w-[180px]">
+          <div className="flex-shrink-0 w-[125px] sm:w-[140px] md:w-[150px] lg:w-[160px]">
             {child}
           </div>
         ))}

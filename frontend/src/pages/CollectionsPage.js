@@ -63,7 +63,7 @@ function CollectionDetail({ collectionId }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-10 gap-2.5 md:gap-3">
         {parts.map(item => (
           <ContentCard key={item.id} item={{ ...item, media_type: item.media_type || 'movie' }} type={item.media_type === 'tv' ? 'tv' : 'movie'} />
         ))}
@@ -217,7 +217,7 @@ export default function CollectionsPage() {
         {loading ? <LoadingGrid count={12} /> : collections.length === 0 ? (
           <p className="text-center py-12 text-foreground/50">Aucune collection trouvée</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-10 gap-2.5 md:gap-3">
             {collections.map(c => (
               <Link key={c.id} to={`/collections/${c.id}`} className="group" data-testid={`collection-card-${c.id}`}>
                 <div className="overflow-hidden rounded-lg border border-border bg-card transition-transform duration-200 group-hover:scale-105">

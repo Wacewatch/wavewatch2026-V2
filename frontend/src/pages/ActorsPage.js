@@ -193,7 +193,7 @@ export default function ActorsPage() {
 
         {/* RESULTS */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-10 gap-3">
             {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="rounded-2xl border border-white/10 bg-card/80 overflow-hidden animate-pulse">
                 <div className="aspect-[2/3] bg-white/5" />
@@ -218,7 +218,7 @@ export default function ActorsPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-10 gap-3">
             {actors.map((a, i) => <ActorCard key={a.id} a={a} idx={i} />)}
           </div>
         )}

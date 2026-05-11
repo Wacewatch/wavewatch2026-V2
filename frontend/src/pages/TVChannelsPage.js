@@ -620,7 +620,7 @@ export default function TVChannelsPage() {
             </div>
 
             {filtered.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-4">
                 {filtered.map((ch, i) => (
                   <ChannelCard
                     key={ch._id || ch.id || ch.name}
@@ -652,7 +652,7 @@ export default function TVChannelsPage() {
             {lwLoading ? (
               <LoaderBlock />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4" data-testid="livewatch-countries-grid">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3" data-testid="livewatch-countries-grid">
                 {lwCountries.map((c, i) => (
                   <CountryCard key={c.name} country={c} idx={i} onClick={() => loadLwChannels(c.name)} />
                 ))}
@@ -710,7 +710,7 @@ export default function TVChannelsPage() {
             {lwLoading ? (
               <LoaderBlock />
             ) : lwFiltered.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4" data-testid="livewatch-channels-grid">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3" data-testid="livewatch-channels-grid">
                 {lwFiltered.map((ch, i) => (
                   <LiveWatchChannelCard key={ch.id} channel={ch} idx={i} onWatch={openLwChannel} />
                 ))}

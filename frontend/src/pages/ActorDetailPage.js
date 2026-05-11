@@ -92,7 +92,7 @@ export default function ActorDetailPage() {
             <Film className="w-6 h-6 text-red-400" />
             Films <span className="text-sm font-normal text-muted-foreground">({movieCredits.length})</span>
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-2.5">
             {movieCredits.map((c, i) => <ContentCard key={`m-${c.id}-${i}`} item={c} type="movie" />)}
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function ActorDetailPage() {
             <Tv className="w-6 h-6 text-blue-400" />
             Series <span className="text-sm font-normal text-muted-foreground">({tvCredits.length})</span>
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 gap-2.5">
             {tvCredits.map((c, i) => <ContentCard key={`t-${c.id}-${i}`} item={c} type="tv" />)}
           </div>
         </div>

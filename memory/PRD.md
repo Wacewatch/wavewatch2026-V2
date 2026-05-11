@@ -1,5 +1,23 @@
 # WaveWatch PRD
 
+## Session 49 (2026-05-12) — Densité grilles & carousels
+
+### Demande utilisateur (FR)
+> "dans les pages comme films les jaquette sont trop grande et on vois peut de film par page — fait le pour films series animé etc. le module chaine tv il faut plus de chaine dans le carouselle — idem pour Playlists de la Communaute — que ca prenne bien toutes la ligne"
+
+### Changements
+- **Grilles posters (Movies, TV Shows, Anime, Music, Games, Ebooks, Retrogaming, Favorites, Collections, PlaylistDetail, Search/TMDB)** : passage de `xl:grid-cols-6` → `xl:grid-cols-8 2xl:grid-cols-10` (+ mobile `grid-cols-3` au lieu de 2) → ~10 jaquettes par ligne sur grand écran au lieu de 6.
+- **Software** : `xl:grid-cols-6 2xl:grid-cols-7` (cards plus larges car écran format paysage).
+- **Acteurs (ActorsPage + ActorDetailPage filmography + SearchPage personnes/musique/jeux/ebooks/radio/chaines)** : même densification.
+- **TVChannelsPage** : grille principale `xl:grid-cols-5 2xl:grid-cols-6` (vs 4), grille pays LiveWatch `xl:grid-cols-7 2xl:grid-cols-8` (vs 5), grille chaînes pays `xl:grid-cols-6 2xl:grid-cols-7` (vs 5).
+- **DiscoverPlaylistsPage** : `xl:grid-cols-6 2xl:grid-cols-7` (vs 4).
+- **HomePage `PublicPlaylistsRow` (Playlists de la Communauté)** : passage de `lg:grid-cols-6 / slice(0,6)` → `xl:grid-cols-9 2xl:grid-cols-10 / slice(0,10)` → 10 playlists visibles sur grand écran.
+- **HomePage `TrendingTVChannelsRow` + tous les carousels `ContentGrid`** : largeur fixe des cartes réduite de `180px → 160px` (lg) / `160px → 140px` (sm) / `140px → 125px` (mobile) → ~25 % de cartes visibles en plus dans chaque carousel (films tendance, séries, animes, chaînes TV, etc.).
+
+### Fichiers modifiés
+`MoviesPage.js`, `TVShowsPage.js`, `AnimePage.js`, `SearchPage.js`, `MusicPage.js`, `GamesPage.js`, `EbooksPage.js`, `SoftwarePage.js`, `RetrogamingPage.js`, `FavoritesPage.js`, `CollectionsPage.js`, `PlaylistDetailPage.js`, `ActorsPage.js`, `ActorDetailPage.js`, `TVChannelsPage.js`, `DiscoverPlaylistsPage.js`, `HomePage.js`, `components/ContentGrid.js`.
+
+
 ## Session 48 (2026-05-12) — Full-width layout & responsive
 
 ### Demande utilisateur (FR)

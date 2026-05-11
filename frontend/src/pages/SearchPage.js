@@ -107,7 +107,7 @@ export default function SearchPage() {
           {(filter === 'all' || filter === 'movie' || filter === 'tv') && (movies.length > 0 || tvShows.length > 0) && (
             <div className="mb-8">
               {filter === 'all' && <h2 className="text-xl font-bold mb-4">Films et Series</h2>}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-10 gap-2.5 md:gap-3">
                 {tmdbResults.filter(r => (filter === 'all' || r.media_type === filter) && r.media_type !== 'person').map(r => (
                   <ContentCard key={`${r.media_type}-${r.id}`} item={r} type={r.media_type === 'tv' ? 'tv' : 'movie'} />
                 ))}
@@ -119,7 +119,7 @@ export default function SearchPage() {
           {(filter === 'all' || filter === 'person') && persons.length > 0 && (
             <div className="mb-8">
               {filter === 'all' && <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Users className="w-5 h-5" />Acteurs</h2>}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-3">
                 {persons.map(p => (
                   <Link key={`person-${p.id}`} to={`/actors/${p.id}`} className="group text-center" data-testid={`person-${p.id}`}>
                     <div className="aspect-[2/3] rounded-xl overflow-hidden bg-muted mb-2">
@@ -137,7 +137,7 @@ export default function SearchPage() {
           {(filter === 'all' || filter === 'tv_channel') && tvChannels.length > 0 && (
             <div className="mb-8">
               {filter === 'all' && <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Tv className="w-5 h-5" />Chaines TV</h2>}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-3">
                 {tvChannels.map(item => <LocalContentCard key={item._id} item={item} />)}
               </div>
             </div>
@@ -146,7 +146,7 @@ export default function SearchPage() {
           {(filter === 'all' || filter === 'music') && musicItems.length > 0 && (
             <div className="mb-8">
               {filter === 'all' && <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Music className="w-5 h-5" />Musique</h2>}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-3">
                 {musicItems.map(item => <LocalContentCard key={item._id} item={item} />)}
               </div>
             </div>
@@ -155,7 +155,7 @@ export default function SearchPage() {
           {(filter === 'all' || filter === 'game') && gameItems.length > 0 && (
             <div className="mb-8">
               {filter === 'all' && <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Gamepad2 className="w-5 h-5" />Jeux</h2>}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-3">
                 {gameItems.map(item => <LocalContentCard key={item._id} item={item} />)}
               </div>
             </div>
@@ -164,7 +164,7 @@ export default function SearchPage() {
           {(filter === 'all' || filter === 'software') && softwareItems.length > 0 && (
             <div className="mb-8">
               {filter === 'all' && <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Monitor className="w-5 h-5" />Logiciels</h2>}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-3">
                 {softwareItems.map(item => <LocalContentCard key={item._id} item={item} />)}
               </div>
             </div>
@@ -173,7 +173,7 @@ export default function SearchPage() {
           {(filter === 'all' || filter === 'ebook') && ebookItems.length > 0 && (
             <div className="mb-8">
               {filter === 'all' && <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5" />Ebooks</h2>}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-3">
                 {ebookItems.map(item => <LocalContentCard key={item._id} item={item} />)}
               </div>
             </div>
@@ -182,7 +182,7 @@ export default function SearchPage() {
           {(filter === 'all' || filter === 'radio') && radioItems.length > 0 && (
             <div className="mb-8">
               {filter === 'all' && <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><Radio className="w-5 h-5" />Radio</h2>}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-9 gap-3">
                 {radioItems.map(item => <LocalContentCard key={item._id} item={item} />)}
               </div>
             </div>

@@ -78,7 +78,7 @@ export default function EbooksPage() {
       </FilterBar>
 
       {filtered.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-10 gap-2.5 md:gap-3">
           {filtered.map((item, i) => (
             <Link key={item._id || item.id} to={`/ebooks/${item._id || item.id}`}
                   className="group relative wv-fade-in" style={{ animationDelay: `${Math.min(i, 24) * 25}ms` }}

@@ -265,8 +265,8 @@ function PublicPlaylistsRow() {
           <Link to="/discover/playlists" className="text-sm text-blue-400 hover:underline">Voir tout</Link>
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        {playlists.slice(0, 6).map((p, i) => (
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 2xl:grid-cols-10 gap-2.5 md:gap-3">
+        {playlists.slice(0, 10).map((p, i) => (
           <Link key={p._id} to={`/playlists/${p._id}`} className="group">
             <div className="rounded-xl overflow-hidden border border-border bg-card group-hover:border-primary/30 transition-all">
               <div className="aspect-square relative overflow-hidden">
