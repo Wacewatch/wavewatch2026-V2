@@ -1,5 +1,23 @@
 # WaveWatch PRD
 
+## Session 48 (2026-05-12) — Full-width layout & responsive
+
+### Demande utilisateur (FR)
+> "dans tout le site il y a des espace vide a droite et a gauche je veus occuper tout l'espace tout le site entier sans rien oublier — et que tout le site global soit responsive pc et mobile"
+
+### Changements
+- `/app/frontend/src/index.css` : override global de la classe Tailwind `.container`
+  - `width:100% / max-width:100%` (au lieu du max-w par breakpoint qui limitait à ~1280px sur desktop)
+  - Paddings latéraux responsifs : 0.75rem (mobile) → 1.25rem (sm) → 2rem (lg) → 3rem (2xl)
+- Règle `main > div / section { max-width:100% }` pour neutraliser les anciens `max-w-Xxl` hérités sur les racines de pages
+- Conservation d'une largeur lecture confortable possible via `.prose` / `.text-content-readable` (80ch)
+- Impact : TOUTES les pages (Home, Movies, TV Shows, Anime, FAQ, Admin, Dashboard, Footer, Navigation, etc.) occupent maintenant 100 % de la largeur écran, sans rien casser du responsive mobile
+
+### Validation visuelle
+- ✅ Screenshot desktop 1920px : `/movies` & `/` — bord à bord, plus aucune bande vide
+- ✅ Responsive mobile/tablette préservé via les paddings adaptatifs
+
+
 ## Session 47 (2026-05-11) — Refonte demandes + Streak + Reco + Notifs acteur
 
 ### 1️⃣ Refonte page Demandes de contenu (`/requests`)

@@ -56,9 +56,36 @@ body { font-family: 'Outfit', sans-serif; margin: 0; -webkit-font-smoothing: ant
 /* Global responsive safety net */
 html, body { max-width: 100%; overflow-x: hidden; }
 img, video, iframe { max-width: 100%; height: auto; }
-@media (max-width: 640px) {
-  .container { padding-left: 1rem; padding-right: 1rem; }
+
+/* === FULL-WIDTH GLOBAL OVERRIDE ===
+   Forcer le contenu à occuper toute la largeur de l'écran (pas de max-width restrictif),
+   avec des paddings latéraux responsives pour aérer un peu sur grand écran. */
+.container {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
+@media (min-width: 640px) {
+  .container { padding-left: 1.25rem; padding-right: 1.25rem; }
+}
+@media (min-width: 1024px) {
+  .container { padding-left: 2rem; padding-right: 2rem; }
+}
+@media (min-width: 1536px) {
+  .container { padding-left: 3rem; padding-right: 3rem; }
+}
+
+/* Neutraliser les max-w restrictifs hérités sur les sections "page" courantes */
+main > div,
+main > section {
+  max-width: 100%;
+}
+
+/* Limiter encore pour les pages texte longues (FAQ, DMCA, etc.) — lecture confortable */
+.prose, .text-content-readable { max-width: 80ch; }
 
 /* === EFFETS THÈMES VIP EXCEPTIONNELS === */
 
