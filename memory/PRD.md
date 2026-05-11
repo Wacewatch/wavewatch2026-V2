@@ -1,5 +1,61 @@
 # WaveWatch PRD
 
+## Session 47 (2026-05-11) — Refonte demandes + Streak + Reco + Notifs acteur
+
+### 1️⃣ Refonte page Demandes de contenu (`/requests`)
+- **Obligatoire** : chaque demande est liée à un `tmdb_id` (`movie` ou `tv`)
+- **Modal en 2 étapes** :
+  - Étape 1 : toggle Film/Série + barre de recherche TMDB live (`/api/tmdb/search/movies|tv?q=`) — grille 6 colonnes avec posters + années
+  - Étape 2 : carte du contenu sélectionné (poster + titre + TMDB ID + année) + 2 boutons radio **Streaming / Téléchargement** + message 500 chars max
+- Backend `POST /api/content-requests` :
+  - Champs requis : `tmdb_id` (int), `content_type` ("movie"/"tv"/"anime"), `media_type` ("streaming"/"download")
+  - Enrichissement TMDB auto (title, poster_path, release_year récupérés serveur)
+  - 409 si même user a déjà demandé même TMDB + même media_type en pending
+  - 400 si `content_type` ou `media_type` invalides
+- **Affichage public** : cards avec poster, badges (FILM/SÉRIE + année + STREAMING/TÉLÉCHARGEMENT), message, auteur, votes, status
+- **Filtres** : Toutes / En attente / Approuvées / Rejetées
+
+### 2️⃣ Refonte panneau Admin `Demandes` (`/admin`)
+- Poster du contenu (24w aspect 2:3)
+- Titre + année + badges (Film/Série, Streaming/Téléchargement, TMDB #ID, votes)
+- Message utilisateur dans encadré dédié
+- Auteur + date complète (FR) + liens "→ Fiche WaveWatch" et "→ TMDB" externes
+- Stats globales en header (En attente/Approuvées/Rejetées)
+- Actions Approuver / Rejeter / Supprimer
+
+### 3️⃣ Watch Streak (jours consécutifs)
+- Backend collection `user_streaks`: `{user_id, current_streak, longest_streak, last_watch_date, streak_started_at, total_active_days}`
+- Hook auto dans `POST /api/user/history` (movie/tv/anime/episode) — incrémente streak si nouveau jour calendaire, reset si jour sauté
+- Paliers + XP bonus auto : 3j (+15), 7j (+50), 14j (+100), 30j (+250), 60j (+500), 100j (+1000) — via collection `xp_bonuses` + notification
+- `GET /api/user/streak` → `{current_streak, longest_streak, total_active_days, next_milestone, is_active_today, broken, at_risk}`
+- Composant `StreakCard` sur `/dashboard` (flamme animée + barre progression palier suivant + record + total jours actifs + badges Actif/À risque)
+
+### 4️⃣ Recommandations personnalisées sur Dashboard
+- Composant `RecommendationsRow` consomme l'endpoint existant `/api/user/recommendations` (qui mixait déjà similar + recommendations + discover TMDB)
+- Slider horizontal violet avec posters, badges Film/Série, notes TMDB, années
+- Boutons prev/next pour scroll
+
+### 5️⃣ Notifications acteur
+- Backend nouvelle collection `actor_subscriptions`
+- `POST /api/notifications/subscribe-actor` toggle (body: actor_id, actor_name) — capture les credits déjà connus pour ne pas spammer
+- `GET /api/notifications/check-actor/{id}` + `GET /api/notifications/subscribed-actors`
+- Background loop 12h qui scanne `/person/{id}/combined_credits` et notifie sur nouveaux films/séries des 30 derniers jours
+- Bouton "Suivre cet acteur" sur `ActorDetailPage` (`/actors/:id`) qui toggle vers "Notifs activées" (icône Bell violette)
+
+### Tests / Validation
+- Backend testé via curl :
+  - `POST /api/content-requests` enrichit auto avec TMDB (Le Parrain 1972)
+  - Duplicate detection 409, validation media_type 400
+  - Streak passe de 0 à 1 après POST history movie 550
+  - Actor subscribe/unsubscribe toggle OK
+- Frontend testé visuellement :
+  - Modal 2 étapes recherche → sélection → soumission
+  - StreakCard affichée avec barre progression
+  - RecommendationsRow affichée avec 9+ posters
+  - Admin tab demandes : poster + tous métadonnées + actions
+
+
+
 ## Stack réelle
 - **Backend** : FastAPI + MongoDB (`/app/backend/server.py`, port 8001)
 - **Frontend** : React CRA (`/app/frontend/`, port 3000)

@@ -761,28 +761,71 @@ export default function AdminPage() {
       {/* Content Requests */}
       {tab === 'requests' && (
         <div className="bg-card border border-border rounded-xl overflow-hidden" data-testid="admin-requests">
-          <div className="p-4 border-b border-border"><h2 className="font-bold">Demandes de contenu ({requests.length})</h2></div>
+          <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
+            <h2 className="font-bold">Demandes de contenu ({requests.length})</h2>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="px-2 py-1 rounded bg-yellow-500/20 text-yellow-300 font-bold">En attente: {requests.filter(r => r.status === 'pending').length}</span>
+              <span className="px-2 py-1 rounded bg-green-500/20 text-green-300 font-bold">Approuvées: {requests.filter(r => r.status === 'approved').length}</span>
+              <span className="px-2 py-1 rounded bg-red-500/20 text-red-300 font-bold">Rejetées: {requests.filter(r => r.status === 'rejected').length}</span>
+            </div>
+          </div>
           {requests.length === 0 ? <p className="text-center py-8 text-muted-foreground">Aucune demande</p> : (
             <div className="divide-y divide-border">
-              {requests.map(r => (
-                <div key={r._id} className="p-4 hover:bg-secondary/20">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <h3 className="font-medium">{r.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{r.description}</p>
-                      <p className="text-xs text-muted-foreground mt-2">Par {r.username || 'Anonyme'} - Type: {r.content_type}</p>
+              {requests.map(r => {
+                const isMovie = r.content_type === 'movie';
+                const isStreaming = (r.media_type || 'streaming') === 'streaming';
+                const poster = r.poster_path ? `https://image.tmdb.org/t/p/w200${r.poster_path}` : 'https://placehold.co/200x300/1a1a2e/555?text=?';
+                const detailUrl = r.tmdb_id ? (isMovie ? `/movies/${r.tmdb_id}` : `/tv-shows/${r.tmdb_id}`) : null;
+                const tmdbUrl = r.tmdb_id ? `https://www.themoviedb.org/${isMovie ? 'movie' : 'tv'}/${r.tmdb_id}` : null;
+                return (
+                  <div key={r._id} className="p-4 hover:bg-secondary/20 flex gap-4 flex-wrap md:flex-nowrap">
+                    {/* Poster */}
+                    <div className="w-20 md:w-24 aspect-[2/3] rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+                      <img src={poster} alt={r.title} className="w-full h-full object-cover" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${r.status === 'approved' ? 'bg-green-500/20 text-green-400' : r.status === 'rejected' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-                        {r.status === 'approved' ? 'Approuve' : r.status === 'rejected' ? 'Rejete' : 'En attente'}
+                    {/* Info */}
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="flex flex-wrap items-start gap-2 mb-1">
+                        <h3 className="font-bold text-base leading-tight">{r.title}</h3>
+                        {r.release_year && <span className="text-xs text-muted-foreground">({r.release_year})</span>}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${isMovie ? 'bg-blue-500/20 text-blue-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                          {isMovie ? 'Film' : 'Série'}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${isStreaming ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'}`}>
+                          {isStreaming ? '📺 Streaming' : '⬇️ Téléchargement'}
+                        </span>
+                        {r.tmdb_id && <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-secondary text-muted-foreground">TMDB #{r.tmdb_id}</span>}
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-foreground/70">👍 {r.votes || 0} vote{(r.votes || 0) > 1 ? 's' : ''}</span>
+                      </div>
+                      {r.description && (
+                        <div className="mb-2 p-2 rounded-lg bg-secondary/40 border border-border/50">
+                          <p className="text-[10px] uppercase font-bold text-muted-foreground mb-0.5">Message utilisateur</p>
+                          <p className="text-sm whitespace-pre-wrap">{r.description}</p>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                        <span>Par <span className="font-semibold text-foreground">{r.username || 'Anonyme'}</span></span>
+                        {r.created_at && <span>Le {new Date(r.created_at).toLocaleString('fr-FR')}</span>}
+                        {detailUrl && <a href={detailUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">→ Fiche WaveWatch</a>}
+                        {tmdbUrl && <a href={tmdbUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">→ TMDB</a>}
+                      </div>
+                    </div>
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2 items-end flex-shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${r.status === 'approved' ? 'bg-green-500/20 text-green-300' : r.status === 'rejected' ? 'bg-red-500/20 text-red-300' : 'bg-yellow-500/20 text-yellow-300'}`}>
+                        {r.status === 'approved' ? 'Approuvé' : r.status === 'rejected' ? 'Rejeté' : 'En attente'}
                       </span>
-                      <button onClick={() => updateRequestStatus(r._id, 'approved')} className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-400 hover:bg-green-500/30">Approuver</button>
-                      <button onClick={() => updateRequestStatus(r._id, 'rejected')} className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30">Rejeter</button>
-                      <button onClick={() => handleDelete('/api/admin/content-requests', r._id, 'cette demande')} className="p-1 text-muted-foreground hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                      <div className="flex flex-wrap gap-1">
+                        <button onClick={() => updateRequestStatus(r._id, 'approved')} className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 font-bold">Approuver</button>
+                        <button onClick={() => updateRequestStatus(r._id, 'rejected')} className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 font-bold">Rejeter</button>
+                        <button onClick={() => handleDelete('/api/admin/content-requests', r._id, 'cette demande')} className="p-1 text-muted-foreground hover:text-red-400" title="Supprimer"><Trash2 className="w-4 h-4" /></button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

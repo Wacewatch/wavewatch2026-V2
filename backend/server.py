@@ -333,9 +333,13 @@ class StaffMessageRequest(BaseModel):
     message: str
 
 class ContentRequestModel(BaseModel):
-    title: str
-    content_type: str
-    description: Optional[str] = None
+    tmdb_id: int
+    content_type: str  # "movie" or "tv" (also accepts "anime" mapped to tv)
+    media_type: str = "streaming"  # "streaming" or "download"
+    title: Optional[str] = ""
+    poster_path: Optional[str] = ""
+    release_year: Optional[str] = ""
+    description: Optional[str] = ""
 
 class PlaylistCreate(BaseModel):
     name: str
@@ -1163,12 +1167,49 @@ async def reply_staff_message(request: Request, user: dict = Depends(get_current
 # ==================== CONTENT REQUESTS ====================
 @app.post("/api/content-requests")
 async def create_content_request(req: ContentRequestModel, user: dict = Depends(get_current_user)):
+    # Validate content_type
+    if req.content_type not in ("movie", "tv", "anime"):
+        raise HTTPException(status_code=400, detail="content_type must be 'movie', 'tv' or 'anime'")
+    if req.media_type not in ("streaming", "download"):
+        raise HTTPException(status_code=400, detail="media_type must be 'streaming' or 'download'")
+    # Reject if user already requested this exact (tmdb_id, content_type, media_type) and still pending
+    existing = await db.content_requests.find_one({
+        "user_id": user["_id"],
+        "tmdb_id": req.tmdb_id,
+        "content_type": req.content_type,
+        "media_type": req.media_type,
+        "status": "pending",
+    })
+    if existing:
+        raise HTTPException(status_code=409, detail="Tu as déjà fait cette demande, elle est en attente.")
+    # Enrich from TMDB (auto-fill title/poster/year if not provided)
+    title = req.title or ""
+    poster_path = req.poster_path or ""
+    release_year = req.release_year or ""
+    try:
+        tmdb_type = "tv" if req.content_type in ("tv", "anime") else "movie"
+        data = await tmdb_fetch(f"/{tmdb_type}/{req.tmdb_id}", {"language": "fr-FR"})
+        if not title:
+            title = data.get("title") or data.get("name") or ""
+        if not poster_path:
+            poster_path = data.get("poster_path") or ""
+        if not release_year:
+            date_str = data.get("release_date") or data.get("first_air_date") or ""
+            release_year = date_str[:4] if date_str else ""
+    except Exception:
+        pass
+    if not title:
+        raise HTTPException(status_code=400, detail="Impossible de récupérer le titre depuis TMDB.")
     doc = {
         "user_id": user["_id"],
         "username": user.get("username", "User"),
-        "title": req.title,
+        "tmdb_id": req.tmdb_id,
+        "title": title,
         "content_type": req.content_type,
-        "description": req.description,
+        "media_type": req.media_type,
+        "poster_path": poster_path,
+        "release_year": release_year,
+        "description": req.description or "",
         "votes": 0,
         "voters": [],
         "status": "pending",
