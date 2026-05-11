@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import ContentCard from '../components/ContentCard';
-import { Heart, Eye, ListMusic, Crown, Star, Clock, Award, MessageSquare, Film, Tv, Trophy, ChevronRight, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Zap, Calendar, TrendingUp, BarChart3, Users, Sparkles } from 'lucide-react';
+import { Heart, Eye, ListMusic, Crown, Star, Clock, Award, MessageSquare, Film, Tv, Trophy, ChevronRight, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Zap, TrendingUp, BarChart3, Sparkles } from 'lucide-react';
 import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 import { useUserXP, getLevelBounds } from '../lib/xp';
 import BonusXPCard from '../components/BonusXPCard';
@@ -30,12 +30,99 @@ function RatingBar({ label, value, onChange }) {
   );
 }
 
-function UserBadge({ review }) {
-  if (review.is_admin) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">Admin</span>;
-  if (review.is_uploader) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">Uploader</span>;
-  if (review.is_vip_plus) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">VIP+</span>;
-  if (review.is_vip) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">VIP</span>;
-  return null;
+function UserBadge() { return null; }
+
+// === Faits insolites — pool de blagues / records / comparaisons lié aux stats ===
+function buildInterestingFacts({ detailedStats, stats, totalHours, allHistory, activeDays, streak, bestDay, favorites, xp, level }) {
+  if (!detailedStats) return [];
+  const facts = [];
+  const fmt = (n) => n.toLocaleString('fr-FR');
+  const m = detailedStats.movies_watched || 0;
+  const s = detailedStats.shows_watched || 0;
+  const ep = detailedStats.episodes_watched || 0;
+  const totalMins = (detailedStats.total_watch_time || 0);
+  const days = Math.floor(totalHours / 24);
+  const weeks = Math.floor(totalHours / (24 * 7));
+  const likes = detailedStats.total_likes || 0;
+  const dislikes = detailedStats.total_dislikes || 0;
+  const totalRatings = likes + dislikes;
+
+  // --- TEMPS PASSÉ : comparaisons drôles & insolites ---
+  if (totalHours > 0) {
+    facts.push(`Tu cumules ${fmt(totalHours)}h de visionnage — soit ${fmt(days)} jour${days > 1 ? 's' : ''} non-stop, sans pause pipi.`);
+    if (weeks >= 1) facts.push(`${fmt(weeks)} semaine${weeks > 1 ? 's' : ''} entière${weeks > 1 ? 's' : ''} de ta vie collée à un écran. Bravo (?).`);
+    if (totalHours >= 24) facts.push(`Avec ${fmt(totalHours)}h, tu aurais pu faire ${fmt(Math.floor(totalHours / 11))} aller-retours Paris ↔ New York en avion.`);
+    if (totalHours >= 50) facts.push(`Il faut ~80h pour faire le tour du monde en avion commercial. Tu en es à ${Math.round((totalHours / 80) * 100)}% du tour de la planète… assis dans ton canap'.`);
+    if (totalMins >= 60) facts.push(`En ${fmt(totalHours)}h, un lecteur moyen aurait dévoré ${fmt(Math.floor(totalMins / 600))} romans complets.`);
+    if (totalMins >= 30) facts.push(`Tu aurais pu apprendre ${fmt(Math.floor(totalMins / 20))} mots de vocabulaire dans une nouvelle langue avec ce temps.`);
+    if (totalHours >= 100) facts.push(`Avec ${fmt(totalHours)}h, tu aurais pu courir ${fmt(Math.floor(totalHours * 10))} km — soit ${fmt(Math.floor(totalHours / 4))} marathons.`);
+    if (totalHours >= 8) facts.push(`Une nuit de sommeil dure ~8h. Tu as raté ${fmt(Math.floor(totalHours / 8))} nuits de sommeil à binger.`);
+    if (totalHours >= 200) facts.push(`Un humain met ~250 ans pour atteindre la Lune à pied. Tu serais à ${(totalHours / 219000 * 100).toFixed(4)}% du chemin Terre→Lune en marche cumulée.`);
+    facts.push(`Si tu rejouais ton historique en accéléré ×10, ça durerait encore ${fmt(Math.floor(totalMins / 10))} minutes.`);
+  }
+
+  // --- FILMS ---
+  if (m > 0) {
+    facts.push(`${fmt(m)} film${m > 1 ? 's' : ''} regardé${m > 1 ? 's' : ''} — soit ~${fmt(m * 20)} XP gagnés rien qu'avec ça.`);
+    if (m >= 10) facts.push(`Tu as vu plus de films que le spectateur moyen ne va au cinéma en ${fmt(Math.floor(m / 3))} an${m >= 6 ? 's' : ''}.`);
+    if (m >= 50) facts.push(`Avec ${fmt(m)} films, tu as un avis sur à peu près tout le monde — y compris Nicolas Cage.`);
+  }
+
+  // --- SÉRIES ---
+  if (s > 0) {
+    facts.push(`${fmt(s)} série${s > 1 ? 's' : ''} marquée${s > 1 ? 's' : ''} comme terminée${s > 1 ? 's' : ''} = +${fmt(s * 100)} XP en compteur.`);
+    if (s >= 5) facts.push(`Tu termines tes séries (${fmt(s)} au compteur). Statistiquement, 70% des gens abandonnent en S2. Toi non.`);
+  }
+  if (ep > 0) {
+    facts.push(`${fmt(ep)} épisodes vus — l'équivalent de ${fmt(Math.floor(ep / 22))} saison${Math.floor(ep / 22) > 1 ? 's' : ''} de sitcom (22 épisodes / saison).`);
+    if (ep >= 100) facts.push(`Plus de 100 épisodes au compteur : tu pourrais écrire un livre intitulé "Comment perdre sa vie devant Netflix : la méthode".`);
+  }
+
+  // --- FAVORIS & PLAYLISTS ---
+  if (stats.favorites > 0) {
+    facts.push(`${fmt(stats.favorites)} favori${stats.favorites > 1 ? 's' : ''} — c'est ${fmt(stats.favorites * 5)} XP, et probablement autant de coups de cœur perdus dans ta wishlist.`);
+  }
+  if (stats.playlists > 0) {
+    facts.push(`${fmt(stats.playlists)} playlist${stats.playlists > 1 ? 's' : ''} créée${stats.playlists > 1 ? 's' : ''} (+${fmt(stats.playlists * 25)} XP). Spotify de la pop-corn.`);
+  }
+
+  // --- LIKES / DISLIKES — ratio & personnalité ---
+  if (totalRatings > 0) {
+    const ratio = Math.round((likes / totalRatings) * 100);
+    if (ratio >= 80) facts.push(`Tu likes ${ratio}% du temps. Spoiler : tu es un optimiste chronique. Le monde te remercie.`);
+    else if (ratio <= 25) facts.push(`Seulement ${ratio}% de likes sur ${fmt(totalRatings)} votes. T'es un critique cinéma frustré, avoue.`);
+    else facts.push(`${fmt(likes)} likes vs ${fmt(dislikes)} dislikes — ratio ${ratio}% positif. Équilibré comme un Jedi.`);
+  }
+
+  // --- RECORDS & ENGAGEMENT ---
+  if (streak >= 3) facts.push(`Tu enchaînes ${streak} jour${streak > 1 ? 's' : ''} d'affilée. Un vrai marathonien du canapé. 🔥`);
+  if (streak === 0 && allHistory.length > 0) facts.push(`Aucune activité aujourd'hui. La série te manque, avoue.`);
+  if (activeDays >= 20) facts.push(`Actif ${activeDays}/30 jours ce mois : tu fais plus d'apparitions ici que sur Instagram.`);
+  if (bestDay && bestDay.count >= 5) {
+    const dayName = new Date(bestDay.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    facts.push(`Ton record : ${bestDay.count} visionnages le ${dayName}. Ce jour-là, t'as enchaîné comme un pro.`);
+  }
+
+  // --- RATIO FILMS / SÉRIES ---
+  if (m > 0 && (s + ep) > 0) {
+    if (m > (s + ep) * 0.5) facts.push(`Tu préfères les films aux séries (ratio ${(m / Math.max(1, ep)).toFixed(1)}). Team format court.`);
+    else if (ep > m * 5) facts.push(`Tu engloutis ${(ep / Math.max(1, m)).toFixed(0)}× plus d'épisodes que de films. Sérievore confirmé.`);
+  }
+
+  // --- GENRES PRÉFÉRÉS (depuis allHistory, basique) ---
+  // (allHistory items rarely carry genre metadata, on saute si vide)
+
+  // --- LEVEL / XP ---
+  if (level >= 5) facts.push(`Niveau ${level} — tu fais partie du top ${Math.max(1, 100 - level * 2)}% des utilisateurs WaveWatch.`);
+  if (xp >= 1000) facts.push(`${fmt(xp)} XP cumulés — soit ${fmt(Math.floor(xp / 20))} films équivalents en valeur d'expérience.`);
+
+  // --- FUN GENERIC ---
+  if (allHistory.length === 0) facts.push(`Tu n'as encore rien regardé. C'est comme un disquaire sans disques. Lance-toi !`);
+  if (totalHours > 0 && totalHours < 5) facts.push(`Tu es au début de l'aventure (${totalHours}h). Bienvenue dans le club des cinéphiles en devenir.`);
+  if (m === 0 && ep === 0 && stats.favorites > 0) facts.push(`Tu as plein de favoris mais rien de regardé. Mode collectionneur activé.`);
+
+  // Shuffle a bit so different facts show on refresh (but stable per render).
+  return facts;
 }
 
 function Section({ title, icon, isOpen, setIsOpen, children, gradient }) {
@@ -65,8 +152,6 @@ export default function DashboardPage() {
 
   // Review state
   const [myReview, setMyReview] = useState({ contenu_score: 7, fonctionnalites_score: 7, design_score: 7, message: '' });
-  const [communityReviews, setCommunityReviews] = useState({ reviews: [], total_votes: 0, averages: { contenu: 0, fonctionnalites: 0, design: 0 } });
-  const [showAllReviews, setShowAllReviews] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
 
   // Recommendations
@@ -79,12 +164,22 @@ export default function DashboardPage() {
   const [factsOpen, setFactsOpen] = useState(true);
   const [achievementsOpen, setAchievementsOpen] = useState(true);
   const [feedbackOpen, setFeedbackOpen] = useState(true);
-  const [communityOpen, setCommunityOpen] = useState(true);
 
   useEffect(() => { if (!authLoading && !user) navigate('/login'); }, [user, authLoading, navigate]);
 
   useEffect(() => {
     if (user) {
+      // One-shot backfill: recompute real watch-time from TMDB durations.
+      // Only triggered once per session (sessionStorage flag) — server is idempotent.
+      try {
+        if (!sessionStorage.getItem('ww_runtime_recomputed')) {
+          API.post('/api/user/recompute-watch-time').then(() => {
+            sessionStorage.setItem('ww_runtime_recomputed', '1');
+            // After backfill, re-fetch stats to reflect real numbers.
+            API.get('/api/user/detailed-stats').then(({ data }) => setDetailedStats(data)).catch(() => {});
+          }).catch(() => {});
+        }
+      } catch {}
       API.get('/api/user/stats').then(({ data }) => setStats(data)).catch(() => {});
       API.get('/api/user/detailed-stats').then(({ data }) => setDetailedStats(data)).catch(() => {});
       API.get('/api/user/history').then(({ data }) => {
@@ -100,7 +195,6 @@ export default function DashboardPage() {
         if (data.review) setMyReview({ contenu_score: data.review.contenu_score, fonctionnalites_score: data.review.fonctionnalites_score, design_score: data.review.design_score, message: data.review.message || '' });
       }).catch(() => {});
     }
-    API.get('/api/platform-reviews').then(({ data }) => setCommunityReviews(data)).catch(() => {});
   }, [user]);
 
   if (authLoading || !user) return null;
@@ -109,27 +203,14 @@ export default function DashboardPage() {
   const totalHours = detailedStats ? Math.floor(detailedStats.total_watch_time / 60) : 0;
   const totalMinutes = detailedStats ? detailedStats.total_watch_time % 60 : 0;
 
-  const interestingFacts = [];
-  if (detailedStats) {
-    if (detailedStats.movies_watched > 0) interestingFacts.push(`Vous avez regarde ${detailedStats.movies_watched} film${detailedStats.movies_watched > 1 ? 's' : ''} sur WaveWatch !`);
-    if (detailedStats.shows_watched > 0) interestingFacts.push(`Vous suivez ${detailedStats.shows_watched} serie${detailedStats.shows_watched > 1 ? 's' : ''} differente${detailedStats.shows_watched > 1 ? 's' : ''}.`);
-    if (totalHours > 0) interestingFacts.push(`Vous avez passe environ ${totalHours}h de visionnage, soit ${Math.floor(totalHours / 24)} jour${Math.floor(totalHours / 24) > 1 ? 's' : ''} complets !`);
-    if (detailedStats.total_likes > 0) interestingFacts.push(`Vous avez like ${detailedStats.total_likes} contenu${detailedStats.total_likes > 1 ? 's' : ''}.`);
-    if (stats.playlists > 0) interestingFacts.push(`Vous avez cree ${stats.playlists} playlist${stats.playlists > 1 ? 's' : ''}.`);
-  }
-
   const submitReview = async () => {
     setSavingReview(true);
     try {
       await API.post('/api/platform-reviews', myReview);
       toast({ title: 'Avis enregistre !' });
-      const { data } = await API.get('/api/platform-reviews');
-      setCommunityReviews(data);
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
     finally { setSavingReview(false); }
   };
-
-  const displayedReviews = showAllReviews ? communityReviews.reviews : communityReviews.reviews.slice(0, 5);
 
   // === ENGAGEMENT METRICS ===
   // Activité sur 30 jours (compte d'éléments par jour basé sur l'historique)
@@ -179,6 +260,9 @@ export default function DashboardPage() {
   const progressXP = xp - xpForCurrentLevel;
   const neededXP = xpForNextLevel - xpForCurrentLevel;
   const progressPct = Math.min(100, Math.round((progressXP / neededXP) * 100));
+
+  // === FAITS INSOLITES ===
+  const interestingFacts = buildInterestingFacts({ detailedStats, stats, totalHours, allHistory, activeDays, streak, bestDay, favorites, xp, level });
 
   return (
     <ThemedPage testId="dashboard-page">
@@ -276,10 +360,12 @@ export default function DashboardPage() {
             {/* Quick XP sources */}
             <div className="flex flex-wrap gap-1.5 mt-3">
               {[
-                { label: '+10 XP / film',     hex: '#3b82f6' },
-                { label: '+15 XP / série',    hex: '#a855f7' },
-                { label: '+5 XP / favori',    hex: '#ec4899' },
-                { label: '+20 XP / playlist', hex: '#10b981' },
+                { label: '+20 XP / film',           hex: '#3b82f6' },
+                { label: '+100 XP / série terminée', hex: '#a855f7' },
+                { label: '+10 XP / épisode',        hex: '#22d3ee' },
+                { label: '+5 XP / favori',          hex: '#ec4899' },
+                { label: '+25 XP / playlist',       hex: '#10b981' },
+                { label: '+5 XP / like',            hex: '#f59e0b' },
               ].map(s => (
                 <span key={s.label} className="px-2 py-0.5 rounded-full text-[10px] font-bold border"
                   style={{ background: `${s.hex}15`, borderColor: `${s.hex}40`, color: s.hex }}>
@@ -448,44 +534,6 @@ export default function DashboardPage() {
             {savingReview ? 'Enregistrement...' : 'Enregistrer mon avis'}
           </button>
         </div>
-      </Section>
-
-      {/* Avis de la communaute */}
-      <Section title="Avis de la communaute" icon={<Users className="w-5 h-5 text-cyan-400" />} isOpen={communityOpen} setIsOpen={setCommunityOpen}>
-        <p className="text-sm text-muted-foreground mb-4">Notes moyennes basees sur {communityReviews.total_votes} votes</p>
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          {[
-            { label: 'Contenu', val: communityReviews.averages.contenu },
-            { label: 'Fonctionnalites', val: communityReviews.averages.fonctionnalites },
-            { label: 'Design', val: communityReviews.averages.design },
-          ].map(s => (
-            <div key={s.label} className="bg-secondary/30 border border-border rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-yellow-400">{s.val}/10</p>
-              <p className="text-sm text-muted-foreground">{s.label}</p>
-              <p className="text-xs text-muted-foreground">{communityReviews.total_votes} votes</p>
-            </div>
-          ))}
-        </div>
-        {communityReviews.reviews.length > 0 && (
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {displayedReviews.map(r => (
-              <div key={r._id} className="bg-secondary/20 border border-border rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-bold text-sm">{r.username}</span>
-                  <UserBadge review={r} />
-                  <span className="text-xs text-muted-foreground ml-auto">{r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : ''}</span>
-                </div>
-                {r.message && <p className="text-sm text-muted-foreground">{r.message}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-        {communityReviews.reviews.length > 5 && (
-          <button onClick={() => setShowAllReviews(!showAllReviews)} className="mt-4 px-4 py-2 rounded-lg border border-border text-sm hover:bg-secondary flex items-center gap-2 mx-auto" data-testid="show-all-reviews">
-            {showAllReviews ? 'Masquer' : `Voir tous les messages (${communityReviews.reviews.length})`}
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
       </Section>
 
       {/* History / Favorites Tabs */}

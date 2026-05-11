@@ -1,16 +1,33 @@
 /**
  * Système d'XP, Niveau, Tier et Récompenses partagé par toute l'application.
  * Utilisé par DashboardPage, ProfilePage, LeaderboardPage, ThemeContext.
+ *
+ * Barème XP (Janvier 2026):
+ *   +20 XP  / film vu
+ *   +100 XP / série terminée (entrée content_type="tv")
+ *   +10 XP  / épisode vu
+ *   +5 XP   / favori
+ *   +25 XP  / playlist créée
+ *   +5 XP   / like (et dislike)
  */
 
-export function computeXP({ movies = 0, shows = 0, likes = 0, favorites = 0, playlists = 0, hours = 0 } = {}) {
+export function computeXP({
+  movies = 0,
+  shows = 0,
+  episodes = 0,
+  likes = 0,
+  dislikes = 0,
+  favorites = 0,
+  playlists = 0,
+} = {}) {
   return Math.floor(
-    movies * 10
-    + shows * 15
-    + likes * 2
+    movies * 20
+    + shows * 100
+    + episodes * 10
     + favorites * 5
-    + playlists * 20
-    + hours * 0.5
+    + playlists * 25
+    + likes * 5
+    + dislikes * 5
   );
 }
 
@@ -64,6 +81,12 @@ import API from './api';
 
 const _xpCache = { data: null, ts: 0 };
 
+// Invalidate the cache from anywhere (after an action that changes XP).
+export function invalidateXPCache() {
+  _xpCache.data = null;
+  _xpCache.ts = 0;
+}
+
 export function useUserXP(user) {
   const [data, setData] = useState({ xp: 0, level: 1, tier: getTier(1), bounds: getLevelBounds(1), rewards: getRewards(1), loading: !!user });
 
@@ -82,12 +105,13 @@ export function useUserXP(user) {
       const stats = s1.data || {};
       const detailed = s2.data || {};
       const xpBase = computeXP({
-        movies:    detailed.movies_watched || 0,
-        shows:     detailed.shows_watched  || 0,
-        likes:     detailed.total_likes    || 0,
-        favorites: stats.favorites         || 0,
-        playlists: stats.playlists         || 0,
-        hours:     Math.round((detailed.total_watch_time || 0) / 60),
+        movies:    detailed.movies_watched   || 0,
+        shows:     detailed.shows_watched    || 0,
+        episodes:  detailed.episodes_watched || 0,
+        likes:     detailed.total_likes      || 0,
+        dislikes:  detailed.total_dislikes   || 0,
+        favorites: stats.favorites           || 0,
+        playlists: stats.playlists           || 0,
       });
       const xpBonus = parseInt(stats.xp_bonus || 0, 10) || 0;
       const xp = xpBase + xpBonus;

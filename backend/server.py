@@ -864,14 +864,25 @@ async def add_to_history(request: Request, user: dict = Depends(get_current_user
     existing = await db.watch_history.find_one(
         {"user_id": user["_id"], "content_id": body["content_id"], "content_type": ctype}
     )
+    # Compute runtime_min — used by detailed-stats to sum total watch time.
+    # Caller may pass `runtime` (movie length / episode length, in minutes).
+    # For full-series entries from the front (mark series as watched at top), the caller
+    # passes the total series duration (episode_run_time * number_of_episodes).
+    try:
+        runtime_min = int(body.get("runtime") or 0)
+    except (TypeError, ValueError):
+        runtime_min = 0
+    set_doc = {
+        "title": title,
+        "poster_path": body.get("poster_path"),
+        "metadata": body.get("metadata", {}),
+        "watched_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if runtime_min > 0:
+        set_doc["runtime_min"] = runtime_min
     await db.watch_history.update_one(
         {"user_id": user["_id"], "content_id": body["content_id"], "content_type": ctype},
-        {"$set": {
-            "title": title,
-            "poster_path": body.get("poster_path"),
-            "metadata": body.get("metadata", {}),
-            "watched_at": datetime.now(timezone.utc).isoformat()
-        }},
+        {"$set": set_doc},
         upsert=True
     )
     # Log "play" activity only on first watch to avoid spam (or hourly re-play)
@@ -2759,14 +2770,27 @@ async def get_admin_enhanced_stats(user: dict = Depends(require_admin)):
 async def get_user_detailed_stats(user: dict = Depends(get_current_user)):
     uid = user["_id"]
     fav_count = await db.favorites.count_documents({"user_id": uid})
-    history = await db.watch_history.find({"user_id": uid}).to_list(1000)
+    history = await db.watch_history.find({"user_id": uid}).to_list(length=None)
     playlist_count = await db.playlists.count_documents({"user_id": uid})
     movies_watched = sum(1 for h in history if h.get("content_type") == "movie")
     shows_watched = sum(1 for h in history if h.get("content_type") == "tv")
     episodes_watched = sum(1 for h in history if h.get("content_type") == "episode")
-    # Watch time estimate: movies ~110 min, episodes ~42 min each.
-    # For TV shows without per-episode entries, add ~45 min per show (rough fallback).
-    total_watch_time = (movies_watched * 110) + (episodes_watched * 42) + (shows_watched * 45 if episodes_watched == 0 else 0)
+    # Real watch time: sum runtime_min field across history. Fallback estimates for
+    # legacy entries that have no runtime_min recorded yet (movie≈110, episode≈42, tv≈45).
+    total_watch_time = 0
+    for h in history:
+        rt = h.get("runtime_min")
+        if isinstance(rt, (int, float)) and rt >= 0:
+            total_watch_time += int(rt)
+            continue
+        # Fallback when runtime_min is missing (older data)
+        ct = h.get("content_type")
+        if ct == "movie":
+            total_watch_time += 110
+        elif ct == "episode":
+            total_watch_time += 42
+        elif ct == "tv" and episodes_watched == 0:
+            total_watch_time += 45
     # Likes/dislikes
     likes = await db.user_ratings.count_documents({"user_id": uid, "rating": "like"})
     dislikes = await db.user_ratings.count_documents({"user_id": uid, "rating": "dislike"})
@@ -2776,6 +2800,108 @@ async def get_user_detailed_stats(user: dict = Depends(get_current_user)):
         "episodes_watched": episodes_watched, "total_watch_time": total_watch_time,
         "total_likes": likes, "total_dislikes": dislikes,
     }
+
+# --- Recompute / backfill watch_history.runtime_min from TMDB ---
+@app.post("/api/user/recompute-watch-time")
+async def recompute_watch_time(user: dict = Depends(get_current_user)):
+    """Backfill `runtime_min` on every watch_history entry of this user using real TMDB durations.
+    - movie: TMDB movie.runtime
+    - tv (series-level): set to 0 if there are episode entries for that series, otherwise
+      typical episode_run_time × number_of_episodes (whole series time)
+    - episode: typical episode_run_time of its parent series
+    Returns counts so the frontend can recalculate stats afterwards.
+    """
+    tmdb_key = os.environ.get("TMDB_API_KEY", "d4b8332681051181b69c8a6c9ba1a70a")
+    uid = user["_id"]
+    history = await db.watch_history.find({"user_id": uid}).to_list(length=None)
+    # Index episode parent show IDs (prefix of content_id) so we know which series have episode entries
+    series_with_episodes = set()
+    for h in history:
+        if h.get("content_type") == "episode":
+            cid = str(h.get("content_id", ""))
+            # heuristic: the show_id is everything except the last 2 digits (season + ep)
+            # but accurate way is via metadata.series_id if present
+            sid = (h.get("metadata") or {}).get("series_id")
+            if sid is not None:
+                series_with_episodes.add(str(sid))
+            else:
+                # best-effort: try last 2 chars stripped (works for SnEp single digit) — coarse fallback
+                if len(cid) >= 3:
+                    series_with_episodes.add(cid[:-2])
+
+    # Tiny in-memory caches per call
+    movie_cache, tv_cache = {}, {}
+    async def fetch_movie(mid):
+        if mid in movie_cache:
+            return movie_cache[mid]
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(f"https://api.themoviedb.org/3/movie/{int(mid)}?api_key={tmdb_key}", timeout=10.0)
+                d = r.json() if r.status_code == 200 else {}
+        except Exception:
+            d = {}
+        movie_cache[mid] = d
+        return d
+
+    async def fetch_tv(tid):
+        if tid in tv_cache:
+            return tv_cache[tid]
+        try:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(f"https://api.themoviedb.org/3/tv/{int(tid)}?api_key={tmdb_key}", timeout=10.0)
+                d = r.json() if r.status_code == 200 else {}
+        except Exception:
+            d = {}
+        tv_cache[tid] = d
+        return d
+
+    updated = 0
+    for h in history:
+        ct = h.get("content_type")
+        cid = h.get("content_id")
+        new_rt = None
+        if ct == "movie":
+            d = await fetch_movie(cid)
+            rt = d.get("runtime")
+            if isinstance(rt, (int, float)) and rt > 0:
+                new_rt = int(rt)
+            else:
+                new_rt = 110  # fallback average
+        elif ct == "tv":
+            # If episodes exist for this series, series-level entry counts 0.
+            if str(cid) in series_with_episodes:
+                new_rt = 0
+            else:
+                d = await fetch_tv(cid)
+                ep_rt_list = d.get("episode_run_time") or []
+                typical = int(ep_rt_list[0]) if ep_rt_list else 42
+                n_eps = int(d.get("number_of_episodes") or 0) or 0
+                new_rt = typical * n_eps if n_eps else 0
+        elif ct == "episode":
+            # Try metadata first
+            md = h.get("metadata") or {}
+            sid = md.get("series_id")
+            if sid is None:
+                s = str(cid)
+                sid = s[:-2] if len(s) >= 3 else None
+            if sid is None:
+                new_rt = 42
+            else:
+                d = await fetch_tv(sid)
+                ep_rt_list = d.get("episode_run_time") or []
+                new_rt = int(ep_rt_list[0]) if ep_rt_list else 42
+        else:
+            # other content types (music, ebook, etc.) — do not contribute to watch time
+            new_rt = 0
+
+        if new_rt is not None and h.get("runtime_min") != new_rt:
+            await db.watch_history.update_one(
+                {"user_id": uid, "content_id": cid, "content_type": ct},
+                {"$set": {"runtime_min": int(new_rt)}}
+            )
+            updated += 1
+
+    return {"success": True, "updated": updated, "total_entries": len(history)}
 
 # --- Recommendations based on history ---
 @app.get("/api/user/recommendations")
@@ -3689,7 +3815,7 @@ async def mark_all_episodes_watched(show_id: str, request: Request, user: dict =
     show_name = data.get("show_name", "")
     poster_path = data.get("poster_path", "")
     
-    # Fetch show details from TMDB to get all seasons/episodes
+    # Fetch show details from TMDB to get all seasons/episodes + typical runtime
     try:
         tmdb_key = os.environ.get("TMDB_API_KEY", "d4b8332681051181b69c8a6c9ba1a70a")
         async with httpx.AsyncClient() as client:
@@ -3697,6 +3823,10 @@ async def mark_all_episodes_watched(show_id: str, request: Request, user: dict =
             show_data = resp.json()
     except:
         raise HTTPException(status_code=500, detail="Impossible de recuperer les infos de la serie")
+    
+    # Typical episode runtime — use first value of episode_run_time, fallback to 42 min
+    ep_runtimes = show_data.get("episode_run_time") or []
+    typical_ep_runtime = int(ep_runtimes[0]) if ep_runtimes else 42
     
     watched_episodes = {}
     total_episodes = 0
@@ -3724,7 +3854,8 @@ async def mark_all_episodes_watched(show_id: str, request: Request, user: dict =
         upsert=True
     )
 
-    # Add series itself + every episode to watch_history so stats count them
+    # Add series itself + every episode to watch_history so stats count them.
+    # Series-level entry: runtime_min=0 so we don't double-count (episodes already sum the time).
     try:
         show_id_int = int(show_id)
     except (TypeError, ValueError):
@@ -3739,6 +3870,7 @@ async def mark_all_episodes_watched(show_id: str, request: Request, user: dict =
             "title": show_name,
             "poster_path": poster_path,
             "watched_at": now_iso,
+            "runtime_min": 0,  # zero — episodes account for the actual time
         }},
         upsert=True
     )
@@ -3758,11 +3890,12 @@ async def mark_all_episodes_watched(show_id: str, request: Request, user: dict =
                     "title": f"{show_name} S{snum_str}E{ep_str}",
                     "poster_path": poster_path,
                     "watched_at": now_iso,
+                    "runtime_min": typical_ep_runtime,
                 }},
                 upsert=True
             )
 
-    return {"message": "Serie complete marquee comme vue", "total_episodes": total_episodes}
+    return {"message": "Serie complete marquee comme vue", "total_episodes": total_episodes, "typical_episode_runtime": typical_ep_runtime}
 
 @app.delete("/api/user/tv-progress/{show_id}")
 async def reset_tv_progress(show_id: str, user: dict = Depends(get_current_user)):
@@ -4042,7 +4175,7 @@ def _is_event_currently_active(evt, now=None):
 
 def _base_xp_for_action(action: str) -> int:
     """Base XP per action type — must mirror lib/xp.js computeXP."""
-    return {"movie": 10, "tv": 15, "anime": 15, "episode": 15}.get(action, 0)
+    return {"movie": 20, "tv": 100, "anime": 100, "episode": 10}.get(action, 0)
 
 async def _get_matching_active_event(content_type: str, content_id):
     """Return the first currently active event whose bonus matches the content (by content_type and optionally TMDB genre).

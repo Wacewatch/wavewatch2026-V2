@@ -9,6 +9,7 @@ import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
 import { LoadingSpinner } from '../components/Loading';
 import IframeModal from '../components/IframeModal';
+import { invalidateXPCache } from '../lib/xp';
 
 export default function MovieDetailPage() {
   const { id } = useParams();
@@ -59,12 +60,20 @@ export default function MovieDetailPage() {
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
     try {
       if (isWatched) {
+        if (!window.confirm('Retirer ce film des vus ? Vos statistiques et XP seront recalculés.')) return;
         await API.delete(`/api/user/history/${id}/movie`);
         setIsWatched(false);
+        invalidateXPCache();
+        try { sessionStorage.removeItem('ww_runtime_recomputed'); } catch {}
         toast({ title: 'Retire du vu' });
       } else {
-        await API.post('/api/user/history', { content_id: parseInt(id), content_type: 'movie', title: movie.title, poster_path: movie.poster_path });
+        await API.post('/api/user/history', {
+          content_id: parseInt(id), content_type: 'movie',
+          title: movie.title, poster_path: movie.poster_path,
+          runtime: movie.runtime || 0,
+        });
         setIsWatched(true);
+        invalidateXPCache();
         toast({ title: 'Marque comme vu' });
       }
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }

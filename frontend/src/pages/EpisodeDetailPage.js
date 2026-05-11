@@ -8,6 +8,7 @@ import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import IframeModal from '../components/IframeModal';
 import { Play, Star, Calendar, Clock, Heart, CheckCircle, Download, Youtube, ChevronLeft, ChevronRight } from 'lucide-react';
+import { invalidateXPCache } from '../lib/xp';
 
 export default function EpisodeDetailPage({ isAnime = false }) {
   const { id, seasonNumber, episodeNumber } = useParams();
@@ -43,6 +44,9 @@ export default function EpisodeDetailPage({ isAnime = false }) {
   const markAsWatched = async () => {
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
     const willMark = !isWatched;
+    if (!willMark) {
+      if (!window.confirm('Retirer cet épisode des vus ? Vos statistiques et XP seront recalculés.')) return;
+    }
     // Optimistic UI
     setIsWatched(willMark);
     try {
@@ -54,16 +58,20 @@ export default function EpisodeDetailPage({ isAnime = false }) {
       });
       // Sync watch_history (episode-level) for stats / activity
       if (willMark) {
+        const epRuntime = episode?.runtime || (seriesInfo?.episode_run_time && seriesInfo.episode_run_time[0]) || 42;
         await API.post('/api/user/history', {
           content_id: epContentId,
           content_type: 'episode',
           title: `${seriesInfo?.name ? seriesInfo.name + ' - ' : ''}S${seasonNumber}E${episodeNumber} - ${episode?.name || ''}`,
           poster_path: episode?.still_path || seriesInfo?.poster_path,
           metadata: { series_id: id, series_name: seriesInfo?.name || '', season_number: parseInt(seasonNumber), episode_number: parseInt(episodeNumber) },
+          runtime: epRuntime,
         });
       } else {
         await API.delete(`/api/user/history/${epContentId}/episode`);
+        try { sessionStorage.removeItem('ww_runtime_recomputed'); } catch {}
       }
+      invalidateXPCache();
       toast({ title: willMark ? 'Episode marque comme vu !' : 'Episode retire du vu' });
     } catch {
       // Rollback

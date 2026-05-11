@@ -1,0 +1,47 @@
+{
+  "summary": "Iteration 39 — Real TMDB runtimes + XP rebalance + mark/unmark-all-watched toggle. Backend pytest suite (5 passed, 1 skipped) confirms mark-all returns total_episodes=87 + typical_episode_runtime>0 for Sliders (1649); detailed-stats sums actual runtime_min (delta ≈ 87×43 ≈ 3741 min, not flat ~5h); unmark-all clears tv_progress + 87 episode entries + series entry; POST /api/user/history accepts 'runtime' and stores it as runtime_min; POST /api/user/recompute-watch-time backfills legacy entries. Frontend (Playwright) confirms Dashboard XP badges (+20 film, +100 série terminée, +10 épisode, +5 favori, +25 playlist, +5 like), 'Le saviez-vous ?' section present, 'Votre avis compte' present, 'Avis de la communauté' removed. TV detail page button toggles 'Tout marquer' → 'Retirer des vus' → 'Tout marquer' with confirmation dialogs (auto-accepted in test).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration39_runtime_xp.py",
+    "/app/test_reports/pytest/iteration_39.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py now ~4410 lines — still well above the 700-line guideline. Split into routers (history, tv_progress, stats, xp) is overdue.",
+    "POST /api/user/tv-progress/{id}/mark-all-watched and recompute-watch-time use httpx with a fresh AsyncClient per call inside loops. For shows with many seasons this is fine, but the recompute endpoint iterates over history sequentially and may be slow for accounts with hundreds of entries — consider asyncio.gather batching.",
+    "Episode content_id is constructed as int(f'{show_id}{season}{ep}') without separators (e.g. show=1649 S2 E10 → 1649210). This is ambiguous (a show ending in '21' with S0 E0 collides). Existing data won't be affected because the codebase is consistent, but consider a structured composite ID (e.g. '1649-s2-e10') for new content.",
+    "/api/user/recompute-watch-time has no rate limiting and could be invoked repeatedly by a script to hammer TMDB. Auto-recompute happens once per session via a sessionStorage flag in the frontend — fine for now but add server-side debouncing (e.g. last_recompute_at field) for safety.",
+    "_base_xp_for_action returns 0 for unlisted action types (music, ebook, game, software) — verify these are intentionally excluded from XP."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration39_runtime_xp.py"
+  ],
+  "success_rate": {
+    "backend": "100% (5/5 executed, 1 skipped because /api/user/xp not exposed)",
+    "frontend": "100% (all assertions matched on dashboard + Sliders toggle flow)"
+  },
+  "test_credentials": "admin@wavewatch.com / WaveWatch2026!",
+  "seed_data_creation": "Test fixture auto-clears Sliders (1649) progress before/after each test via /api/user/tv-progress/1649/unmark-all-watched. Test movie cid=999999991 is deleted via DELETE /api/user/history/<id>/movie.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Reusable pytest: /app/backend/tests/test_iteration39_runtime_xp.py — uses Sliders (TMDB 1649, 87 eps) as canonical fixture. Each test self-cleans. Episode runtimes are looked up live via TMDB (~3-8s for mark-all on a 5-season show). /api/user/recompute-watch-time can take 30-120s for accounts with many entries — pytest sets a 120s timeout. Frontend dashboard auto-fires POST /api/user/recompute-watch-time once per session via a sessionStorage flag (key 'ww_recomputed_v1').",
+  "verified_behaviors": {
+    "mark_all_returns_real_runtime": "Sliders mark-all returns total_episodes=87, typical_episode_runtime=43 (Sliders TMDB episode_run_time[0]).",
+    "detailed_stats_sums_real_runtime": "After mark-all on 1649, total_watch_time delta = 87 * 43 = 3741 min (~62h) — matches expected exactly within ±2 min tolerance. Bug case (flat 5h) NOT reproduced.",
+    "unmark_clears_history": "POST /api/user/tv-progress/1649/unmark-all-watched returns episodes_cleared >= 87, removes series-level entry, clears tv_progress doc.",
+    "history_runtime_field": "POST /api/user/history with body.runtime=137 results in detailed-stats total_watch_time +=137 exactly.",
+    "recompute_endpoint": "Returns {success: true, updated: int, total_entries: int}.",
+    "dashboard_xp_badges": "All 6 badges visible with correct values.",
+    "dashboard_facts_section": "'Le saviez-vous ?' present (rich pool of facts in buildInterestingFacts at /app/frontend/src/pages/DashboardPage.js).",
+    "community_reviews_removed": "'Avis de la communauté' no longer rendered on Dashboard.",
+    "tv_page_toggle": "On /tv-shows/1649, mark-all-watched-btn label toggles Tout marquer → Retirer des vus → Tout marquer with red styling when in 'unmark' state. Confirmation dialog appears on each transition."
+  }
+}

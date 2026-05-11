@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff, Download, Youtube, Shuffle, RotateCcw, CalendarClock, Trophy, Clock } from 'lucide-react';
+import { invalidateXPCache } from '../lib/xp';
+import { Star, Calendar, Play, Heart, CheckCircle, Eye, EyeOff, SkipForward, Tv, Bell, BellOff, Download, Youtube, Shuffle, RotateCcw, CalendarClock, Trophy, Clock, X } from 'lucide-react';
 import ContentCard from '../components/ContentCard';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import LikeDislike from '../components/LikeDislike';
@@ -201,22 +202,48 @@ export default function TVShowDetailPage() {
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
     try {
       if (isWatched) {
+        if (!window.confirm('Retirer cette série de vos vus ? Vos statistiques et XP seront recalculés.')) return;
         await API.delete(`/api/user/history/${id}/tv`);
         setIsWatched(false);
+        invalidateXPCache();
+        try { sessionStorage.removeItem('ww_runtime_recomputed'); } catch {}
         toast({ title: 'Retire du vu' });
       } else {
-        await API.post('/api/user/history', { content_id: parseInt(id), content_type: 'tv', title: show.name, poster_path: show.poster_path });
+        // Compute total series runtime (typical ep runtime × number of episodes)
+        const epRt = (show.episode_run_time && show.episode_run_time[0]) || 42;
+        const totalRuntime = epRt * (show.number_of_episodes || 0);
+        await API.post('/api/user/history', {
+          content_id: parseInt(id), content_type: 'tv',
+          title: show.name, poster_path: show.poster_path,
+          runtime: totalRuntime,
+        });
         setIsWatched(true);
+        invalidateXPCache();
         toast({ title: 'Marque comme vu' });
       }
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
   };
 
-  // Marquer TOUTE la série comme vue (toutes les saisons et épisodes)
+  // Marquer TOUTE la série comme vue (toutes les saisons et épisodes) — toggle
   const markAllAsWatched = async () => {
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
+    const alreadyAll = progress.percent === 100;
+    if (alreadyAll) {
+      if (!window.confirm(`Retirer toute la série des vus ?\n${show.number_of_seasons} saison${show.number_of_seasons > 1 ? 's' : ''} · ${show.number_of_episodes} épisode${show.number_of_episodes > 1 ? 's' : ''} seront marqués comme non vus, et les XP / stats correspondants seront recalculés.`)) return;
+      setMarkingAll(true);
+      try {
+        await API.post(`/api/user/tv-progress/${id}/unmark-all-watched`);
+        setIsWatched(false);
+        setWatchedEpisodes({});
+        invalidateXPCache();
+        try { sessionStorage.removeItem('ww_runtime_recomputed'); } catch {}
+        toast({ title: 'Série retirée des vus', description: 'Vos stats et XP sont recalculés.' });
+      } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+      finally { setMarkingAll(false); }
+      return;
+    }
     if (!window.confirm(`Marquer toutes les ${show.number_of_seasons} saisons et ${show.number_of_episodes} épisodes comme vus ?`)) return;
-    
+
     setMarkingAll(true);
     try {
       await API.post(`/api/user/tv-progress/${id}/mark-all-watched`, { show_name: show.name, poster_path: show.poster_path });
@@ -224,6 +251,7 @@ export default function TVShowDetailPage() {
       // Refresh watched episodes
       const { data } = await API.get(`/api/user/tv-progress/${id}`);
       setWatchedEpisodes(data.watched_episodes || {});
+      invalidateXPCache();
       toast({ title: 'Toute la série marquée comme vue !', description: `${show.number_of_seasons} saisons, ${show.number_of_episodes} épisodes` });
     } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
     finally { setMarkingAll(false); }
@@ -444,19 +472,25 @@ export default function TVShowDetailPage() {
               <ResumeWidget show={show} state={resumeState} basePath="tv-shows" />
             )}
 
-            {/* Marquer TOUTE la série comme vue */}
+            {/* Marquer TOUTE la série comme vue (toggle) */}
             <div className="flex items-center gap-3 p-4 rounded-lg border border-gray-800 bg-gray-900/50">
               <Tv className="w-6 h-6 text-blue-400" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-white">Marquer toute la série comme vue</p>
-                <p className="text-xs text-gray-400">Marque automatiquement {show.number_of_seasons} saisons et {show.number_of_episodes} épisodes</p>
+                <p className="text-sm font-medium text-white">
+                  {progress.percent === 100 ? 'Série déjà entièrement vue' : 'Marquer toute la série comme vue'}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {progress.percent === 100
+                    ? `Cliquez pour retirer ${show.number_of_seasons} saison${show.number_of_seasons > 1 ? 's' : ''} et ${show.number_of_episodes} épisode${show.number_of_episodes > 1 ? 's' : ''} des vus`
+                    : `Marque automatiquement ${show.number_of_seasons} saison${show.number_of_seasons > 1 ? 's' : ''} et ${show.number_of_episodes} épisode${show.number_of_episodes > 1 ? 's' : ''}`}
+                </p>
               </div>
-              <button 
+              <button
                 onClick={markAllAsWatched}
                 disabled={markingAll}
                 className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                  progress.percent === 100 
-                    ? 'bg-green-600/20 border border-green-500/30 text-green-400'
+                  progress.percent === 100
+                    ? 'bg-red-600/15 border border-red-500/40 text-red-300 hover:bg-red-600/25'
                     : 'bg-blue-600 hover:bg-blue-500 text-white'
                 }`}
                 data-testid="mark-all-watched-btn"
@@ -464,7 +498,7 @@ export default function TVShowDetailPage() {
                 {markingAll ? (
                   <span className="animate-spin">⏳</span>
                 ) : progress.percent === 100 ? (
-                  <><CheckCircle className="w-4 h-4 fill-green-500" /> Serie complete</>
+                  <><X className="w-4 h-4" /> Retirer des vus</>
                 ) : (
                   <><Eye className="w-4 h-4" /> Tout marquer</>
                 )}
