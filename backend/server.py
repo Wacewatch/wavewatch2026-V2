@@ -3219,13 +3219,52 @@ async def get_rating_counts(content_id: str = Query(...), content_type: str = Qu
 async def update_content_request(request_id: str, request: Request, user: dict = Depends(require_admin)):
     data = await request.json()
     data.pop("_id", None)
+    # Capture previous state to know if status changed (for notifying the author)
+    prev = await db.content_requests.find_one({"_id": ObjectId(request_id)})
     await db.content_requests.update_one({"_id": ObjectId(request_id)}, {"$set": data})
+    # Notify author on status transitions (approved/rejected)
+    new_status = data.get("status")
+    if prev and new_status and prev.get("status") != new_status and new_status in ("approved", "rejected"):
+        author_id = prev.get("user_id")
+        title = prev.get("title", "ta demande")
+        is_movie = prev.get("content_type") == "movie"
+        link = f"/{'movies' if is_movie else 'tv-shows'}/{prev.get('tmdb_id')}" if prev.get("tmdb_id") else "/requests"
+        if new_status == "approved":
+            await create_notification(
+                author_id,
+                f"✅ Demande approuvée : {title}",
+                f"Ta demande pour {title} a été approuvée par le staff. {'Le contenu sera ajouté prochainement.' if not prev.get('tmdb_id') else 'Tu peux le retrouver dès maintenant.'}",
+                "request_approved",
+                link,
+            )
+        else:
+            await create_notification(
+                author_id,
+                f"❌ Demande rejetée : {title}",
+                f"Ta demande pour {title} n'a pas été retenue par le staff.",
+                "request_rejected",
+                "/requests",
+            )
     return {"message": "Mis a jour"}
 
 @app.delete("/api/admin/content-requests/{request_id}")
 async def delete_content_request(request_id: str, user: dict = Depends(require_admin)):
     await db.content_requests.delete_one({"_id": ObjectId(request_id)})
     return {"message": "Supprime"}
+
+@app.get("/api/user/content-requests")
+async def get_my_content_requests(user: dict = Depends(get_current_user)):
+    """List the current user's own content requests, newest first."""
+    requests = await db.content_requests.find({"user_id": user["_id"]}).sort("created_at", -1).to_list(length=None)
+    for r in requests:
+        r["_id"] = str(r["_id"])
+    counts = {
+        "all": len(requests),
+        "pending": sum(1 for r in requests if r.get("status") == "pending"),
+        "approved": sum(1 for r in requests if r.get("status") == "approved"),
+        "rejected": sum(1 for r in requests if r.get("status") == "rejected"),
+    }
+    return {"requests": requests, "counts": counts}
 
 
 # =================== PLATFORM REVIEWS / GUESTBOOK ===================

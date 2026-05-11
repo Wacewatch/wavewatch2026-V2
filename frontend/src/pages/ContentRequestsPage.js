@@ -263,9 +263,13 @@ export default function ContentRequestsPage() {
   const [requests, setRequests] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [scope, setScope] = useState('all'); // 'all' or 'mine'
 
-  useEffect(() => { loadRequests(); }, []);
-  const loadRequests = () => API.get('/api/content-requests').then(({ data }) => setRequests(data.requests || [])).catch(() => {});
+  useEffect(() => { loadRequests(); /* eslint-disable-line */ }, [scope]);
+  const loadRequests = () => {
+    const ep = scope === 'mine' && user ? '/api/user/content-requests' : '/api/content-requests';
+    API.get(ep).then(({ data }) => setRequests(data.requests || [])).catch(() => setRequests([]));
+  };
 
   const vote = async (reqId) => {
     if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
@@ -307,8 +311,28 @@ export default function ContentRequestsPage() {
           )}
         </div>
 
+        {/* Scope toggle (Toutes / Mes demandes) */}
+        {user && (
+          <div className="mt-5 inline-flex gap-1 p-1 rounded-xl bg-secondary/40 border border-border" data-testid="scope-toggle">
+            <button
+              onClick={() => { setScope('all'); setFilter('all'); }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${scope === 'all' ? 'bg-primary text-primary-foreground shadow-md' : 'text-foreground/70 hover:text-foreground'}`}
+              data-testid="scope-all"
+            >
+              Toutes les demandes
+            </button>
+            <button
+              onClick={() => { setScope('mine'); setFilter('all'); }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all ${scope === 'mine' ? 'bg-primary text-primary-foreground shadow-md' : 'text-foreground/70 hover:text-foreground'}`}
+              data-testid="scope-mine"
+            >
+              Mes demandes
+            </button>
+          </div>
+        )}
+
         {/* Filter tabs */}
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
           {[
             { id: 'all', label: 'Toutes' },
             { id: 'pending', label: 'En attente' },
@@ -331,7 +355,7 @@ export default function ContentRequestsPage() {
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Aucune demande {filter !== 'all' ? `(${filter})` : 'pour le moment'}.</p>
+          <p>{scope === 'mine' ? 'Tu n\'as pas encore fait de demande.' : `Aucune demande ${filter !== 'all' ? `(${filter})` : 'pour le moment'}.`}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
