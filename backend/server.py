@@ -608,21 +608,51 @@ async def tmdb_genres(media_type: str):
 @app.get("/api/tmdb/discover/{media_type}")
 async def tmdb_discover(media_type: str, page: int = 1, genre: Optional[int] = None, sort_by: str = "popularity.desc",
                         provider: Optional[int] = None, year: Optional[int] = None, vote_avg: Optional[float] = None,
-                        include_adult: bool = False):
-    params = {"page": str(page), "sort_by": sort_by, "watch_region": "FR", "include_adult": str(include_adult).lower()}
-    if genre:
-        params["with_genres"] = str(genre)
-    if provider:
-        params["with_watch_providers"] = str(provider)
-    if year:
-        if media_type == "movie":
-            params["primary_release_year"] = str(year)
-        else:
-            params["first_air_date_year"] = str(year)
-    if vote_avg:
-        params["vote_average.gte"] = str(vote_avg)
-        params["vote_count.gte"] = "50"
-    return await tmdb_fetch(f"/discover/{media_type}", params)
+                        include_adult: bool = False, per_page: int = 20):
+    # TMDB renvoie 20 résultats par page. Pour densifier l'affichage (5 lignes × 10 colonnes = 50),
+    # on agrège plusieurs pages TMDB en une page logique.
+    TMDB_PAGE_SIZE = 20
+    per_page = max(1, min(per_page, 100))  # safety cap
+    pages_to_fetch = max(1, (per_page + TMDB_PAGE_SIZE - 1) // TMDB_PAGE_SIZE)
+
+    def build_params(p: int):
+        params = {"page": str(p), "sort_by": sort_by, "watch_region": "FR", "include_adult": str(include_adult).lower()}
+        if genre:
+            params["with_genres"] = str(genre)
+        if provider:
+            params["with_watch_providers"] = str(provider)
+        if year:
+            if media_type == "movie":
+                params["primary_release_year"] = str(year)
+            else:
+                params["first_air_date_year"] = str(year)
+        if vote_avg:
+            params["vote_average.gte"] = str(vote_avg)
+            params["vote_count.gte"] = "50"
+        return params
+
+    if pages_to_fetch == 1:
+        return await tmdb_fetch(f"/discover/{media_type}", build_params(page))
+
+    start_tmdb_page = (page - 1) * pages_to_fetch + 1
+    aggregated = []
+    tmdb_total_pages = 1
+    tmdb_total_results = 0
+    for offset in range(pages_to_fetch):
+        tmdb_page = start_tmdb_page + offset
+        data = await tmdb_fetch(f"/discover/{media_type}", build_params(tmdb_page))
+        if offset == 0:
+            tmdb_total_pages = int(data.get("total_pages") or 1)
+            tmdb_total_results = int(data.get("total_results") or 0)
+        if tmdb_page > tmdb_total_pages:
+            break
+        aggregated.extend(data.get("results") or [])
+    return {
+        "page": page,
+        "results": aggregated[:per_page],
+        "total_pages": max(1, (tmdb_total_pages + pages_to_fetch - 1) // pages_to_fetch),
+        "total_results": tmdb_total_results,
+    }
 
 @app.get("/api/tmdb/providers/{media_type}")
 async def tmdb_watch_providers(media_type: str):

@@ -50,7 +50,7 @@ export default function AnimePage() {
 
   useEffect(() => {
     setLoading(true);
-    let params = `page=${page}&sort_by=${sortBy}`;
+    let params = `page=${page}&sort_by=${sortBy}&per_page=50`;
     if (genreFilter && genreFilter !== '16') params += `&genre=16,${genreFilter}`;
     else params += '&genre=16';
     if (providerFilter) params += `&provider=${providerFilter}`;

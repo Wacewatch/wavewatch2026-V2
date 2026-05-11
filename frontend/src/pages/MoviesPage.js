@@ -53,7 +53,7 @@ export default function MoviesPage() {
 
   useEffect(() => {
     setLoading(true);
-    let endpoint = `/api/tmdb/discover/movie?page=${page}&sort_by=${sortBy}`;
+    let endpoint = `/api/tmdb/discover/movie?page=${page}&sort_by=${sortBy}&per_page=50`;
     if (genreFilter) endpoint += `&genre=${genreFilter}`;
     if (providerFilter) endpoint += `&provider=${providerFilter}`;
     if (yearFilter) endpoint += `&year=${yearFilter}`;
