@@ -933,6 +933,12 @@ async def add_to_history(request: Request, user: dict = Depends(get_current_user
                         )
             except Exception:
                 pass
+    # Update watch streak — counts unique calendar days with at least 1 watch
+    try:
+        if ctype in ("movie", "tv", "anime", "episode"):
+            await _update_user_streak(user["_id"], user.get("username", "Utilisateur"))
+    except Exception:
+        pass
     return {"success": True}
 
 @app.post("/api/user/history/batch")
@@ -4407,3 +4413,284 @@ async def add_playlist_item_with_notif(playlist_id: str, req: PlaylistItemAdd, u
     except:
         pass
     return result
+
+
+# =================== WATCH STREAK ===================
+# Streak rule: 1 day = at least 1 movie/episode/tv finished (content_type in {movie, tv, anime, episode})
+# Milestones with bonus XP: 3=+15, 7=+50, 14=+100, 30=+250, 60=+500, 100=+1000
+STREAK_MILESTONES = [
+    (3, 15, "🔥 Série de 3 jours !", "Tu as regardé du contenu 3 jours d'affilée."),
+    (7, 50, "🔥 1 semaine d'affilée !", "7 jours consécutifs — solide !"),
+    (14, 100, "🔥 2 semaines consécutives !", "14 jours d'affilée. Tu es un cinéphile assidu."),
+    (30, 250, "🏆 1 mois consécutif !", "30 jours d'affilée — incroyable régularité."),
+    (60, 500, "🏆 2 mois consécutifs !", "60 jours d'affilée. C'est presque un job."),
+    (100, 1000, "👑 100 jours d'affilée !", "Tu as atteint le centième jour consécutif — légende vivante."),
+]
+
+async def _update_user_streak(user_id: str, username: str = ""):
+    """Increment user's watch streak if today is a new day. Reset if a day was skipped.
+    Awards bonus XP at milestones (3/7/14/30/60/100).
+    """
+    today = datetime.now(timezone.utc).date()
+    today_iso = today.isoformat()
+    doc = await db.user_streaks.find_one({"user_id": user_id})
+    if not doc:
+        # First ever watch — initialize
+        await db.user_streaks.insert_one({
+            "user_id": user_id,
+            "current_streak": 1,
+            "longest_streak": 1,
+            "last_watch_date": today_iso,
+            "streak_started_at": today_iso,
+            "total_active_days": 1,
+        })
+        return {"current": 1, "longest": 1, "milestone_unlocked": None}
+    last = doc.get("last_watch_date")
+    if last == today_iso:
+        # Already counted today — no change
+        return {"current": doc["current_streak"], "longest": doc["longest_streak"], "milestone_unlocked": None}
+    try:
+        last_date = datetime.fromisoformat(last).date() if last else None
+    except Exception:
+        last_date = None
+    delta_days = (today - last_date).days if last_date else None
+    if delta_days == 1:
+        new_current = doc["current_streak"] + 1
+    else:
+        # Streak broken — reset to 1, start a new streak today
+        new_current = 1
+    new_longest = max(doc.get("longest_streak", 0), new_current)
+    new_total = doc.get("total_active_days", 0) + 1
+    new_started = doc.get("streak_started_at") if delta_days == 1 else today_iso
+    await db.user_streaks.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "current_streak": new_current,
+            "longest_streak": new_longest,
+            "last_watch_date": today_iso,
+            "streak_started_at": new_started,
+            "total_active_days": new_total,
+        }}
+    )
+    # Check milestones
+    milestone_unlocked = None
+    for days, xp_award, title, msg in STREAK_MILESTONES:
+        if new_current == days:
+            # Check if not already awarded this milestone (e.g. user reaches 7 again later)
+            existing = await db.xp_bonuses.find_one({
+                "user_id": user_id,
+                "event_slug": f"streak_{days}",
+                "created_at": {"$gte": new_started + "T00:00:00"},  # only within current streak window
+            })
+            if not existing:
+                await db.xp_bonuses.insert_one({
+                    "user_id": user_id,
+                    "event_slug": f"streak_{days}",
+                    "event_id": f"streak_{days}",
+                    "content_type": "streak",
+                    "content_id": f"streak_{days}_{new_started}",
+                    "base_xp": 0,
+                    "bonus_xp": xp_award,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+                try:
+                    await db.users.update_one(
+                        {"_id": ObjectId(user_id)},
+                        {"$inc": {"xp_bonus": xp_award}},
+                    )
+                except Exception:
+                    pass
+                await create_notification(
+                    user_id,
+                    title,
+                    f"{msg} +{xp_award} XP bonus !",
+                    "streak",
+                    "/dashboard"
+                )
+                milestone_unlocked = {"days": days, "xp": xp_award, "title": title}
+                break
+    return {"current": new_current, "longest": new_longest, "milestone_unlocked": milestone_unlocked}
+
+
+@app.get("/api/user/streak")
+async def get_user_streak(user: dict = Depends(get_current_user)):
+    """Return user's current and longest watch streak."""
+    doc = await db.user_streaks.find_one({"user_id": user["_id"]}, {"_id": 0})
+    today = datetime.now(timezone.utc).date()
+    if not doc:
+        return {
+            "current_streak": 0,
+            "longest_streak": 0,
+            "last_watch_date": None,
+            "total_active_days": 0,
+            "milestones": STREAK_MILESTONES_PUBLIC,
+            "next_milestone": STREAK_MILESTONES_PUBLIC[0],
+            "is_active_today": False,
+            "broken": False,
+        }
+    last = doc.get("last_watch_date")
+    try:
+        last_date = datetime.fromisoformat(last).date() if last else None
+    except Exception:
+        last_date = None
+    is_active_today = last_date == today
+    # Streak is "at risk" if last_date == yesterday, "broken" if older
+    delta = (today - last_date).days if last_date else None
+    broken = bool(delta and delta > 1)
+    current = 0 if broken else doc.get("current_streak", 0)
+    # Find next milestone
+    next_ms = None
+    for days, xp, title, msg in STREAK_MILESTONES:
+        if days > current:
+            next_ms = {"days": days, "xp": xp, "title": title}
+            break
+    return {
+        "current_streak": current,
+        "longest_streak": doc.get("longest_streak", 0),
+        "last_watch_date": last,
+        "total_active_days": doc.get("total_active_days", 0),
+        "milestones": STREAK_MILESTONES_PUBLIC,
+        "next_milestone": next_ms,
+        "is_active_today": is_active_today,
+        "broken": broken,
+        "at_risk": delta == 1 and not is_active_today,
+    }
+
+STREAK_MILESTONES_PUBLIC = [{"days": d, "xp": x, "title": t} for d, x, t, _ in STREAK_MILESTONES]
+
+
+# =================== ACTOR SUBSCRIPTIONS ===================
+
+@app.post("/api/notifications/subscribe-actor")
+async def subscribe_actor(request: Request, user: dict = Depends(get_current_user)):
+    """Toggle subscription to actor — notified when they appear in new films/shows."""
+    data = await request.json()
+    actor_id = data.get("actor_id")
+    actor_name = data.get("actor_name", "Acteur")
+    if actor_id is None:
+        raise HTTPException(400, "actor_id required")
+    existing = await db.actor_subscriptions.find_one({"user_id": user["_id"], "actor_id": int(actor_id)})
+    if existing:
+        await db.actor_subscriptions.delete_one({"_id": existing["_id"]})
+        return {"subscribed": False, "message": f"Notifications désactivées pour {actor_name}"}
+    # Capture currently known credits to skip them in future checks
+    try:
+        credits = await tmdb_fetch(f"/person/{int(actor_id)}/combined_credits", {})
+        known_ids = list({c.get("id") for c in (credits.get("cast") or []) if c.get("id")})
+    except Exception:
+        known_ids = []
+    await db.actor_subscriptions.insert_one({
+        "user_id": user["_id"],
+        "actor_id": int(actor_id),
+        "actor_name": actor_name,
+        "known_credit_ids": known_ids,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"subscribed": True, "message": f"Notifications activées pour {actor_name}"}
+
+
+@app.get("/api/notifications/check-actor/{actor_id}")
+async def check_actor_subscription(actor_id: int, user: dict = Depends(get_current_user)):
+    existing = await db.actor_subscriptions.find_one({"user_id": user["_id"], "actor_id": actor_id})
+    return {"subscribed": existing is not None}
+
+
+@app.get("/api/notifications/subscribed-actors")
+async def get_subscribed_actors(user: dict = Depends(get_current_user)):
+    subs = await db.actor_subscriptions.find({"user_id": user["_id"]}, {"known_credit_ids": 0}).to_list(100)
+    for s in subs:
+        s["_id"] = str(s["_id"])
+    return {"subscriptions": subs}
+
+
+async def _check_actor_releases():
+    """Background: for each subscribed actor, find new credits (not in known_credit_ids) released within last 30 days."""
+    subs = await db.actor_subscriptions.find().to_list(2000)
+    actor_ids = list({s["actor_id"] for s in subs})
+    today = datetime.now(timezone.utc).date()
+    cutoff = today - timedelta(days=30)
+    notified = 0
+    for aid in actor_ids:
+        try:
+            credits = await tmdb_fetch(f"/person/{int(aid)}/combined_credits", {"language": "fr-FR"})
+            cast = credits.get("cast") or []
+            # Find released-recently items
+            fresh = []
+            for c in cast:
+                cid = c.get("id")
+                if not cid:
+                    continue
+                date_str = c.get("release_date") or c.get("first_air_date") or ""
+                if not date_str:
+                    continue
+                try:
+                    d = datetime.fromisoformat(date_str).date()
+                except Exception:
+                    continue
+                if cutoff <= d <= today:
+                    fresh.append({**c, "_release_date": date_str})
+            if not fresh:
+                continue
+            # For each subscriber, notify on fresh credits not in known list
+            for sub in [s for s in subs if s["actor_id"] == aid]:
+                known = set(sub.get("known_credit_ids") or [])
+                actor_name = sub.get("actor_name", "Acteur")
+                new_items = [c for c in fresh if c.get("id") not in known]
+                if not new_items:
+                    continue
+                for item in new_items[:5]:
+                    mt = item.get("media_type", "movie")
+                    title = item.get("title") or item.get("name") or "Nouveau projet"
+                    link = f"/movies/{item['id']}" if mt == "movie" else f"/tv-shows/{item['id']}"
+                    # Avoid duplicate notification
+                    already = await db.notifications.find_one({
+                        "user_id": sub["user_id"],
+                        "type": "actor_release",
+                        "link": link,
+                    })
+                    if already:
+                        continue
+                    await create_notification(
+                        sub["user_id"],
+                        f"🎬 Nouveau avec {actor_name}",
+                        f"{title} ({item.get('_release_date', '')[:4]}) est sorti.",
+                        "actor_release",
+                        link,
+                    )
+                    notified += 1
+                # Update known_credit_ids to include the new ones (so we don't spam)
+                updated_known = list(known | {c.get("id") for c in new_items if c.get("id")})
+                await db.actor_subscriptions.update_one(
+                    {"_id": sub["_id"]},
+                    {"$set": {"known_credit_ids": updated_known}}
+                )
+        except Exception:
+            continue
+    return notified
+
+
+@app.post("/api/notifications/check-actor-releases")
+async def trigger_check_actor_releases(user: dict = Depends(get_optional_user)):
+    """Manual trigger (admin or any auth) to check actor releases."""
+    count = await _check_actor_releases()
+    return {"notified": count}
+
+
+# Extend the existing background loop to also check actors and upcoming-favorited movies
+@app.on_event("startup")
+async def start_actor_release_checker():
+    import asyncio
+    async def actor_loop():
+        while True:
+            try:
+                await asyncio.sleep(3600 * 12)  # every 12h
+                await _check_actor_releases()
+            except Exception:
+                pass
+    asyncio.create_task(actor_loop())
+
+
+# =================== RECOMMENDATIONS ===================
+# Note: /api/user/recommendations already exists (line ~2913) — it returns
+# {"recommendations": [...], "source": "personalised"|"trending"} based on
+# similar/recommendations/discover. We reuse it directly from the frontend.

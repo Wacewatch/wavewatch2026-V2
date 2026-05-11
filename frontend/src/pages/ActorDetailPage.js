@@ -7,7 +7,7 @@ import ContentCard from '../components/ContentCard';
 import LikeDislike from '../components/LikeDislike';
 import AddToPlaylistButton from '../components/AddToPlaylistButton';
 import { LoadingSpinner } from '../components/Loading';
-import { Heart, Film, Tv } from 'lucide-react';
+import { Heart, Film, Tv, Bell, BellOff } from 'lucide-react';
 
 export default function ActorDetailPage() {
   const { id } = useParams();
@@ -16,11 +16,13 @@ export default function ActorDetailPage() {
   const [person, setPerson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     API.get(`/api/tmdb/person/${id}`).then(({ data }) => setPerson(data)).catch(() => {}).finally(() => setLoading(false));
     if (user) {
       API.get(`/api/user/favorites/check?content_id=${id}&content_type=actor`).then(({ data }) => setIsFavorite(data.is_favorite)).catch(() => {});
+      API.get(`/api/notifications/check-actor/${id}`).then(({ data }) => setIsSubscribed(data.subscribed)).catch(() => {});
     }
   }, [id, user]);
 
@@ -62,6 +64,21 @@ export default function ActorDetailPage() {
           <div className="flex flex-wrap gap-3">
             <button onClick={toggleFavorite} className={`px-5 py-2.5 rounded-lg border border-yellow-600 text-yellow-400 hover:bg-yellow-900/20 flex items-center gap-2 transition-colors ${isFavorite ? 'bg-yellow-900/20' : ''}`} data-testid="favorite-btn">
               <Heart className={`w-5 h-5 ${isFavorite ? 'fill-yellow-500' : ''}`} />{isFavorite ? 'Dans mes favoris' : 'Ajouter aux favoris'}
+            </button>
+            <button
+              onClick={async () => {
+                if (!user) { toast({ title: 'Connexion requise', variant: 'destructive' }); return; }
+                try {
+                  const { data } = await API.post('/api/notifications/subscribe-actor', { actor_id: parseInt(id), actor_name: person.name });
+                  setIsSubscribed(data.subscribed);
+                  toast({ title: data.message });
+                } catch { toast({ title: 'Erreur', variant: 'destructive' }); }
+              }}
+              className={`px-5 py-2.5 rounded-lg border flex items-center gap-2 transition-colors ${isSubscribed ? 'border-purple-500 bg-purple-900/30 text-purple-300' : 'border-purple-600/60 text-purple-400 hover:bg-purple-900/20'}`}
+              data-testid="actor-subscribe-btn"
+            >
+              {isSubscribed ? <Bell className="w-5 h-5 fill-purple-400" /> : <BellOff className="w-5 h-5" />}
+              {isSubscribed ? 'Notifs activées' : 'Suivre cet acteur'}
             </button>
           </div>
           <LikeDislike contentId={parseInt(id)} contentType="actor" />

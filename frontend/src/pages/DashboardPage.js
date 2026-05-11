@@ -8,6 +8,8 @@ import { Heart, Eye, ListMusic, Crown, Star, Clock, Award, MessageSquare, Film, 
 import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 import { useUserXP, getLevelBounds } from '../lib/xp';
 import BonusXPCard from '../components/BonusXPCard';
+import StreakCard from '../components/StreakCard';
+import RecommendationsRow from '../components/RecommendationsRow';
 
 function RatingBar({ label, value, onChange }) {
   const getColor = (i) => {
@@ -296,6 +298,9 @@ export default function DashboardPage() {
           ))}
       </div>
 
+      {/* Recommendations personnalisées */}
+      <RecommendationsRow />
+
       {/* === NIVEAU UTILISATEUR === */}
       <div className="relative overflow-hidden rounded-2xl border-2 backdrop-blur-xl p-5 md:p-6"
         style={{ borderColor: `${tier.hex}60`, background: `linear-gradient(135deg, ${tier.from}15, transparent 50%, ${tier.to}10)`, boxShadow: `0 12px 40px ${tier.glow}` }}
@@ -422,21 +427,7 @@ export default function DashboardPage() {
 
         {/* Streak + best day */}
         <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-          <div className="relative overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-950/40 via-orange-950/30 to-rose-950/30 p-4">
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-50" style={{ background: 'hsl(35 95% 55%)' }} />
-            <div className="relative flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/40 flex-shrink-0">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-amber-200/80">Série en cours</p>
-                <p className="text-2xl font-black text-white tabular-nums leading-tight">
-                  {streak}<span className="text-base text-amber-200/70 ml-1">j</span>
-                </p>
-                <p className="text-[10px] text-amber-200/60 truncate">{streak === 0 ? 'Reprends aujourd\'hui !' : streak === 1 ? 'Bonne reprise !' : 'Continue comme ça 🔥'}</p>
-              </div>
-            </div>
-          </div>
+          <StreakCard />
 
           <div className="relative overflow-hidden rounded-2xl border border-cyan-400/30 bg-gradient-to-br from-cyan-950/40 via-blue-950/30 to-indigo-950/30 p-4">
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-50" style={{ background: 'hsl(190 95% 55%)' }} />
