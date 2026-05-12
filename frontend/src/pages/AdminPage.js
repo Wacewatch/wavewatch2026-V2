@@ -1281,8 +1281,8 @@ export default function AdminPage() {
 
           {/* Security note */}
           <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
-            <p className="text-sm text-emerald-400 font-medium">🔒 Sécurité : les clés Supabase (service role) sont uniquement côté backend</p>
-            <p className="text-xs text-muted-foreground mt-1">Le frontend n'a jamais accès aux clés Supabase — toutes les requêtes passent par l'API WaveWatch (/api/download-links/*). Les jaquettes sont enrichies via le proxy TMDB.</p>
+            <p className="text-sm text-emerald-400 font-medium">🔒 Sécurité : la clé API wwembed (X-API-Key) est uniquement côté backend</p>
+            <p className="text-xs text-muted-foreground mt-1">Le frontend n'a jamais accès à la clé wwembed — toutes les requêtes passent par l'API WaveWatch (/api/download-links/*) qui proxy vers wwembed (MongoDB). Les jaquettes sont enrichies via le proxy TMDB.</p>
           </div>
         </div>
       )}

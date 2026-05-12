@@ -26,8 +26,8 @@ TMDB_API_KEY = os.environ.get("TMDB_API_KEY")
 TMDB_BASE = "https://api.themoviedb.org/3"
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@wavewatch.com")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "WaveWatch2026!")
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+WWEMBED_API_URL = os.environ.get("WWEMBED_API_URL", "").rstrip("/")
+WWEMBED_API_KEY = os.environ.get("WWEMBED_API_KEY", "")
 ENV = os.environ.get("ENV", "development").lower()
 IS_PROD = ENV == "production"
 # Allowed CORS origins - support multiple via comma-separated FRONTEND_URL
@@ -1929,21 +1929,19 @@ async def get_retrogaming():
             s["_id"] = str(s["_id"])
     return {"sources": sources, "games": sources}
 
-# ==================== DOWNLOAD LINKS (Supabase WWembed) ====================
-# Service role key stays on the backend. Frontend NEVER sees Supabase.
+# ==================== DOWNLOAD LINKS (wwembed API) ====================
+# API key stays on the backend. Frontend NEVER sees wwembed credentials.
 
-async def _supabase_get(path: str, params: dict = None):
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise HTTPException(status_code=503, detail="Supabase non configuré")
-    headers = {
-        "apikey": SUPABASE_SERVICE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-    }
-    url = f"{SUPABASE_URL}/rest/v1{path}"
-    async with httpx.AsyncClient(timeout=15) as hc:
+async def _wwembed_get(path: str, params: dict = None):
+    """GET helper for the wwembed HTTP API. Returns parsed JSON."""
+    if not WWEMBED_API_URL or not WWEMBED_API_KEY:
+        raise HTTPException(status_code=503, detail="wwembed API non configurée")
+    headers = {"X-API-Key": WWEMBED_API_KEY, "Accept": "application/json"}
+    url = f"{WWEMBED_API_URL}{path}"
+    async with httpx.AsyncClient(timeout=20) as hc:
         r = await hc.get(url, headers=headers, params=params or {})
         if r.status_code >= 400:
-            raise HTTPException(status_code=502, detail=f"Supabase error {r.status_code}")
+            raise HTTPException(status_code=502, detail=f"wwembed error {r.status_code}")
         return r.json()
 
 # Small TMDB enrichment cache (in-memory, 10 min)
@@ -1994,75 +1992,49 @@ async def _enrich_links(items: list) -> list:
 
 def _download_link_filters(quality: Optional[str] = None, media_type: Optional[str] = None,
                            language: Optional[str] = None, q: Optional[str] = None):
-    """Build PostgREST filter params."""
-    params = {
-        "is_active": "eq.true",
-        "is_valid": "eq.true",
-        "status": "eq.approved",
-    }
+    """Build wwembed API query params. is_active/is_valid/status=approved are applied implicitly by the API."""
+    params: dict = {}
     if quality:
-        params["quality"] = f"eq.{quality}"
+        params["quality"] = quality
     if media_type and media_type in ("movie", "tv"):
-        params["media_type"] = f"eq.{media_type}"
+        params["media_type"] = media_type
     if language:
-        params["language"] = f"eq.{language}"
+        params["language"] = language
     if q:
-        # Search in release_name or source_name
-        params["or"] = f"(release_name.ilike.*{q}*,source_name.ilike.*{q}*,ww_id.ilike.*{q}*)"
+        params["q"] = q
     return params
 
 @app.get("/api/download-links/recent")
 async def get_recent_download_links(limit: int = 12):
-    """Return the N most recent UNIQUE (tmdb_id, media_type) download links, enriched with TMDB poster."""
+    """Proxy to wwembed /download_links/recent (already deduplicated by API)."""
     limit = max(1, min(int(limit or 12), 50))
-    # Fetch more than limit to allow deduplication, order by created_at desc
-    params = _download_link_filters()
-    params["select"] = "tmdb_id,media_type,ww_id,source_name,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,created_at,submitted_by,profiles(username,role)"
-    params["order"] = "created_at.desc"
-    params["limit"] = str(limit * 5)
-    rows = await _supabase_get("/download_links", params)
-    # Deduplicate by (tmdb_id, media_type), keep first (most recent)
-    seen = set()
-    unique_items = []
-    for r in rows:
-        k = (r.get("tmdb_id"), r.get("media_type"))
-        if k in seen:
-            continue
-        seen.add(k)
-        # Flatten profile -> uploader_username / uploader_role
-        prof = r.pop("profiles", None) or {}
-        r["uploader_username"] = prof.get("username") or "Anonyme"
-        r["uploader_role"] = prof.get("role") or "user"
-        unique_items.append(r)
-        if len(unique_items) >= limit:
-            break
-    await _enrich_links(unique_items)
-    return {"items": unique_items, "count": len(unique_items)}
+    data = await _wwembed_get("/api/v1/download_links/recent", {"limit": limit})
+    items = data.get("items") or []
+    await _enrich_links(items)
+    return {"items": items, "count": len(items)}
 
-# ---- Cached Supabase full-fetch loop (for grouping) ----
+# ---- Cached wwembed full-fetch loop (for grouping) ----
 _dl_cache: TTLCache = TTLCache(maxsize=500, ttl=1800)
 async def _fetch_all_download_links(filter_params: dict, max_rows: int = 20000):
-    """Fetch ALL matching rows via Supabase with pagination. Returns list of dicts."""
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    """Fetch ALL matching rows via wwembed API. Returns list of dicts."""
+    if not WWEMBED_API_URL or not WWEMBED_API_KEY:
         return []
-    headers = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
     all_rows: list = []
     page_size = 1000
     offset = 0
-    base_qs = "&".join([f"{k}={v}" for k, v in filter_params.items()])
-    async with httpx.AsyncClient(timeout=30) as hc:
-        while offset < max_rows:
-            url = f"{SUPABASE_URL}/rest/v1/download_links?{base_qs}"
-            r = await hc.get(url, headers={**headers, "Range-Unit": "items", "Range": f"{offset}-{offset + page_size - 1}"})
-            if r.status_code >= 400:
-                break
-            batch = r.json()
-            if not batch:
-                break
-            all_rows.extend(batch)
-            if len(batch) < page_size:
-                break
-            offset += page_size
+    while offset < max_rows:
+        data = await _wwembed_get("/api/v1/download_links", {
+            **filter_params,
+            "limit": page_size,
+            "offset": offset,
+        })
+        batch = data.get("items") or []
+        if not batch:
+            break
+        all_rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += page_size
     return all_rows
 
 def _compress_range(sorted_nums: list) -> str:
@@ -2085,18 +2057,12 @@ def _compress_range(sorted_nums: list) -> str:
 
 @app.get("/api/download-links/media-types")
 async def list_media_types():
-    """Return distinct media_type values from Supabase for the filter dropdown."""
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    """Return distinct media_type values for the filter dropdown."""
+    try:
+        data = await _wwembed_get("/api/v1/download_links/media-types")
+        return {"types": data.get("types") or []}
+    except HTTPException:
         return {"types": []}
-    headers = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
-    async with httpx.AsyncClient(timeout=15) as hc:
-        # Fetch only the media_type column for all rows, distinct in Python
-        r = await hc.get(f"{SUPABASE_URL}/rest/v1/download_links?select=media_type&is_active=eq.true&is_valid=eq.true&status=eq.approved", headers={**headers, "Range-Unit": "items", "Range": "0-20000"})
-        if r.status_code >= 400:
-            return {"types": []}
-        data = r.json() or []
-    types = sorted({(d.get("media_type") or "").strip() for d in data if d.get("media_type")})
-    return {"types": types}
 
 @app.get("/api/download-links")
 async def list_download_links(
@@ -2115,13 +2081,10 @@ async def list_download_links(
     limit = max(1, min(int(limit or 24), 60))
     params = _download_link_filters(quality=quality, media_type=media_type, language=language, q=q)
     if uploader:
-        params["select"] = "id,tmdb_id,media_type,ww_id,source_name,source_url,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,file_size,is_verified,created_at,submitted_by,profiles!inner(username,role)"
-        params["profiles.username"] = f"eq.{uploader}"
-    else:
-        params["select"] = "id,tmdb_id,media_type,ww_id,source_name,source_url,quality,resolution,language,release_name,season_number,episode_number,codec_video,codec_audio,subtitle,file_size,is_verified,created_at,submitted_by,profiles(username,role)"
-    if sort not in ("created_at.desc", "created_at.asc", "profiles(username).asc", "profiles(username).desc", "quality.asc", "quality.desc"):
+        params["uploader"] = uploader
+    if sort not in ("created_at.desc", "created_at.asc", "quality.asc", "quality.desc"):
         sort = "created_at.desc"
-    params["order"] = sort
+    params["sort"] = sort
 
     # Fetch all matching rows (cached briefly per filter combination)
     import time, hashlib, json as _json
@@ -2134,11 +2097,10 @@ async def list_download_links(
     else:
         rows = await _fetch_all_download_links(params)
         raw_count = len(rows)
-        # Flatten profile
+        # Normalize uploader fields (wwembed API renvoie déjà uploader_username/uploader_role)
         for r in rows:
-            prof = r.pop("profiles", None) or {}
-            r["uploader_username"] = prof.get("username") or "Anonyme"
-            r["uploader_role"] = prof.get("role") or "user"
+            r.setdefault("uploader_username", r.pop("profiles", {}).get("username", "Anonyme") if isinstance(r.get("profiles"), dict) else r.get("uploader_username") or "Anonyme")
+            r.setdefault("uploader_role", r.get("uploader_role") or "user")
 
         if group:
             # Group TV by (tmdb_id, season_number); movies stay individual
@@ -2245,33 +2207,25 @@ async def list_download_links(
 
 @app.get("/api/download-links/uploaders")
 async def list_uploaders():
-    """Return list of unique uploaders with their submission count, for filter dropdown."""
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
+    """Return list of unique uploaders with their role, for filter dropdown."""
+    try:
+        data = await _wwembed_get("/api/v1/profiles/uploaders")
+        return {"uploaders": data.get("uploaders") or []}
+    except HTTPException:
         return {"uploaders": []}
-    headers = {"apikey": SUPABASE_SERVICE_KEY, "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}"}
-    async with httpx.AsyncClient(timeout=20) as hc:
-        # Get all profiles that have at least one upload
-        r = await hc.get(f"{SUPABASE_URL}/rest/v1/profiles?select=username,role&role=in.(uploader,admin)&order=username.asc", headers=headers)
-        if r.status_code >= 400:
-            return {"uploaders": []}
-        profiles = r.json() or []
-    return {"uploaders": [{"username": p.get("username"), "role": p.get("role")} for p in profiles if p.get("username")]}
 
 @app.get("/api/download-links/for-content")
 async def get_links_for_content(tmdb_id: int, media_type: str, season: Optional[int] = None, episode: Optional[int] = None):
     """All download links for a specific TMDB content (used on movie/tv detail page)."""
     if media_type not in ("movie", "tv"):
         raise HTTPException(status_code=400, detail="media_type invalide")
-    params = _download_link_filters(media_type=media_type)
-    params["tmdb_id"] = f"eq.{tmdb_id}"
+    params: dict = {"tmdb_id": tmdb_id, "media_type": media_type}
     if season is not None:
-        params["season_number"] = f"eq.{season}"
+        params["season"] = season
     if episode is not None:
-        params["episode_number"] = f"eq.{episode}"
-    params["order"] = "created_at.desc"
-    params["limit"] = "100"
-    rows = await _supabase_get("/download_links", params)
-    return {"items": rows, "count": len(rows)}
+        params["episode"] = episode
+    data = await _wwembed_get("/api/v1/download_links/for-content", params)
+    return {"items": data.get("items") or [], "count": data.get("count") or len(data.get("items") or [])}
 
 # ---- Admin : download links module config ----
 class DownloadLinksModuleConfig(BaseModel):
@@ -2302,27 +2256,17 @@ async def update_download_links_config(req: DownloadLinksModuleConfig, user: dic
 
 @app.get("/api/admin/download-links/stats")
 async def admin_download_links_stats(user: dict = Depends(get_current_user)):
-    """Quick admin stats: total links, by media_type, last 24h count."""
+    """Quick admin stats: total links + last 24h count (proxied from wwembed)."""
     if not user.get("is_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
-    # Use Supabase count via head+prefer count=exact
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        raise HTTPException(status_code=503, detail="Supabase non configuré")
-    headers = {
-        "apikey": SUPABASE_SERVICE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Prefer": "count=exact",
-        "Range-Unit": "items",
-        "Range": "0-0",
+    try:
+        data = await _wwembed_get("/api/v1/stats")
+    except HTTPException:
+        return {"total": 0, "last_24h": 0}
+    return {
+        "total": int(data.get("total") or 0),
+        "last_24h": int(data.get("last_24h") or 0),
     }
-    async with httpx.AsyncClient(timeout=15) as hc:
-        r_total = await hc.get(f"{SUPABASE_URL}/rest/v1/download_links?is_active=eq.true&is_valid=eq.true", headers=headers)
-        total = int(r_total.headers.get("content-range", "*/0").split("/")[-1] or 0)
-        # Last 24h
-        cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-        r_24h = await hc.get(f"{SUPABASE_URL}/rest/v1/download_links?is_active=eq.true&created_at=gte.{cutoff}", headers=headers)
-        last_24h = int(r_24h.headers.get("content-range", "*/0").split("/")[-1] or 0)
-    return {"total": total, "last_24h": last_24h}
 
 # Health check
 @app.get("/api/health")
