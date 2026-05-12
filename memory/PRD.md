@@ -34,7 +34,6 @@ Le `<nav>` parent avait `backdrop-filter: blur(20px)` ce qui crée un nouveau "c
 
 ### Comptes test
 - Admin: `admin@wavewatch.com` / `WaveWatch2026!`
-- Uploader (test): `uploader@wavewatch.com` / `Uploader2026!`
 
 ## Session 50 (2026-05-12) — Migration Supabase → wwembed HTTP API
 
