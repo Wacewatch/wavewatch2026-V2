@@ -1,5 +1,41 @@
 # WaveWatch PRD
 
+
+## Session 51 (2026-05-12) — Fix menu mobile + Recommandations + Uploader admin access
+
+### Demandes utilisateur
+1. Module Contenu Aléatoire: ne pas proposer du contenu déjà vu.
+2. Recommandations: garder UN SEUL module sur la page principale (home), supprimer du dashboard. Garder le hover (ajouter en playlist, marquer vu). Pas de contenu déjà vu.
+3. Uploaders: accès à certains onglets admin (Dashboard, TV, Radio, Musique, Logiciel, Jeu, Ebook, Rétro, Demandes) avec full CRUD comme un admin. Bloquer les autres onglets.
+4. Bug: menu mobile (burger) n'affiche que la croix de fermeture — rien d'autre.
+
+### Cause root du bug menu mobile
+Le `<nav>` parent avait `backdrop-filter: blur(20px)` ce qui crée un nouveau "containing block" et casse `position: fixed` des enfants. Le menu mobile était donc contraint à la hauteur de la nav (~60px).
+
+### Changements
+- **Navigation.js**: menu mobile rendu via `ReactDOM.createPortal(..., document.body)` → échappe le containing block du nav. Ajout `data-testid="mobile-menu-panel"`.
+- **components/RecommendationsRow.js**: refactor pour utiliser `<ContentCard />` (hover playlist + watched). Le composant exclut déjà le contenu vu (backend `/api/user/recommendations` filtre history+favorites+dislikes).
+- **HomePage.js**: 
+  - Remplace la fonction inline `RecommendationsRow` par l'import depuis `components/RecommendationsRow`.
+  - `RandomContent` filtre désormais le contenu déjà vu (`useContentStatus().watched`) en fetchant 3 pages aléatoires de films + 3 pages de séries.
+- **DashboardPage.js**: retire l'import et l'affichage de `RecommendationsRow`.
+- **ProtectedRoute.js**: ajoute prop `allowUploader`.
+- **App.js**: `/admin` utilise `<ProtectedRoute adminOnly allowUploader>`.
+- **AdminPage.js**: 
+  - Guards `is_admin || is_uploader`.
+  - Constant `UPLOADER_ALLOWED_TABS = ['stats','tvchannels','radio','music','software','games','ebooks','retrogaming','requests']`.
+  - Filtre `tabs` pour les uploaders, et redirige vers `stats` si onglet interdit.
+- **Backend server.py**: passage de `require_admin` → `require_admin_or_uploader` pour: enhanced-stats, online-users, watching-now, tv-channels CRUD, radio-stations CRUD, music delete, software delete, games delete, ebooks delete, retrogaming CRUD, content-requests update/delete.
+
+### Validation testing_agent_v3 (iteration_40)
+- Backend: 17 tests passent (uploader CRUD OK; uploader 403 sur /api/admin/users, vip-codes, broadcast, info-banner, changelogs).
+- Frontend: menu mobile visible avec tous les éléments; dashboard sans recos; admin uploader voit exactement 9 onglets autorisés sur 23.
+- Recommendations exclut bien le contenu vu côté API.
+
+### Comptes test
+- Admin: `admin@wavewatch.com` / `WaveWatch2026!`
+- Uploader (test): `uploader@wavewatch.com` / `Uploader2026!`
+
 ## Session 50 (2026-05-12) — Migration Supabase → wwembed HTTP API
 
 ### Demande utilisateur
