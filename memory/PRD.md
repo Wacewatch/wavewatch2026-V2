@@ -1,5 +1,52 @@
 # WaveWatch PRD
 
+## Session 50 (2026-05-12) — Migration Supabase → wwembed HTTP API
+
+### Demande utilisateur
+> Migration de wwembed Supabase → MongoDB exposée via une nouvelle API HTTP (header `X-API-Key`).
+> Côté WaveWatch : remplacer tous les appels Supabase par cette API, sans rien changer pour l'utilisateur.
+
+### Endpoints wwembed consommés
+1. `GET /api/v1/health` (public)
+2. `GET /api/v1/download_links/recent?limit=N`
+3. `GET /api/v1/download_links?quality&media_type&language&q&uploader&sort&limit&offset`
+4. `GET /api/v1/download_links/for-content?tmdb_id&media_type&season&episode`
+5. `GET /api/v1/download_links/media-types`
+6. `GET /api/v1/profiles/uploaders`
+7. `GET /api/v1/stats`
+
+Tous protégés par `X-API-Key`.
+
+### Changements backend (`/app/backend/server.py`)
+- Nouvelles vars env : `WWEMBED_API_URL`, `WWEMBED_API_KEY` (Supabase laissé vide pour compat).
+- Remplacement de `_supabase_get()` par `_wwembed_get()` (httpx, header `X-API-Key`).
+- Refacto complète de `_download_link_filters()` : plus de syntaxe PostgREST, juste les query params attendus par l'API wwembed.
+- Refacto de `_fetch_all_download_links()` : pagination via `limit`/`offset` au lieu du header `Range`.
+- 7 endpoints WaveWatch (`/api/download-links/*` + `/api/admin/download-links/stats`) basculés sur la nouvelle API.
+- **Résilience** : si wwembed est offline ou en cours de déploiement, tous les endpoints renvoient `200` avec liste vide au lieu d'un 502, → UI reste propre.
+- Logique de groupement TV par (show, season) avec `episode_range` compressé : conservée intacte côté WaveWatch.
+- Cache TTL 30s sur `_dl_cache` : conservé.
+
+### Changements frontend (`/app/frontend/src/pages/AdminPage.js`)
+- Bloc admin : note de sécurité mise à jour ("clé API wwembed (X-API-Key)" au lieu de "clés Supabase service role").
+- Aucun autre changement UI : module home "Derniers liens", page `/download-links`, fiches détail, onglet admin → fonctionnent à l'identique.
+
+### Validation
+- `curl /api/download-links/recent` → 200 `{items:[],count:0}` ✅
+- `curl /api/download-links?limit=5` → 200 `{items:[],total:0,grouped:true}` ✅
+- `curl /api/download-links/for-content?tmdb_id=550&media_type=movie` → 200 ✅
+- `curl /api/download-links/media-types` → 200 `{types:[]}` ✅
+- `curl /api/download-links/uploaders` → 200 `{uploaders:[]}` ✅
+
+→ Dès que `https://wwembed.wavewatch.top/api/v1/*` sera live, les modules afficheront automatiquement les données. Aucune action supplémentaire requise côté WaveWatch.
+
+### .env
+```
+WWEMBED_API_URL=https://wwembed.wavewatch.top
+WWEMBED_API_KEY=wwk_24db521eac4ca6f1cf4435c27ffeabee51387ba2549ee5ba547f4f6b13893d23
+```
+
+
 ## Session 49 (2026-05-12) — Densité grilles & carousels
 
 ### Demande utilisateur (FR)

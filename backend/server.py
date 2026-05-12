@@ -2008,7 +2008,10 @@ def _download_link_filters(quality: Optional[str] = None, media_type: Optional[s
 async def get_recent_download_links(limit: int = 12):
     """Proxy to wwembed /download_links/recent (already deduplicated by API)."""
     limit = max(1, min(int(limit or 12), 50))
-    data = await _wwembed_get("/api/v1/download_links/recent", {"limit": limit})
+    try:
+        data = await _wwembed_get("/api/v1/download_links/recent", {"limit": limit})
+    except HTTPException:
+        return {"items": [], "count": 0}
     items = data.get("items") or []
     await _enrich_links(items)
     return {"items": items, "count": len(items)}
@@ -2023,11 +2026,14 @@ async def _fetch_all_download_links(filter_params: dict, max_rows: int = 20000):
     page_size = 1000
     offset = 0
     while offset < max_rows:
-        data = await _wwembed_get("/api/v1/download_links", {
-            **filter_params,
-            "limit": page_size,
-            "offset": offset,
-        })
+        try:
+            data = await _wwembed_get("/api/v1/download_links", {
+                **filter_params,
+                "limit": page_size,
+                "offset": offset,
+            })
+        except HTTPException:
+            break
         batch = data.get("items") or []
         if not batch:
             break
@@ -2224,7 +2230,10 @@ async def get_links_for_content(tmdb_id: int, media_type: str, season: Optional[
         params["season"] = season
     if episode is not None:
         params["episode"] = episode
-    data = await _wwembed_get("/api/v1/download_links/for-content", params)
+    try:
+        data = await _wwembed_get("/api/v1/download_links/for-content", params)
+    except HTTPException:
+        return {"items": [], "count": 0}
     return {"items": data.get("items") or [], "count": data.get("count") or len(data.get("items") or [])}
 
 # ---- Admin : download links module config ----
