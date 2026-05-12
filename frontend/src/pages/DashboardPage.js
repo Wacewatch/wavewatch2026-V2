@@ -9,7 +9,6 @@ import { ThemedPage, ThemedHero } from '../components/design/ThemedPage';
 import { useUserXP, getLevelBounds } from '../lib/xp';
 import BonusXPCard from '../components/BonusXPCard';
 import StreakCard from '../components/StreakCard';
-import RecommendationsRow from '../components/RecommendationsRow';
 
 function RatingBar({ label, value, onChange }) {
   const getColor = (i) => {
@@ -157,8 +156,7 @@ export default function DashboardPage() {
   const [savingReview, setSavingReview] = useState(false);
 
   // Recommendations
-  const [recommendations, setRecommendations] = useState([]);
-  const [recsOpen, setRecsOpen] = useState(true);
+  // (moved to homepage)
 
   // Collapsible states
   const [statsOpen, setStatsOpen] = useState(true);
@@ -192,7 +190,6 @@ export default function DashboardPage() {
       API.get('/api/user/favorites').then(({ data }) => setFavorites((data.favorites || []).slice(0, 12))).catch(() => {});
       API.get('/api/user/achievements').then(({ data }) => setAchievements(data.achievements || [])).catch(() => {});
       API.get('/api/staff-messages').then(({ data }) => setMessages((data.messages || []).slice(0, 3))).catch(() => {});
-      API.get('/api/user/recommendations').then(({ data }) => setRecommendations(data.recommendations || [])).catch(() => {});
       API.get('/api/platform-reviews/mine').then(({ data }) => {
         if (data.review) setMyReview({ contenu_score: data.review.contenu_score, fonctionnalites_score: data.review.fonctionnalites_score, design_score: data.review.design_score, message: data.review.message || '' });
       }).catch(() => {});
@@ -297,9 +294,6 @@ export default function DashboardPage() {
             </Link>
           ))}
       </div>
-
-      {/* Recommendations personnalisées */}
-      <RecommendationsRow />
 
       {/* === NIVEAU UTILISATEUR === */}
       <div className="relative overflow-hidden rounded-2xl border-2 backdrop-blur-xl p-5 md:p-6"

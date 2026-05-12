@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 
 class ReviewRequestTester:
-    def __init__(self, base_url="https://edge-to-edge-layout.preview.emergentagent.com"):
+    def __init__(self, base_url="https://smart-content-engine-4.preview.emergentagent.com"):
         self.base_url = base_url
         self.session = requests.Session()
         self.admin_token = None

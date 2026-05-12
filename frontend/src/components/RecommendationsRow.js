@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import API, { TMDB_IMG } from '../lib/api';
-import { Sparkles, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import API from '../lib/api';
+import { Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import ContentCard from './ContentCard';
 
 export default function RecommendationsRow() {
   const [items, setItems] = useState([]);
@@ -35,7 +35,7 @@ export default function RecommendationsRow() {
   if (items.length === 0) return null;
 
   const reasonLabel = source === 'personalised'
-    ? 'D\'après ce que tu as aimé'
+    ? "D'après ce que tu as aimé"
     : 'Tendances actuelles — découvre ton style';
 
   return (
@@ -74,39 +74,14 @@ export default function RecommendationsRow() {
         >
           {items.map((item, idx) => {
             const mt = item.media_type || (item.title ? 'movie' : 'tv');
-            const title = item.title || item.name;
-            const href = mt === 'movie' ? `/movies/${item.id}` : `/tv-shows/${item.id}`;
-            const img = item.poster_path ? `${TMDB_IMG}/w300${item.poster_path}` : 'https://placehold.co/300x450/2d1b4e/aaa?text=No+Image';
-            const year = (item.release_date || item.first_air_date || '').slice(0, 4);
-            const vote = item.vote_average ? Number(item.vote_average).toFixed(1) : null;
-
             return (
-              <Link
-                to={href}
+              <div
                 key={`${mt}-${item.id}-${idx}`}
-                className="group flex-shrink-0 w-[140px] md:w-[160px] snap-start"
+                className="flex-shrink-0 w-[140px] md:w-[160px] snap-start"
                 data-testid={`reco-item-${idx}`}
               >
-                <div className="relative aspect-[2/3] rounded-xl overflow-hidden bg-purple-950/40 border border-purple-500/20 group-hover:border-purple-400/60 transition-all group-hover:shadow-lg group-hover:shadow-purple-500/30">
-                  <img src={img} alt={title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute top-1.5 left-1.5">
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${mt === 'movie' ? 'bg-blue-500/90 text-white' : 'bg-emerald-500/90 text-white'}`}>
-                      {mt === 'movie' ? 'Film' : 'Série'}
-                    </span>
-                  </div>
-                  {vote && (
-                    <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-black/70 backdrop-blur-sm">
-                      <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
-                      <span className="text-[9px] font-bold text-white">{vote}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-2 px-0.5">
-                  <p className="text-xs font-bold text-white truncate group-hover:text-purple-200 transition-colors">{title}</p>
-                  {year && <p className="text-[10px] text-purple-300/60 mt-0.5">{year}</p>}
-                </div>
-              </Link>
+                <ContentCard item={item} type={mt === 'movie' ? 'movie' : 'tv'} />
+              </div>
             );
           })}
         </div>

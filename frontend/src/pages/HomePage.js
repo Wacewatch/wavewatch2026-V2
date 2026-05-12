@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import API, { TMDB_IMG } from '../lib/api';
-import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users, Sparkles, X } from 'lucide-react';
-import ContentCard from '../components/ContentCard';
+import { Star, Play, ChevronLeft, ChevronRight, Crown, Trophy, Calendar as CalIcon, Tv, Film, Shuffle, Radio, Gamepad2, Users, Sparkles } from 'lucide-react';
+import ContentCard, { useContentStatus } from '../components/ContentCard';
 import ContentGrid from '../components/ContentGrid';
 import InfoBanner from '../components/InfoBanner';
 import DownloadLinksRow from '../components/DownloadLinksRow';
 import { LoadingGrid } from '../components/Loading';
 import IframeModal from '../components/IframeModal';
+import RecommendationsRow from '../components/RecommendationsRow';
 import { useAuth } from '../contexts/AuthContext';
 
 function Hero() {
@@ -389,23 +390,30 @@ function RandomContent() {
   const [movie, setMovie] = useState(null);
   const [tv, setTv] = useState(null);
   const [loading, setLoading] = useState(false);
+  const { watched } = useContentStatus();
 
   const fetchRandom = () => {
     setLoading(true);
-    const moviePage = Math.floor(Math.random() * 5) + 1;
-    const tvPage = Math.floor(Math.random() * 5) + 1;
+    // Fetch many pages to maximise chance of finding unseen content
+    const moviePages = [1, 2, 3, 4, 5].sort(() => Math.random() - 0.5).slice(0, 3);
+    const tvPages = [1, 2, 3, 4, 5].sort(() => Math.random() - 0.5).slice(0, 3);
     Promise.all([
-      API.get(`/api/tmdb/popular/movies?page=${moviePage}`).catch(() => ({ data: { results: [] } })),
-      API.get(`/api/tmdb/popular/tv?page=${tvPage}`).catch(() => ({ data: { results: [] } })),
-    ]).then(([mRes, tRes]) => {
-      const movies = mRes.data.results || [];
-      const tvs = tRes.data.results || [];
+      ...moviePages.map(p => API.get(`/api/tmdb/popular/movies?page=${p}`).catch(() => ({ data: { results: [] } }))),
+      ...tvPages.map(p => API.get(`/api/tmdb/popular/tv?page=${p}`).catch(() => ({ data: { results: [] } }))),
+    ]).then(responses => {
+      const movieResponses = responses.slice(0, moviePages.length);
+      const tvResponses = responses.slice(moviePages.length);
+      const movies = movieResponses.flatMap(r => r.data.results || [])
+        .filter(m => !watched.has(`movie-${m.id}`));
+      const tvs = tvResponses.flatMap(r => r.data.results || [])
+        .filter(s => !watched.has(`tv-${s.id}`));
       if (movies.length) setMovie(movies[Math.floor(Math.random() * movies.length)]);
       if (tvs.length) setTv(tvs[Math.floor(Math.random() * tvs.length)]);
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchRandom(); }, []);
+  // Refetch when watched set changes (only on initial load)
+  useEffect(() => { fetchRandom(); }, []);// eslint-disable-line
 
   const Card = ({ item, isMovie }) => {
     if (!item) return null;
@@ -570,29 +578,7 @@ function FootballCalendarWidget() {
   );
 }
 
-function RecommendationsRow() {
-  const { user } = useAuth();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      API.get('/api/user/recommendations').then(({ data }) => setItems(data.recommendations || [])).catch(() => {}).finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
-
-  if (!user || loading || !items.length) return null;
-
-  return (
-    <div data-testid="recommendations-section">
-      <ContentGrid title="Recommandations pour vous" link="/dashboard" icon={<Sparkles className="w-5 h-5 text-pink-400" />}>
-        {items.map(item => <ContentCard key={`${item.media_type || (item.title ? 'movie' : 'tv')}-${item.id}`} item={item} type={item.media_type === 'tv' || (!item.title && item.name) ? 'tv' : 'movie'} />)}
-      </ContentGrid>
-    </div>
-  );
-}
+// RecommendationsRow is now imported from ../components/RecommendationsRow
 
 export default function HomePage() {
   const [modules, setModules] = useState(null);

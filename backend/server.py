@@ -1398,7 +1398,7 @@ async def user_heartbeat(user: dict = Depends(get_current_user)):
 
 @app.get("/api/admin/online-users")
 async def get_online_users(user: dict = Depends(get_current_user)):
-    if not user.get("is_admin"):
+    if not user.get("is_admin") and not user.get("is_uploader"):
         raise HTTPException(status_code=403, detail="Admin requis")
     cutoff_5min = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
     cutoff_1h = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
@@ -1411,7 +1411,7 @@ async def get_online_users(user: dict = Depends(get_current_user)):
 @app.get("/api/admin/watching-now")
 async def admin_watching_now(user: dict = Depends(get_current_user)):
     """Return live count + list of users who pressed Play in last 10 minutes."""
-    if not user.get("is_admin"):
+    if not user.get("is_admin") and not user.get("is_uploader"):
         raise HTTPException(status_code=403, detail="Admin requis")
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
     events = await db.activity_events.find(
@@ -2523,7 +2523,7 @@ async def get_achievements(user: dict = Depends(get_current_user)):
 
 # --- TV Channels CRUD ---
 @app.post("/api/admin/tv-channels")
-async def create_tv_channel(request: Request, user: dict = Depends(require_admin)):
+async def create_tv_channel(request: Request, user: dict = Depends(require_admin_or_uploader)):
     data = await request.json()
     # Remove any _id from input to avoid duplicates
     data.pop("_id", None)
@@ -2534,7 +2534,7 @@ async def create_tv_channel(request: Request, user: dict = Depends(require_admin
     return {"_id": str(result.inserted_id), **{k:v for k,v in data.items() if k != "_id"}}
 
 @app.put("/api/admin/tv-channels/{channel_id}")
-async def update_tv_channel(channel_id: str, request: Request, user: dict = Depends(require_admin)):
+async def update_tv_channel(channel_id: str, request: Request, user: dict = Depends(require_admin_or_uploader)):
     data = await request.json()
     data.pop("_id", None)
     data.pop("id", None)
@@ -2543,7 +2543,7 @@ async def update_tv_channel(channel_id: str, request: Request, user: dict = Depe
     return {"message": "Mis a jour", "_id": channel_id}
 
 @app.delete("/api/admin/tv-channels/{channel_id}")
-async def delete_tv_channel(channel_id: str, user: dict = Depends(require_admin)):
+async def delete_tv_channel(channel_id: str, user: dict = Depends(require_admin_or_uploader)):
     result = await db.tv_channels.delete_one({"_id": ObjectId(channel_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Chaine non trouvee")
@@ -2551,7 +2551,7 @@ async def delete_tv_channel(channel_id: str, user: dict = Depends(require_admin)
 
 # --- Radio Stations CRUD ---
 @app.post("/api/admin/radio-stations")
-async def create_radio_station(request: Request, user: dict = Depends(require_admin)):
+async def create_radio_station(request: Request, user: dict = Depends(require_admin_or_uploader)):
     data = await request.json()
     data["created_at"] = datetime.now(timezone.utc).isoformat()
     data["is_active"] = data.get("is_active", True)
@@ -2560,14 +2560,14 @@ async def create_radio_station(request: Request, user: dict = Depends(require_ad
     return data
 
 @app.put("/api/admin/radio-stations/{station_id}")
-async def update_radio_station(station_id: str, request: Request, user: dict = Depends(require_admin)):
+async def update_radio_station(station_id: str, request: Request, user: dict = Depends(require_admin_or_uploader)):
     data = await request.json()
     data.pop("_id", None)
     await db.radio_stations.update_one({"_id": ObjectId(station_id)}, {"$set": data})
     return {"message": "Mis a jour"}
 
 @app.delete("/api/admin/radio-stations/{station_id}")
-async def delete_radio_station(station_id: str, user: dict = Depends(require_admin)):
+async def delete_radio_station(station_id: str, user: dict = Depends(require_admin_or_uploader)):
     await db.radio_stations.delete_one({"_id": ObjectId(station_id)})
     return {"message": "Supprime"}
 
@@ -2596,7 +2596,7 @@ async def update_music(music_id: str, request: Request, user: dict = Depends(req
     return {"message": "Mis a jour"}
 
 @app.delete("/api/admin/music/{music_id}")
-async def delete_music(music_id: str, user: dict = Depends(require_admin)):
+async def delete_music(music_id: str, user: dict = Depends(require_admin_or_uploader)):
     await db.music_content.delete_one({"_id": ObjectId(music_id)})
     return {"message": "Supprime"}
 
@@ -2618,7 +2618,7 @@ async def update_software(soft_id: str, request: Request, user: dict = Depends(r
     return {"message": "Mis a jour"}
 
 @app.delete("/api/admin/software/{soft_id}")
-async def delete_software_item(soft_id: str, user: dict = Depends(require_admin)):
+async def delete_software_item(soft_id: str, user: dict = Depends(require_admin_or_uploader)):
     await db.software.delete_one({"_id": ObjectId(soft_id)})
     return {"message": "Supprime"}
 
@@ -2647,7 +2647,7 @@ async def update_game(game_id: str, request: Request, user: dict = Depends(requi
     return {"message": "Mis a jour"}
 
 @app.delete("/api/admin/games/{game_id}")
-async def delete_game(game_id: str, user: dict = Depends(require_admin)):
+async def delete_game(game_id: str, user: dict = Depends(require_admin_or_uploader)):
     await db.games.delete_one({"_id": ObjectId(game_id)})
     return {"message": "Supprime"}
 
@@ -2669,13 +2669,13 @@ async def update_ebook(ebook_id: str, request: Request, user: dict = Depends(req
     return {"message": "Mis a jour"}
 
 @app.delete("/api/admin/ebooks/{ebook_id}")
-async def delete_ebook(ebook_id: str, user: dict = Depends(require_admin)):
+async def delete_ebook(ebook_id: str, user: dict = Depends(require_admin_or_uploader)):
     await db.ebooks.delete_one({"_id": ObjectId(ebook_id)})
     return {"message": "Supprime"}
 
 # --- Retrogaming CRUD ---
 @app.post("/api/admin/retrogaming")
-async def create_retrogaming(request: Request, user: dict = Depends(require_admin)):
+async def create_retrogaming(request: Request, user: dict = Depends(require_admin_or_uploader)):
     data = await request.json()
     data.pop("_id", None)
     data["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -2684,7 +2684,7 @@ async def create_retrogaming(request: Request, user: dict = Depends(require_admi
     return {"_id": str(result.inserted_id), **{k:v for k,v in data.items() if k != "_id"}}
 
 @app.put("/api/admin/retrogaming/{source_id}")
-async def update_retrogaming(source_id: str, request: Request, user: dict = Depends(require_admin)):
+async def update_retrogaming(source_id: str, request: Request, user: dict = Depends(require_admin_or_uploader)):
     data = await request.json()
     data.pop("_id", None)
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
@@ -2692,7 +2692,7 @@ async def update_retrogaming(source_id: str, request: Request, user: dict = Depe
     return {"message": "Mis a jour", "_id": source_id}
 
 @app.delete("/api/admin/retrogaming/{source_id}")
-async def delete_retrogaming(source_id: str, user: dict = Depends(require_admin)):
+async def delete_retrogaming(source_id: str, user: dict = Depends(require_admin_or_uploader)):
     result = await db.retrogaming_sources.delete_one({"_id": ObjectId(source_id)})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Source non trouvee")
@@ -2750,7 +2750,7 @@ async def send_broadcast(request: Request, user: dict = Depends(require_admin)):
 
 # --- Admin Enhanced Stats ---
 @app.get("/api/admin/enhanced-stats")
-async def get_admin_enhanced_stats(user: dict = Depends(require_admin)):
+async def get_admin_enhanced_stats(user: dict = Depends(require_admin_or_uploader)):
     total_users = await db.users.count_documents({})
     vip_users = await db.users.count_documents({"is_vip": True})
     vip_plus = await db.users.count_documents({"is_vip_plus": True})
@@ -3199,7 +3199,7 @@ async def get_rating_counts(content_id: str = Query(...), content_type: str = Qu
 
 # --- Content Requests Admin Management ---
 @app.put("/api/admin/content-requests/{request_id}")
-async def update_content_request(request_id: str, request: Request, user: dict = Depends(require_admin)):
+async def update_content_request(request_id: str, request: Request, user: dict = Depends(require_admin_or_uploader)):
     data = await request.json()
     data.pop("_id", None)
     # Capture previous state to know if status changed (for notifying the author)
@@ -3231,7 +3231,7 @@ async def update_content_request(request_id: str, request: Request, user: dict =
     return {"message": "Mis a jour"}
 
 @app.delete("/api/admin/content-requests/{request_id}")
-async def delete_content_request(request_id: str, user: dict = Depends(require_admin)):
+async def delete_content_request(request_id: str, user: dict = Depends(require_admin_or_uploader)):
     await db.content_requests.delete_one({"_id": ObjectId(request_id)})
     return {"message": "Supprime"}
 

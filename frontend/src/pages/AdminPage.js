@@ -295,10 +295,13 @@ export default function AdminPage() {
   const [editingReview, setEditingReview] = useState(null);
   const [reviewForm, setReviewForm] = useState({ message: '', contenu_score: 5, fonctionnalites_score: 5, design_score: 5 });
 
-  useEffect(() => { if (!authLoading && (!user || !user.is_admin)) navigate('/'); }, [user, authLoading, navigate]);
+  useEffect(() => { if (!authLoading && (!user || (!user.is_admin && !user.is_uploader))) navigate('/'); }, [user, authLoading, navigate]);
+
+  const isUploaderOnly = user && !user.is_admin && user.is_uploader;
+  const UPLOADER_ALLOWED_TABS = new Set(['stats', 'tvchannels', 'radio', 'music', 'software', 'games', 'ebooks', 'retrogaming', 'requests']);
 
   const loadData = useCallback((currentTab) => {
-    if (!user?.is_admin) return;
+    if (!user?.is_admin && !user?.is_uploader) return;
     const endpoints = {
       stats: () => API.get('/api/admin/enhanced-stats').then(({ data }) => setStats(data)),
       users: () => API.get('/api/admin/users').then(({ data }) => setUsers(data.users || [])),
@@ -330,11 +333,19 @@ export default function AdminPage() {
     if (endpoints[currentTab]) endpoints[currentTab]().catch(() => {});
   }, [user]);
 
-  useEffect(() => { if (user?.is_admin) loadData(tab); }, [user, tab, loadData]);
+  useEffect(() => { if (user?.is_admin || user?.is_uploader) loadData(tab); }, [user, tab, loadData]);
+
+  // If an uploader landed on a forbidden tab, redirect them to the dashboard tab
+  useEffect(() => {
+    const allowed = new Set(['stats', 'tvchannels', 'radio', 'music', 'software', 'games', 'ebooks', 'retrogaming', 'requests']);
+    if (user && !user.is_admin && user.is_uploader && !allowed.has(tab)) {
+      setTab('stats');
+    }
+  }, [user, tab]);
 
   // Load online stats and refresh periodically
   useEffect(() => {
-    if (!user?.is_admin) return;
+    if (!user?.is_admin && !user?.is_uploader) return;
     const loadLive = () => {
       API.get('/api/admin/online-users').then(({ data }) => setOnlineStats(data)).catch(() => {});
       API.get('/api/admin/watching-now').then(({ data }) => setWatchingNow(data)).catch(() => {});
@@ -344,7 +355,7 @@ export default function AdminPage() {
     return () => clearInterval(iv);
   }, [user]);
 
-  if (authLoading || !user?.is_admin) return null;
+  if (authLoading || (!user?.is_admin && !user?.is_uploader)) return null;
 
   // User edit handlers
   const openUserEdit = (u) => {
@@ -491,7 +502,7 @@ export default function AdminPage() {
   const retroFields = [{ key: 'name', label: 'Nom' }, { key: 'url', label: 'URL' }, { key: 'category', label: 'Categorie' }, { key: 'description', label: 'Description', type: 'textarea' }];
   const changelogFields = [{ key: 'version', label: 'Version' }, { key: 'title', label: 'Titre' }, { key: 'release_date', label: 'Date', type: 'date' }, { key: 'description', label: 'Description', type: 'textarea' }];
 
-  const tabs = [
+  const allTabs = [
     { id: 'stats', label: 'Dashboard', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'broadcast', label: 'Message', icon: <Send className="w-4 h-4" /> },
     { id: 'tvchannels', label: 'TV', icon: <Tv className="w-4 h-4" />, count: tvChannels.length },
@@ -516,6 +527,7 @@ export default function AdminPage() {
     { id: 'tmdb', label: 'TMDB', icon: <Film className="w-4 h-4" /> },
     { id: 'events', label: 'Événements', icon: <Calendar className="w-4 h-4" /> },
   ];
+  const tabs = isUploaderOnly ? allTabs.filter(t => UPLOADER_ALLOWED_TABS.has(t.id)) : allTabs;
 
   const moduleLabels = {
     hero: 'Hero (Carrousel)', trending_movies: 'Films Tendance', recommendations: 'Recommandations',

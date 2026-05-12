@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import ReactDOM from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
@@ -350,9 +351,9 @@ export default function Navigation() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden overflow-y-auto" style={{ background: 'linear-gradient(180deg, hsl(var(--nav-bg) / 0.98), hsl(var(--background) / 0.98))', backdropFilter: 'blur(24px)' }}>
+      {/* Mobile Menu — rendered via portal to escape nav's backdrop-filter containing block */}
+      {isMenuOpen && ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[100] lg:hidden overflow-y-auto" style={{ background: 'linear-gradient(180deg, hsl(var(--nav-bg) / 0.98), hsl(var(--background) / 0.98))', backdropFilter: 'blur(24px)' }} data-testid="mobile-menu-panel">
           <div className="container mx-auto px-4 py-6">
             <div className="flex justify-between items-center mb-6">
               <img src="https://i.imgur.com/yY5KJ9t.png" alt="WaveWatch" className="h-10 w-auto object-contain"
@@ -408,7 +409,8 @@ export default function Navigation() {
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </nav>
   );

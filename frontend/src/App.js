@@ -135,7 +135,7 @@ export default function App() {
                   <Route path="/events" element={<EventsPage />} />
                   <Route path="/contact-staff" element={<ContactStaffPage />} />
                   <Route path="/messages" element={<MessagesPage />} />
-                  <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPage /></ProtectedRoute>} />
+                  <Route path="/admin" element={<ProtectedRoute adminOnly allowUploader><AdminPage /></ProtectedRoute>} />
                   <Route path="/requests" element={<ContentRequestsPage />} />
                   <Route path="/calendar" element={<CalendarPage />} />
                   <Route path="/changelogs" element={<ChangelogsPage />} />
